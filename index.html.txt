@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blue Pen Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Blue Pen Store</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="products.html">Products</a>
+      <a href="upload.html">Admin</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h2>Welcome to Blue Pen Store</h2>
+    <p>Your source for Reports, PPTs, and Stationery.</p>
+    <a href="products.html" class="btn">Shop Now</a>
+  </section>
+
+  <footer>
+    © 2025 Blue Pen. All rights reserved.
+  </footer>
+</body>
+</html>

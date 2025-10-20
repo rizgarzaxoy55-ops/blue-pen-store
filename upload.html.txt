@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Upload - Blue Pen Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Admin Upload</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="products.html">Products</a>
+    </nav>
+  </header>
+
+  <section class="upload">
+    <h2>Upload New Product</h2>
+    <form>
+      <input type="text" placeholder="Product name" required>
+      <textarea placeholder="Description"></textarea>
+      <input type="file" required>
+      <button type="submit" class="btn">Upload</button>
+    </form>
+  </section>
+
+  <footer>
+    © 2025 Blue Pen. All rights reserved.
+  </footer>
+</body>
+</html>

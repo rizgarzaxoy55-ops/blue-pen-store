@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products - Blue Pen Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Products</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="products.html">Products</a>
+      <a href="upload.html">Admin</a>
+    </nav>
+  </header>
+
+  <section class="products">
+    <div class="product">
+      <h3>Mathematics Report</h3>
+      <p>Detailed academic report in PDF format.</p>
+      <a href="checkout.html" class="btn">Buy Now</a>
+    </div>
+    <div class="product">
+      <h3>Presentation Pack</h3>
+      <p>Professional PPT templates and reports.</p>
+      <a href="checkout.html" class="btn">Buy Now</a>
+    </div>
+    <div class="product">
+      <h3>Blue Stationery Set</h3>
+      <p>Blue pen, notebook, and creative tools.</p>
+      <a href="checkout.html" class="btn">Buy Now</a>
+    </div>
+  </section>
+
+  <footer>
+    © 2025 Blue Pen. All rights reserved.
+  </footer>
+</body>
+</html>

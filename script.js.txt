@@ -1,0 +1,2 @@
+// Future: admin login, file upload, and Fib API integration
+console.log("Blue Pen Store loaded successfully.");

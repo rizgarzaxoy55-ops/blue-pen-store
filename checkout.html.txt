@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - Blue Pen Store</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Checkout</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="products.html">Products</a>
+    </nav>
+  </header>
+
+  <section class="checkout">
+    <h2>Complete Your Purchase</h2>
+    <p>Use the button below to test your payment via Fib.</p>
+    <a href="#" class="btn">Pay with Fib (Test Mode)</a>
+  </section>
+
+  <footer>
+    © 2025 Blue Pen. All rights reserved.
+  </footer>
+</body>
+</html>

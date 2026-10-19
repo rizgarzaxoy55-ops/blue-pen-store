@@ -81,6 +81,45 @@ aynı adla bu klasöre koyun.
 * **Kapak mektubundan:** her yazarın ORCID, e-posta, telefon ve affiliasyon bilgisi
   (yazarlar ada göre eşleştirilir; makale ile çelişen bilgi varsa uyarı verilir).
 
+## Bütün sayıyı tek seferde işlemek
+
+Her makale bir alt klasöre konur (klasör adı makale numarasıdır):
+
+```
+sayi_14_4/
+├── sayi.json            ← isteğe bağlı
+├── 1993/  makale.docx  kapak_mektubu.docx
+├── 2003/  ...
+└── 2002/  ...
+```
+
+```bash
+python sjuoz_word2latex.py --sayi sayi_14_4
+```
+
+`sayi.json` (verilmezse klasörler ada göre sıralanır, değerler komut satırından alınır):
+
+```json
+{
+  "cilt": 14, "sayi": 4, "yil": 2026, "ay": "October", "ilk_sayfa": 571,
+  "makaleler": [
+    {"klasor": "1993", "gelis": "12 May 2026", "kabul": "1 Aug 2026", "yayin": "15 Oct 2026"},
+    {"klasor": "2003", "tur": "Review Article"},
+    {"klasor": "2002", "secenekler": ["--wide-figs", "3"]}
+  ]
+}
+```
+
+Makaleler bu sırayla derlenir ve **sayfa numaraları zincirlenir** (bir makale 576'da bitiyorsa
+sonraki 577'den başlar). `sayi_14_4/_cikti/` içinde şunlar oluşur:
+
+* her makalenin klasörü, zip'i ve kontrol raporu
+* `sayi_raporu.html` — bütün makalelerin sayfa aralıkları, durumları ve bakılacak noktaları tek sayfada
+* `icindekiler.csv` — makale no, başlık, yazarlar, sayfalar, DOI (Excel'de açılır; OJS/Crossref girişi için)
+* `sayi_tam.pdf` — bütün sayı tek PDF'te (`pip install pypdf` veya `pdfunite` gerekir)
+
+Sayfa zinciri için XeLaTeX gerekir; yoksa her makale `ilk_sayfa`'dan başlar.
+
 ## Kontrol raporu
 
 Her dönüşümden sonra `<makale no>_kontrol_raporu.html` üretilir ve özeti ekrana yazılır.
@@ -126,7 +165,7 @@ Her makale için üç şey denetlenir:
 3. **Derleme:** PDF hatasız derlenmeli, sayfa sayısı beklendiği gibi olmalı, raporda HATA
    olmamalı ve hiçbir şey sayfadan taşmamalı.
 
-Ayrıca birim testleri (denklem çevirici, yazar ayrıştırma, atıf eşleştirme, log analizi) ve
+Ayrıca sayı testleri (sıra ve sayfa zinciri), birim testleri (denklem çevirici, yazar ayrıştırma, atıf eşleştirme, log analizi) ve
 raporun gerçekten kaybı yakaladığını gösteren bir test (çıktıdan bir paragraf ve bir resim
 bilerek silinir) vardır.
 

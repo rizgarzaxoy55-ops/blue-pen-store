@@ -89,3 +89,23 @@ def test_report_clean_for_untouched_output(tmp_path):
     case = next(c for c in CASES if c["name"] == "1993")
     res = run_case(case, tmp_path / "out")
     assert not _titles(res["items"], conv.REPORT_ERROR)
+
+
+def test_report_catches_lost_table_rows(tmp_path):
+    """Sayfadan taşıp kaybolan tablo satırları (kısa hücreler) HATA olarak raporlanmalı."""
+    case = next(c for c in CASES if c["name"] == "sentetik_uzun_tablo")
+    res = run_case(case, tmp_path / "out")
+    ctx = dict(res["context"])
+    lines = ctx["tex"].splitlines(True)
+    ctx["tex"] = "".join(l for l in lines if not l.startswith(("S77 &", "S78 &", "S79 &")))
+    errors = [it for it in conv.build_report(ctx) if it["level"] == conv.REPORT_ERROR]
+    assert errors and "Tablo 1" in errors[0]["detail"], errors
+
+
+def test_long_table_is_breakable(tmp_path):
+    case = next(c for c in CASES if c["name"] == "sentetik_uzun_tablo")
+    res = run_case(case, tmp_path / "out")
+    with open(res["tex_path"], encoding="utf-8") as f:
+        tex = f.read()
+    assert r"\begin{xltabular}" in tex and r"\endhead" in tex
+    assert all("S%02d &" % i in tex for i in range(1, 81))

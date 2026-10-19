@@ -41,6 +41,7 @@ Tek komut her şeyi yapar:
 * Word grafikleri (sütun, çubuk, çizgi, alan, pasta, dağılım) verisinden yeniden çizilir.
 * Gruplanmış resimler, metin kutusundaki resimler ve tablo hücresindeki resimler de alınır.
 * Aynı resim iki kez eklenmişse bir kez kaydedilir.
+* 34 satırdan uzun tablolar sayfalara bölünür; başlık satırı her sayfada tekrarlanır.
 
 İki dosyanın sırası önemli değil; kapak mektubu içeriğine göre otomatik tanınır.
 Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
@@ -130,7 +131,7 @@ Rapor, Word dosyasının kendisinden yapılan sayımları LaTeX/PDF çıktısıy
 |---|---|
 | Resimler / tablolar / denklemler | Word'deki sayı ile LaTeX'teki sayı aynı mı; metinde "Figure 9"a atıf var ama 8 şekil mi var? |
 | Başlıksız şekil | Başlığı (caption) bulunamayan şekiller |
-| Metin bütünlüğü | Word'deki **her paragraf** PDF'te (PDF yoksa .tex'te) var mı? Kaybolan metin HATA verir. |
+| Metin bütünlüğü | Word'deki **her paragraf ve her tablo hücresi** PDF'te (PDF yoksa .tex'te) var mı? Kaybolan metin HATA verir. |
 | Atıflar | Kaynakçada bulunamayan atıflar, metinde atıf yapılmamış kaynaklar |
 | Ön bilgiler | Özet, anahtar kelime, yazar, ORCID, sorumlu yazar e-postası |
 | Derleme | LaTeX hataları, bulunamayan dosyalar, yazı tipinde olmayan (PDF'te görünmeyen) karakterler, sütundan taşan satırlar (.tex satır numarasıyla), sayfadan taşan içerik |
@@ -153,6 +154,7 @@ Test seti (`tests/fixtures/`):
 | `1993` | Gerçek SJUOZ makalesi + kapak mektubu: yazar-yıl atıfları, SEQ alan kodlu denklemler, birleştirilecek affiliasyonlar, ORCID |
 | `sentetik_temel` | Heading stilleri, madde/numaralı listeler, satır içi ve ayrı denklem, tablo, şekil, özel karakterler (`_ & %`), kapak mektubu yok |
 | `sentetik_grafik` | Word sütun grafiği (chart) ve EMF resim |
+| `sentetik_uzun_tablo` | 80 satırlık tablo: sayfalara bölünmeli, başlık her sayfada tekrarlanmalı, satır kaybolmamalı |
 | `sentetik_numerik` | IEEE tarzı `[n]` atıflar, "Review Article", üst simgesiz yazar satırı, tek affiliasyon, satır içi "Abstract:", "Index Terms—", dipnot, birleştirilmiş başlık hücreli tablo |
 
 Her makale için üç şey denetlenir:

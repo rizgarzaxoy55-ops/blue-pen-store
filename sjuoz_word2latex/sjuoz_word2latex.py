@@ -1820,16 +1820,7 @@ class Writer:
         else:
             colspec = r"@{}" + r">{\raggedright\arraybackslash}X" * ncols + "@{}"
             size = r"\small"
-        self.emit(r"\noindent")
-        self.emit(r"\begin{minipage}{\textwidth}")
-        self.emit(r"\centering")
-        self.emit(r"\hypertarget{tab:%d}{}" % self.tab_count)
-        if caption:
-            self.emit(r"\captionof{table}{%s}" % caption)
-        self.emit(r"\vspace{-6pt}")
-        self.emit(size)
-        self.emit(r"\begin{tabularx}{\textwidth}{%s}" % colspec)
-        self.emit(r"\toprule")
+        lines = []
         # başlık satırları: ilk satır + dikey birleştirilmiş hücresi devam eden satırlar
         n_head = 1
         while n_head < len(tbl.rows) - 1 and any(c[2] == "continue" for c in tbl.rows[n_head]):
@@ -1862,7 +1853,46 @@ class Writer:
                 line += r" \midrule"
             elif ri < len(tbl.rows) - 1 and ri >= n_head:
                 line += r" \addlinespace[0.3em]"
-            self.emit(line)
+            lines.append(line)
+        long_table = len(tbl.rows) > LONG_TABLE_ROWS
+        if long_table:
+            # sayfalara bölünebilen tablo: başlık her sayfada tekrarlanır
+            head = lines[:n_head]
+            head[-1] = head[-1].replace(r" \midrule", "")
+            self.emit(r"\begingroup")
+            self.emit(size)
+            self.emit(r"\setlength{\LTcapwidth}{\textwidth}")
+            self.emit(r"\begin{xltabular}{\textwidth}{%s}" % colspec)
+            self.emit((r"\caption{%s}\hypertarget{tab:%d}{}\\" % (caption, self.tab_count)) if caption
+                      else r"\hypertarget{tab:%d}{}\\" % self.tab_count)
+            self.emit(r"\toprule")
+            self.emit("\n".join(head) + r" \midrule")
+            self.emit(r"\endfirsthead")
+            self.emit(r"\multicolumn{%d}{@{}l}{\textbf{Table \thetable:} \textit{(continued)}} \\[2pt]" % ncols)
+            self.emit(r"\toprule")
+            self.emit("\n".join(head) + r" \midrule")
+            self.emit(r"\endhead")
+            self.emit(r"\midrule \multicolumn{%d}{@{}r@{}}{\textit{(continued on next page)}} \\" % ncols)
+            self.emit(r"\endfoot")
+            self.emit(r"\bottomrule")
+            self.emit(r"\endlastfoot")
+            self.emit("\n".join(lines[n_head:]))
+            self.emit(r"\end{xltabular}")
+            self.emit(r"\endgroup")
+            self.emit(r"\par\vspace{6pt}")
+            self.emit()
+            return
+        self.emit(r"\noindent")
+        self.emit(r"\begin{minipage}{\textwidth}")
+        self.emit(r"\centering")
+        self.emit(r"\hypertarget{tab:%d}{}" % self.tab_count)
+        if caption:
+            self.emit(r"\captionof{table}{%s}" % caption)
+        self.emit(r"\vspace{-6pt}")
+        self.emit(size)
+        self.emit(r"\begin{tabularx}{\textwidth}{%s}" % colspec)
+        self.emit(r"\toprule")
+        self.emit("\n".join(lines))
         self.emit(r"\bottomrule")
         self.emit(r"\end{tabularx}")
         self.emit(r"\end{minipage}")
@@ -2122,6 +2152,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{tabularx}
+\usepackage{xltabular}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
@@ -2259,6 +2290,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 """
 
 FIGDIR = "figures"  # resimlerin konduğu alt klasör
+LONG_TABLE_ROWS = 34  # bundan uzun tablolar sayfalara bölünür (xltabular)
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
@@ -2537,7 +2569,16 @@ def build_report(ctx):
     out_letters = _letters(out_text)
     lost = []
     blocks = list(art.body) + list(art.references)
+    n_tab = 0
     for b in blocks:
+        if isinstance(b, Table):
+            # tablo hücreleri kısa olduğu için hücre hücre bakılır (sayfadan taşan satırlar)
+            n_tab += 1
+            cells = [" ".join(p.text() for p in c[0] if isinstance(p, Para)).strip() for r in b.rows for c in r]
+            missing = [c for c in cells if len(_letters(c)) >= 3 and _letters(c) not in out_letters]
+            if missing:
+                lost.append("Tablo %d: %d / %d hücre bulunamadı (ör. %s)" % (
+                    n_tab, len(missing), len(cells), ", ".join("'%s'" % m_[:30] for m_ in missing[:5])))
         paras = [b] if isinstance(b, Para) else [p for r in b.rows for c in r for p in c[0]]
         for p in paras:
             if not isinstance(p, Para):

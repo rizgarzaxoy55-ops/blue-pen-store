@@ -134,6 +134,45 @@ The LSTM model is best [3].
 [3] C. Author, "Third paper," *Journal C*, vol. 3, pp. 21–30, 2022. doi: 10.1000/ccc
 """
 
+def uzun_tablo_md():
+    rows = "\n".join("| S%02d | %d | %.3f | %.1f |" % (i, 700 + 13 * i, 0.1 + i / 97.0, 90 + (i % 10) / 2.0)
+                     for i in range(1, 81))
+    return r"""
+**A LONG TABLE THAT SPANS SEVERAL PAGES**
+
+**Rojin Saleh^1,\*^ and Hawar Aziz^1^**
+
+^1^Department of Statistics, University of Zakho, Duhok, Iraq.
+
+\* Corresponding author. E-mail: rojin.saleh@uoz.edu.krd
+
+**Abstract**
+
+This synthetic manuscript contains a table with eighty rows that cannot fit on one page and
+must be split across pages without losing any row.
+
+**Keywords:** long table; pagination.
+
+# Introduction
+
+The full results are listed in Table 1 (Saleh, 2024).
+
+: Table 1 Results for all eighty speakers
+
+| Speaker | Frames | Time (s) | Accuracy (%) |
+|---------|-------:|---------:|-------------:|
+""" + rows + r"""
+
+# Conclusions
+
+Every row of Table 1 must appear in the PDF.
+
+**References**
+
+Saleh, R. (2024). Long tables in journals. *Journal of Layout*, 2(1), 1–9.
+"""
+
+
 CHART_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"
  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><c:chart>
@@ -225,7 +264,8 @@ def make_emf(workdir):
 def main():
     tmp = tempfile.mkdtemp()
     try:
-        for case, md in (("sentetik_temel", TEMEL), ("sentetik_numerik", NUMERIK)):
+        for case, md in (("sentetik_temel", TEMEL), ("sentetik_numerik", NUMERIK),
+                         ("sentetik_uzun_tablo", uzun_tablo_md())):
             os.makedirs(os.path.join(HERE, case), exist_ok=True)
             pandoc(md, os.path.join(HERE, case, "%s.docx" % case), tmp)
         os.makedirs(os.path.join(HERE, "sentetik_grafik"), exist_ok=True)

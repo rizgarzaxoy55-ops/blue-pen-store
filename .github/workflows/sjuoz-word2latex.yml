@@ -1,0 +1,51 @@
+name: SJUOZ Word2LaTeX testleri
+
+on:
+  push:
+    paths: ["sjuoz_word2latex/**", ".github/workflows/sjuoz-word2latex.yml"]
+  pull_request:
+    paths: ["sjuoz_word2latex/**", ".github/workflows/sjuoz-word2latex.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sistem paketleri (XeLaTeX, yazı tipleri, EMF dönüştürücü, pdftotext)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex texlive-latex-extra texlive-fonts-recommended fonts-urw-base35 \
+            fonts-liberation poppler-utils libreoffice-draw
+
+      - name: Python paketleri
+        run: pip install lxml Pillow matplotlib pytest
+
+      - name: Testler
+        working-directory: sjuoz_word2latex
+        run: python -m pytest tests -v
+
+      - name: Örnek çıktılar (PDF + kontrol raporu)
+        if: always()
+        working-directory: sjuoz_word2latex
+        run: |
+          for d in tests/fixtures/*/; do
+            name=$(basename "$d")
+            python sjuoz_word2latex.py "$d"*.docx -o "../ci_cikti/$name" \
+              $(python -c "import json,sys; print(' '.join(json.load(open('$d/case.json'))['args']))") || true
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sjuoz-ornek-ciktilar
+          path: |
+            ci_cikti/**/*.pdf
+            ci_cikti/**/*_kontrol_raporu.html
+            ci_cikti/*.zip

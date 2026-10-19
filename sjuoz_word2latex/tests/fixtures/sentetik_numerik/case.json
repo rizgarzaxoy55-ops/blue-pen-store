@@ -1,0 +1,29 @@
+{
+  "description": "IEEE tarzı: numaralı [n] atıflar, 'Review Article', üst simgesiz yazar satırı, tek affiliasyon, 'Abstract:' satır içi, 'Index Terms—', dipnot, birleştirilmiş hücreli tablo, parantez nesnesi olarak denklem numarası",
+  "args": [
+    "--article-id",
+    "2003",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October"
+  ],
+  "expect": {
+    "authors": 2,
+    "orcids": 0,
+    "affiliations": 1,
+    "figures": 0,
+    "figures_captioned": 0,
+    "tables": 1,
+    "equations": 1,
+    "numbered_equations": 1,
+    "references": 3,
+    "linked_references": 3
+  },
+  "expect_pages": 1,
+  "max_status": "KONTROL"
+}

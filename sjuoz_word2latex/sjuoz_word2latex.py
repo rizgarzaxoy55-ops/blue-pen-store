@@ -258,6 +258,12 @@ class OMML:
         if mt and (self.seq_seen or EQNUM_MARK in mt.group(0) or "\\#" in mt.group(0)):
             number = mt.group(1)
             latex = latex[:mt.start()]
+        if number is None:
+            # Word'de numara parantez nesnesi olarak yazılmış olabilir: ... \left( 1 \right)
+            mt = re.search(r"%s?\s*\\left\(\s*(\d+(?:\.\d+)*[a-z]?)\s*\\right\)\s*$" % EQNUM_MARK, latex)
+            if mt and latex[:mt.start()].strip():
+                number = mt.group(1)
+                latex = latex[:mt.start()]
         latex = latex.replace(EQNUM_MARK, " ")
         latex = re.sub(r"\s+", " ", latex).strip()
         latex = re.sub(r"(\\[a-zA-Z]+) (?=[^a-zA-Z])", r"\1", latex)
@@ -573,6 +579,17 @@ class Docx:
         self.rels = self._rels("word/_rels/document.xml.rels")
         self.styles = self._styles()
         self.numfmt = self._numbering()
+        self.notes = {"footnote": self._notes("word/footnotes.xml", "footnote"),
+                      "endnote": self._notes("word/endnotes.xml", "endnote")}
+
+    def _notes(self, name, tag):
+        """Dipnot/sonnot id -> paragraf elemanları."""
+        res = {}
+        if name in self.z.namelist():
+            root = etree.fromstring(self.z.read(name))
+            for fn in root.findall(W + tag):
+                res[fn.get(W + "id")] = fn.findall(W + "p")
+        return res
 
     def _rels(self, name):
         rels = {}
@@ -771,7 +788,10 @@ class Para:
                         if d.tag in (W + "drawing", W + "pict", W + "object"):
                             self._images(d)
             elif tag in (W + "footnoteReference", W + "endnoteReference"):
-                warn("Dipnot/sonnot bulundu, LaTeX'e aktarılmadı: '%s...'" % self.text()[:40])
+                kind = "footnote" if tag == W + "footnoteReference" else "endnote"
+                note = " ".join(render_tokens(Para(e, self.doc).tokens)
+                                for e in self.doc.notes[kind].get(c.get(W + "id"), []))
+                self.tokens.append(("fn", kind, c.get(W + "id"), note.strip()))
 
     def _images(self, el):
         rids = el.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS)
@@ -982,6 +1002,8 @@ def render_tokens(tokens, ref_mode=False, keep_newlines=False):
             txt = re.sub(r"[ \t\u00a0]{2,}", " ", txt) if not keep_newlines else txt
             if ref_mode:
                 txt = DOI_DUP_RE.sub("https://doi.org/", txt)
+                # "doi: 10.xxxx/yyy" -> bağlantı
+                txt = re.sub(r"\b(?:doi|DOI)\s*:\s*(10\.\d{4,9}/\S+)", r"https://doi.org/\1", txt)
             if not txt:
                 continue
             bold, italic, vert, link = t[2]
@@ -1019,6 +1041,8 @@ def render_tokens(tokens, ref_mode=False, keep_newlines=False):
         elif t[0] == "m":
             if t[1]:
                 out.append("$%s$" % t[1])
+        elif t[0] == "fn" and len(t) > 3:
+            out.append(r"\footnote{%s}" % t[3])
     s = "".join(out)
     s = re.sub(r" {2,}", " ", s)
     # "\textit{et al.}" iki kez sarılmışsa düzelt
@@ -1130,7 +1154,7 @@ BACK_MATTER = re.compile(
     r"declarations?|abbreviations|appendix.*|supplementary.*)$", re.I)
 REF_HEAD = re.compile(r"^(references?|bibliography|literature cited|kaynaklar)$", re.I)
 ABSTRACT_HEAD = re.compile(r"^\s*a\w{0,3}stract\b\s*[:.\-–]?\s*", re.I)
-KEYWORDS_HEAD = re.compile(r"^\s*(key\s*-?\s*words?|index terms)\s*[:.\-–]?\s*", re.I)
+KEYWORDS_HEAD = re.compile(r"^\s*(key\s*-?\s*words?|index terms)\s*[:.\-–—]?\s*", re.I)
 CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(\d+)\s*[:.\-–—]?\s*(.*)$", re.I | re.S)
 ARTICLE_TYPE_RE = re.compile(r"^(original|review|research|short|case)\s+(article|paper|communication|report)$", re.I)
 
@@ -1176,16 +1200,19 @@ def parse_front(blocks):
     if i < n and ARTICLE_TYPE_RE.match(paras[i].text().strip()):
         art.article_type = re.sub(r"\s+", " ", paras[i].text().strip()).title()
         i = nxt_nonempty(i + 1)
+    # Başlık: ilk paragraf. Uzun başlık birkaç satıra bölünmüşse (hepsi BÜYÜK harf ve kalın)
+    # sonraki paragraflar da eklenir.
     title_parts = []
-    while i < n and isinstance(paras[i], Para) and not paras[i].is_empty():
+    if i < n and isinstance(paras[i], Para):
         title_parts.append(paras[i])
         i += 1
-        # başlık genelde tek paragraftır; sonraki paragraf yazar satırıysa dur
-        nxt = nxt_nonempty(i)
-        if nxt < n and _looks_like_authors(paras[nxt]):
-            break
-        if len(title_parts) >= 1 and (nxt != i):
-            break
+        while i < n and isinstance(paras[i], Para) and not paras[i].is_empty():
+            t = paras[i].text().strip()
+            if (_looks_like_authors(paras[i]) or not paras[i].all_bold() or t.upper() != t
+                    or re.search(r"\d|@", t) or ABSTRACT_HEAD.match(t)):
+                break
+            title_parts.append(paras[i])
+            i += 1
     art.title = " ".join(re.sub(r"\s+", " ", p.text()).strip() for p in title_parts)
     i = nxt_nonempty(i)
 
@@ -1382,6 +1409,12 @@ def parse_article(doc, cover=None):
         art.body = rest
     merge_affiliations(art)
     apply_cover_letter(art, cover)
+    if art.authors and not any("*" in a["marks"] for a in art.authors) and art.corr_email:
+        # yıldız konmamış: e-postası eşleşen yazar, yoksa ilk yazar sorumlu yazardır
+        mail = art.corr_email.lower()
+        corr = next((a for a in art.authors if (a.get("email") or "").lower() == mail), None) or \
+            next((a for a in art.authors if name_key(a["name"])[-1] in mail), art.authors[0])
+        corr["marks"].append("*")
     return art
 
 
@@ -1597,6 +1630,8 @@ class Writer:
         self.fig_count = 0
         self.tab_count = 0
         self.eq_count = 0
+        self.eq_display = 0         # numaralı + numarasız ayrı satır denklemler
+        self.fig_captioned = 0
         self.pending_imgs = []      # [[rid,...], ...]
         self.pending_fig_caption = None
         self.pending_tab_caption = None
@@ -1722,6 +1757,11 @@ class Writer:
             return self._emit_wide_figure(rids, caption)
         self.open_cols()
         self.close_list()
+        if self.out and self.out[-1] == r"\begin{multicols}{2}" and len(self.out) > 1:
+            # İki sütunlu bölüm bir şekille başlıyor (genelde tablodan sonra): sayfada şekle
+            # yetecek yer yoksa bölüm yeni sayfada başlasın; yoksa şekil sayfadan taşar.
+            self.out[-1] = (r"\setlength{\premulticols}{0.45\textheight}\begin{multicols}{2}"
+                            r"\setlength{\premulticols}{50pt}")
         files = []
         for rid in rids:
             fn = self.save_image(rid)
@@ -1736,6 +1776,7 @@ class Writer:
         for fn in files:
             self.emit(r"\includegraphics[width=%s, height=0.42\textheight, keepaspectratio]{%s}" % (w, fn))
         if caption:
+            self.fig_captioned += 1
             self.emit(r"\captionof{figure}{%s}" % caption)
         self.emit(r"\end{minipage}")
         self.emit(r"\par\vspace{6pt}")
@@ -1752,6 +1793,7 @@ class Writer:
         for fn in files:
             self.emit(r"\includegraphics[width=%s, height=0.45\textheight, keepaspectratio]{%s}" % (w, fn))
         if caption:
+            self.fig_captioned += 1
             self.emit(r"\captionof{figure}{%s}" % caption)
         self.emit(r"\end{minipage}")
         self.emit(r"\par\vspace{6pt}")
@@ -1788,6 +1830,10 @@ class Writer:
         self.emit(size)
         self.emit(r"\begin{tabularx}{\textwidth}{%s}" % colspec)
         self.emit(r"\toprule")
+        # başlık satırları: ilk satır + dikey birleştirilmiş hücresi devam eden satırlar
+        n_head = 1
+        while n_head < len(tbl.rows) - 1 and any(c[2] == "continue" for c in tbl.rows[n_head]):
+            n_head += 1
         for ri, row in enumerate(tbl.rows):
             cells = []
             for paras, span, vmerge in row:
@@ -1805,16 +1851,16 @@ class Writer:
                         if p.text().strip() or p.maths:
                             parts.append(render_tokens(p.tokens))
                     content = r" \newline ".join(parts)
-                if ri == 0 and content and not content.startswith(r"\textbf"):
+                if ri < n_head and content and not content.startswith(r"\textbf"):
                     content = r"\textbf{%s}" % content
                 if span > 1:
-                    align = "c" if numeric > 0.6 else "l"
+                    align = "c" if (numeric > 0.6 or ri < n_head) else "l"
                     content = r"\multicolumn{%d}{%s}{%s}" % (span, align, content)
                 cells.append(content)
             line = " & ".join(cells) + r" \\"
-            if ri == 0:
+            if ri == n_head - 1:
                 line += r" \midrule"
-            elif ri < len(tbl.rows) - 1:
+            elif ri < len(tbl.rows) - 1 and ri >= n_head:
                 line += r" \addlinespace[0.3em]"
             self.emit(line)
         self.emit(r"\bottomrule")
@@ -1827,6 +1873,7 @@ class Writer:
     def emit_equation(self, latex, number):
         self.open_cols()
         self.close_list()
+        self.eq_display += 1
         if number:
             self.eq_count += 1
             tag = "" if number == str(self.eq_count) else r" \tag{%s}" % number
@@ -2222,8 +2269,9 @@ def build_tex(art, writer, opts):
     au_tex = []
     for au in art.authors:
         s = tex_escape(au["name"])
-        if au["marks"]:
-            s += r" \textsuperscript{%s}" % ",".join(au["marks"])
+        marks = au["marks"] if len(art.affiliations) > 1 else [m_ for m_ in au["marks"] if m_ == "*"]
+        if marks:
+            s += r" \textsuperscript{%s}" % ",".join(marks)
         if au.get("orcid"):
             s += r"\orcidlink{%s}" % url_escape(au["orcid"])
         au_tex.append(s)
@@ -2250,7 +2298,7 @@ def build_tex(art, writer, opts):
     else:
         runhead = tex_escape(surnames[0]) if surnames else ""
 
-    abstract = r" \par ".join(art.abstract)
+    abstract = r" \par ".join(art.abstract) or "~"
     kw = render_plain(art.keywords.strip())
     if kw and kw[-1] not in ".":
         kw += "."
@@ -2289,6 +2337,293 @@ def build_tex(art, writer, opts):
 
 
 # --------------------------------------------------------------------------
+# Kontrol raporu
+# --------------------------------------------------------------------------
+REPORT_ERROR, REPORT_CHECK, REPORT_OK = "HATA", "KONTROL", "TAMAM"
+
+
+def _norm_words(text):
+    text = unicodedata.normalize("NFKC", text).lower()
+    text = re.sub(r"[-\u00ad]\s*", "", text)  # tire ve satır sonu bölünmeleri: "algo-\nrithm" = "algorithm"
+    return re.findall(r"[0-9a-z\u00c0-\u024f]+", text)
+
+
+def _shingles(words, n=5):
+    return {" ".join(words[i:i + n]) for i in range(max(0, len(words) - n + 1))}
+
+
+def _letters(text):
+    """Sadece harf ve rakamlar (boşluk/biçim farklarından bağımsız karşılaştırma için).
+    URL'ler ve 'DOI:' etiketleri çıkarılır; dönüştürücü bunları bilerek düzenler."""
+    text = re.sub(r"(?:https?://|www\.)\S+|\bdoi\s*:|\b10\.\d{4,9}/\S+", " ", text, flags=re.I)
+    return "".join(_norm_words(text))
+
+
+def found_ratio(src_text, out_letters, size=24, step=12):
+    """Kaynak paragrafın 24 harflik parçalarının çıktıda bulunma oranı
+    (sütun/sayfa sonunda bölünen paragraflar için kısa parçalar)."""
+    s = _letters(src_text)
+    if len(s) <= size:
+        return 1.0 if s in out_letters else 0.0
+    chunks = [s[i:i + size] for i in range(0, len(s) - size + 1, step)]
+    return sum(1 for c in chunks if c in out_letters) / len(chunks)
+
+
+def tex_to_text(tex):
+    """PDF metni yoksa .tex'ten kaba düz metin çıkarır (kayıp metin kontrolü için)."""
+    body = tex[tex.find(r"\begin{document}"):]
+    body = re.sub(r"(?<!\\)%.*", "", body)
+    body = re.sub(r"\\(?:href|hyperlink)\{[^{}]*\}", "", body)
+    body = re.sub(r"\\url\{([^{}]*)\}", r" \1 ", body)
+    body = re.sub(r"\\(?:includegraphics(?:\[[^\]]*\])?|hypertarget|qrcode(?:\[[^\]]*\])?)\{[^{}]*\}", "", body)
+    body = re.sub(r"\\[a-zA-Z@]+\*?(?:\[[^\]]*\])?", " ", body)
+    body = body.replace(r"\&", "&").replace(r"\%", "%").replace("~", " ")
+    return re.sub(r"[{}$\\^_]", " ", body)
+
+
+def pdf_to_text(pdf_path):
+    exe = shutil.which("pdftotext")
+    if exe and os.path.isfile(pdf_path):
+        import subprocess
+        try:
+            r = subprocess.run([exe, "-enc", "UTF-8", pdf_path, "-"], capture_output=True, timeout=120)
+            return r.stdout.decode("utf-8", "replace")
+        except Exception:  # noqa
+            return None
+    try:  # isteğe bağlı: pip install pypdf
+        from pypdf import PdfReader
+        return "\n".join(pg.extract_text() or "" for pg in PdfReader(pdf_path).pages)
+    except Exception:  # noqa
+        return None
+
+
+def word_source_stats(doc, art):
+    """Word dosyasının kendisinden (dönüştürücüden bağımsız) sayımlar."""
+    body = doc.doc.find(W + "body")
+    text = "".join(t.text or "" for t in body.iter(W + "t"))
+    hashes = set()
+    for rid in body.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS):
+        # mc:Fallback içindeki yedek resimleri sayma
+        _, data = doc.media(rid)
+        if data:
+            hashes.add(hashlib.md5(data).hexdigest())
+    charts = len(body.xpath(".//c:chart", namespaces={"c": C_NS}))
+    fallback = set()
+    for fb in body.iter(MC + "Fallback"):
+        for rid in fb.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS):
+            _, data = doc.media(rid)
+            if data:
+                fallback.add(hashlib.md5(data).hexdigest())
+    in_choice = set()
+    for ch in body.iter(MC + "Choice"):
+        for rid in ch.xpath(".//a:blip/@r:embed", namespaces=NS):
+            _, data = doc.media(rid)
+            if data:
+                in_choice.add(hashlib.md5(data).hexdigest())
+    images = len(hashes - (fallback - in_choice)) + charts
+    tables = len(body.findall(W + "tbl"))
+    max_num = lambda pat: max([int(x) for x in re.findall(pat, text)] or [0])
+    return {
+        "images": images,
+        "charts": charts,
+        "tables": tables,
+        "max_figure_ref": max_num(r"\bFig(?:ure|\.)\s*(\d+)"),
+        "max_table_ref": max_num(r"\bTable\s*(\d+)"),
+        "display_equations": sum(1 for p in body.iter(W + "p")
+                                 if p.find(M + "oMathPara") is not None or (
+                                     p.find(M + "oMath") is not None and
+                                     strip_eq_number_text("".join(t.text or "" for t in p.findall(".//" + W + "t")))[0])),
+        "references": len(art.references),
+    }
+
+
+def analyze_log(log_path, tex_lines):
+    res = {"errors": [], "overfull_h": [], "overfull_v": 0, "missing_chars": [], "missing_files": [],
+           "undefined_links": [], "pages": None}
+    if not os.path.isfile(log_path):
+        return res
+    log = open(log_path, encoding="utf-8", errors="replace").read()
+    lines = log.splitlines()
+    for i, ln in enumerate(lines):
+        if ln.startswith("! "):
+            ctx = " ".join(x.strip() for x in lines[i + 1:i + 3] if x.strip())
+            res["errors"].append((ln[2:] + " " + ctx).strip()[:300])
+    for mt in re.finditer(r"Overfull \\hbox \(([\d.]+)pt too wide\) (?:in paragraph|detected|in alignment) at lines? (\d+)", log):
+        amount, line = float(mt.group(1)), int(mt.group(2))
+        if amount > 2.0:
+            snippet = tex_lines[line - 1].strip() if 0 < line <= len(tex_lines) else ""
+            res["overfull_h"].append({"pt": amount, "line": line, "tex": snippet[:160]})
+    res["overfull_v"] = len(re.findall(r"Overfull \\vbox \(([\d.]+)pt too high\)", log))
+    res["missing_chars"] = sorted(set(re.findall(r"Missing character: There is no (.+?) in font", log)))
+    res["missing_files"] = sorted(set(re.findall(r"File `([^']+)' not found", log)))
+    res["undefined_links"] = sorted(set(re.findall(r"name\{([^}]+)\} has been referenced but does not exist", log)))
+    mt = re.search(r"Output written on .*?\((\d+) pages?", log)
+    res["pages"] = int(mt.group(1)) if mt else None
+    return res
+
+
+def build_report(ctx):
+    """Dönüşümü denetler; maddeleri (seviye, başlık, ayrıntı) olarak döndürür."""
+    art, writer, src, opts = ctx["art"], ctx["writer"], ctx["src"], ctx["opts"]
+    items = []
+
+    def add(level, title, detail=""):
+        items.append({"level": level, "title": title, "detail": detail})
+
+    # 1) Sayımlar: Word ↔ LaTeX
+    n_img_out = len([v for v in writer.saved_hashes.values() if "/Table" not in v])
+    n_img_tab = len(writer.saved_hashes) - n_img_out
+    if n_img_out + n_img_tab < src["images"]:
+        add(REPORT_ERROR, "Eksik resim",
+            "Word'de %d resim/grafik var, LaTeX'e %d tanesi aktarıldı." % (src["images"], n_img_out + n_img_tab))
+    else:
+        add(REPORT_OK, "Resimler", "%d resim/grafik aktarıldı%s." % (
+            n_img_out + n_img_tab, " (%d Word grafiği)" % src["charts"] if src["charts"] else ""))
+    if src["max_figure_ref"] > writer.fig_count:
+        add(REPORT_ERROR, "Şekil sayısı tutmuyor",
+            "Metinde 'Figure %d'e kadar atıf var, PDF'te %d şekil var." % (src["max_figure_ref"], writer.fig_count))
+    if writer.fig_count != writer.fig_captioned:
+        add(REPORT_CHECK, "Başlıksız şekil",
+            "%d şeklin %d tanesinde başlık (caption) bulunamadı." % (writer.fig_count, writer.fig_count - writer.fig_captioned))
+    if writer.tab_count != src["tables"]:
+        add(REPORT_ERROR, "Tablo sayısı tutmuyor",
+            "Word'de %d tablo var, LaTeX'te %d." % (src["tables"], writer.tab_count))
+    elif src["max_table_ref"] > writer.tab_count:
+        add(REPORT_CHECK, "Tablo atfı",
+            "Metinde 'Table %d'ye atıf var ama %d tablo var." % (src["max_table_ref"], writer.tab_count))
+    else:
+        add(REPORT_OK, "Tablolar", "%d tablo aktarıldı." % writer.tab_count)
+    if writer.eq_display != src["display_equations"]:
+        add(REPORT_CHECK, "Denklem sayısı",
+            "Word'de %d ayrı satır denklem var, LaTeX'te %d." % (src["display_equations"], writer.eq_display))
+    else:
+        add(REPORT_OK, "Denklemler", "%d denklem (%d numaralı)." % (writer.eq_display, writer.eq_count))
+    if not art.references:
+        add(REPORT_ERROR, "Kaynakça yok", "'References' başlığı bulunamadı.")
+    else:
+        add(REPORT_OK, "Kaynakça", "%d kaynak." % len(art.references))
+
+    # 2) Ön bilgiler
+    if not art.abstract:
+        add(REPORT_ERROR, "Özet bulunamadı", "ABSTRACT kutusu boş kalacak.")
+    if not art.keywords:
+        add(REPORT_CHECK, "Anahtar kelime yok", "'Keywords' satırı bulunamadı.")
+    if not art.authors:
+        add(REPORT_ERROR, "Yazar bulunamadı", "")
+    else:
+        no_orcid = [a["name"] for a in art.authors if not a.get("orcid")]
+        if no_orcid:
+            add(REPORT_CHECK, "ORCID eksik", ", ".join(no_orcid))
+        else:
+            add(REPORT_OK, "Yazarlar", "%d yazar, hepsinin ORCID'i var." % len(art.authors))
+    if not art.corr_email:
+        add(REPORT_CHECK, "Sorumlu yazar e-postası yok", "")
+
+    # 3) Atıflar
+    if LINKER is not None and LINKER.refs:
+        if LINKER.missing:
+            add(REPORT_CHECK, "Kaynakçada bulunamayan atıflar", "; ".join(sorted(LINKER.missing)))
+        unused = [r["label"] for r in LINKER.refs if r["key"] not in LINKER.used]
+        if unused:
+            add(REPORT_CHECK, "Metinde atıf yapılmamış kaynaklar", "; ".join(unused))
+        if not LINKER.missing and not unused:
+            add(REPORT_OK, "Atıflar", "%d kaynağın hepsine metinden bağlantı verildi." % len(LINKER.refs))
+
+    # 4) Kayıp metin: Word'deki her paragraf PDF'te (yoksa .tex'te) var mı?
+    out_text = ctx.get("pdf_text")
+    where = "PDF"
+    if not out_text:
+        out_text, where = tex_to_text(ctx["tex"]), ".tex"
+    out_letters = _letters(out_text)
+    lost = []
+    blocks = list(art.body) + list(art.references)
+    for b in blocks:
+        paras = [b] if isinstance(b, Para) else [p for r in b.rows for c in r for p in c[0]]
+        for p in paras:
+            if not isinstance(p, Para):
+                continue
+            words = _norm_words(p.text())
+            if len(words) < 8:
+                continue
+            # yazar adları bilerek kısaltılmış olabilir (M. E. Safi): o biçimi de dene
+            src_text = p.text()
+            cap = CAPTION_RE.match(src_text)
+            if cap:  # "Figure 8" numarasını LaTeX kendisi yazar
+                src_text = cap.group(3)
+            found = max(found_ratio(v, out_letters) for v in (src_text, writer.abbreviate_names(src_text)))
+            if found < 0.7:
+                lost.append("%s… (%%%d bulundu)" % (" ".join(p.text().split()[:12]), round(found * 100)))
+    if lost:
+        add(REPORT_ERROR, "Kaybolmuş olabilecek metin (%s'te bulunamadı)" % where, "<br>".join(lost[:15]))
+    else:
+        add(REPORT_OK, "Metin bütünlüğü", "Word'deki bütün paragraflar %s'te bulundu." % where)
+
+    # 5) Derleme
+    lg = ctx.get("log")
+    if lg is None:
+        add(REPORT_CHECK, "PDF derlenmedi", "xelatex bulunamadı veya --no-compile verildi.")
+    else:
+        if lg["errors"]:
+            add(REPORT_ERROR, "LaTeX hataları", "<br>".join(lg["errors"][:10]))
+        if lg["missing_files"]:
+            add(REPORT_ERROR, "Bulunamayan dosyalar", ", ".join(lg["missing_files"]))
+        if lg["missing_chars"]:
+            add(REPORT_ERROR, "Yazı tipinde olmayan karakterler (PDF'te görünmez)", " ".join(lg["missing_chars"]))
+        if lg["undefined_links"]:
+            add(REPORT_CHECK, "Hedefi olmayan bağlantılar", ", ".join(lg["undefined_links"]))
+        if lg["overfull_h"]:
+            add(REPORT_CHECK, "Sütundan taşan satırlar",
+                "<br>".join("%.1fpt — .tex satır %d: <code>%s</code>" % (o["pt"], o["line"], tex_escape_html(o["tex"]))
+                            for o in sorted(lg["overfull_h"], key=lambda o: -o["pt"])[:10]))
+        if lg["overfull_v"]:
+            add(REPORT_CHECK, "Sayfadan taşan içerik", "%d yerde sayfa/sütun yüksekliği aşıldı." % lg["overfull_v"])
+        if not (lg["errors"] or lg["missing_files"] or lg["missing_chars"]):
+            add(REPORT_OK, "Derleme", "PDF hatasız derlendi (%s sayfa)." % (lg["pages"] or "?"))
+
+    # 6) Dönüştürücü uyarıları
+    for w_ in ctx["warnings"]:
+        if not any(w_ in it["detail"] or it["detail"] in w_ for it in items if it["detail"]):
+            add(REPORT_CHECK, "Uyarı", w_)
+    return items
+
+
+def tex_escape_html(s):
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def report_status(items):
+    levels = {it["level"] for it in items}
+    return REPORT_ERROR if REPORT_ERROR in levels else REPORT_CHECK if REPORT_CHECK in levels else REPORT_OK
+
+
+def write_report_html(path, items, meta):
+    color = {REPORT_ERROR: "#b42318", REPORT_CHECK: "#b54708", REPORT_OK: "#067647"}
+    bg = {REPORT_ERROR: "#fef3f2", REPORT_CHECK: "#fffaeb", REPORT_OK: "#ecfdf3"}
+    status = report_status(items)
+    order = {REPORT_ERROR: 0, REPORT_CHECK: 1, REPORT_OK: 2}
+    rows = []
+    for it in sorted(items, key=lambda x: order[x["level"]]):
+        detail = it["detail"] if "<br>" in it["detail"] or "<code>" in it["detail"] else tex_escape_html(it["detail"])
+        rows.append('<tr><td><span class="b" style="color:%s;background:%s">%s</span></td><td><b>%s</b>'
+                    '<div class="d">%s</div></td></tr>' % (color[it["level"]], bg[it["level"]], it["level"],
+                                                         tex_escape_html(it["title"]), detail))
+    html = """<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Kontrol raporu %(id)s</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;margin:24px auto;max-width:900px;padding:0 16px;color:#101828;background:#fff}
+h1{font-size:20px;margin:0 0 4px}.m{color:#475467;margin-bottom:16px}
+.s{display:inline-block;padding:6px 14px;border-radius:6px;font-weight:700;color:%(c)s;background:%(bg)s;margin-bottom:16px}
+table{border-collapse:collapse;width:100%%}td{border-top:1px solid #eaecf0;padding:8px;vertical-align:top}
+.b{font-size:12px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}.d{color:#344054;margin-top:2px;word-break:break-word}
+code{background:#f2f4f7;padding:1px 4px;border-radius:3px;font-size:12px}</style></head><body>
+<h1>Kontrol raporu — %(id)s</h1><div class="m">%(title)s<br>%(when)s</div>
+<div class="s">Genel durum: %(status)s</div><table>%(rows)s</table></body></html>""" % {
+        "id": tex_escape_html(meta["id"]), "title": tex_escape_html(meta["title"]), "when": meta["when"],
+        "status": status, "c": color[status], "bg": bg[status], "rows": "\n".join(rows)}
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+
+# --------------------------------------------------------------------------
 # Ana program
 # --------------------------------------------------------------------------
 def classify(paths):
@@ -2308,7 +2643,7 @@ def classify(paths):
     return manuscript, cover
 
 
-def main(argv=None):
+def build_parser():
     today = datetime.date.today()
     ap = argparse.ArgumentParser(
         description="SJUOZ makale + kapak mektubu Word dosyalarını tek bir XeLaTeX dosyasına çevirir.")
@@ -2340,12 +2675,18 @@ def main(argv=None):
                     help="PDF derleme (varsayılan: xelatex varsa iki kez derlenir)")
     ap.add_argument("--no-zip", dest="zip", action="store_false",
                     help="zip üretme (varsayılan: .tex + figures/ + logolar + PDF tek zip'e konur)")
+    ap.add_argument("--no-report", dest="report", action="store_false",
+                    help="kontrol raporu üretme (varsayılan: <makale no>_kontrol_raporu.html)")
+    ap.add_argument("--strict", action="store_true",
+                    help="raporda HATA varsa çıkış kodu 2 olsun (toplu işlemler/CI için)")
     ap.add_argument("--compile", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--zip", action="store_true", help=argparse.SUPPRESS)
-    opts = ap.parse_args(argv)
-    opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
-        {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
+    return ap
 
+
+def main(argv=None):
+    ap = build_parser()
+    opts = ap.parse_args(argv)
     if not opts.docx:
         try:
             import tkinter as tk
@@ -2358,13 +2699,28 @@ def main(argv=None):
             pass
         if not opts.docx:
             ap.error("en az bir .docx dosyası verin")
-
     for p in opts.docx:
         if not os.path.isfile(p):
             ap.error("dosya bulunamadı: %s" % p)
+    result = convert(opts)
+    if result is None:
+        ap.error("makale dosyası bulunamadı")
+    return 2 if (opts.strict and result["status"] == REPORT_ERROR) else 0
+
+
+def convert(opts):
+    """Dönüşümü yapar. Sonuçları (dosya yolları, sayımlar, rapor) sözlük olarak döndürür."""
+    global LINKER
+    del WARNINGS[:]
+    LINKER = None
+    today = datetime.date.today()
+    if isinstance(opts.wide_figs, str):
+        opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
+            {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
+
     manuscript, cover = classify(opts.docx)
     if manuscript is None:
-        ap.error("makale dosyası bulunamadı")
+        return None
 
     if not opts.article_id:
         for p in opts.docx:
@@ -2394,7 +2750,6 @@ def main(argv=None):
     art = parse_article(manuscript, cl)
 
     writer = Writer(art, manuscript, outdir, opts)
-    global LINKER
     if not opts.no_links:
         LINKER = Linker(art.references, *writer.prescan())
     writer.run()
@@ -2436,24 +2791,31 @@ def main(argv=None):
     print("  Affiliasyon : %d   Şekil: %d   Tablo: %d   Denklem: %d   Kaynak: %d"
           % (len(art.affiliations), writer.fig_count, writer.tab_count, writer.eq_count, len(art.references)))
     tex_name = os.path.basename(tex_path)
-    pdf_path = os.path.splitext(tex_path)[0] + ".pdf"
+    stem = os.path.splitext(tex_path)[0]
+    pdf_path = stem + ".pdf"
+    log_info = None
+    compiled = False
     if opts.compile:
         exe = shutil.which("xelatex")
         if not exe:
             print("Bilgi: xelatex bulunamadı; PDF derlenmedi (MiKTeX / TeX Live kurun ya da zip'i Overleaf'e yükleyin).")
         else:
             import subprocess
-            ok = True
+            if os.path.isfile(pdf_path):
+                os.remove(pdf_path)
             for _ in range(2):
-                r = subprocess.run([exe, "-interaction=nonstopmode", tex_name], cwd=outdir,
-                                   capture_output=True, text=True, errors="replace")
-                ok = r.returncode == 0
-            if ok and os.path.isfile(pdf_path):
+                subprocess.run([exe, "-interaction=nonstopmode", tex_name], cwd=outdir,
+                               capture_output=True, text=True, errors="replace")
+            compiled = os.path.isfile(pdf_path)
+            log_info = analyze_log(stem + ".log", tex.splitlines())
+            if compiled and not log_info["errors"]:
                 print("PDF üretildi: %s" % pdf_path)
             else:
-                warn("xelatex hata verdi; ayrıntılar: %s" % (os.path.splitext(tex_path)[0] + ".log"))
+                warn("xelatex hata verdi; ayrıntılar: %s" % (stem + ".log"))
     else:
         print("Derlemek için: cd %s && xelatex %s && xelatex %s" % (outdir, tex_name, tex_name))
+
+    zp = None
     if opts.zip:
         zp = os.path.join(os.path.dirname(os.path.abspath(outdir)), "%s_latex.zip" % opts.article_id)
         n_img = 0
@@ -2468,9 +2830,41 @@ def main(argv=None):
                     n_img += 1
         print("Zip (Overleaf'e yüklenebilir): %s  [%s + %d resim/grafik + logolar%s]"
               % (zp, tex_name, n_img, " + PDF" if os.path.isfile(pdf_path) else ""))
-    if WARNINGS:
-        print("\n%d uyarı var (yukarıya bakın)." % len(WARNINGS))
-    return 0
+
+    # Kontrol raporu
+    src = word_source_stats(manuscript, art)
+    report_ctx = {"art": art, "writer": writer, "src": src, "opts": opts, "tex": tex,
+                  "pdf_text": pdf_to_text(pdf_path) if compiled else None,
+                  "log": log_info, "warnings": list(WARNINGS)}
+    items = build_report(report_ctx)
+    status = report_status(items)
+    report_path = None
+    if opts.report:
+        report_path = stem + "_kontrol_raporu.html"
+        write_report_html(report_path, items, {"id": opts.article_id, "title": art.title,
+                                               "when": datetime.datetime.now().strftime("%d.%m.%Y %H:%M")})
+    print()
+    print("KONTROL RAPORU: %s" % status)
+    for it in items:
+        if it["level"] != REPORT_OK:
+            print("  [%s] %s: %s" % (it["level"], it["title"],
+                                     re.sub(r"<[^>]+>", " ", it["detail"].replace("<br>", " | "))[:200]))
+    if report_path:
+        print("  Ayrıntılar: %s" % report_path)
+
+    return {
+        "tex_path": tex_path, "pdf_path": pdf_path if compiled else None, "zip_path": zp,
+        "report_path": report_path, "status": status, "items": items, "warnings": list(WARNINGS),
+        "stats": {"authors": len(art.authors), "orcids": sum(1 for a in art.authors if a.get("orcid")),
+                  "affiliations": len(art.affiliations), "figures": writer.fig_count,
+                  "figures_captioned": writer.fig_captioned, "tables": writer.tab_count,
+                  "equations": writer.eq_display, "numbered_equations": writer.eq_count,
+                  "references": len(art.references),
+                  "linked_references": len(LINKER.used) if LINKER else 0,
+                  "pages": log_info["pages"] if log_info else None},
+        "source": src,
+        "context": report_ctx,
+    }
 
 
 if __name__ == "__main__":

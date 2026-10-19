@@ -1,0 +1,207 @@
+%!TEX TS-program = xelatex
+% Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
+\documentclass[9pt]{extarticle}
+\usepackage{multicol}
+\usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{qrcode}
+\usepackage{xurl}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+
+\titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+\newcommand{\titlesize}{\fontsize{12}{10}}
+\renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
+\renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
+\renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\definecolor{sjuozblue}{HTML}{C1D1EB}
+\definecolor{colorabs}{HTML}{E2EAF4}
+
+% Yazı tipleri: Times New Roman / Garamond yoksa benzerleri kullanılır
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{%
+  \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}{%
+    \IfFontExistsTF{Liberation Serif}{\setmainfont{Liberation Serif}}{}}}
+\IfFontExistsTF{Garamond}{\newfontfamily{\garamond}{Garamond}}{%
+  \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
+
+\newcommand{\sjuozdoi}{https://doi.org/10.25271/sjuoz.2026.14.4.2001}
+% İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
+\newcommand{\firstfooterbottom}{0.4in}
+\newcommand{\firstpagereserve}{1.4in}
+% Sadece ilk sayfada metin alanını kısalt; ilk sayfa basıldıktan sonra eski haline döndür
+\makeatletter
+\newlength{\sjuozfulltextheight}
+\AtBeginDocument{%
+  \setlength{\sjuozfulltextheight}{\textheight}%
+  \global\advance\textheight by -\firstpagereserve
+  \global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight
+  \AddToHookNext{shipout/after}{\global\textheight\sjuozfulltextheight}}
+\makeatother
+
+% Başlık ve altlık (header/footer)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\large \textit{Hassan \textit{et al.}}}
+\rhead{\small{\garamond{\textbf{SJUOZ|VOL14|OCT 2026|P1-\pageref*{LastPage}}}}}
+\lfoot{\raisebox{8pt}{\textit{DOI:}\href{\sjuozdoi}{\textit{\small{\sjuozdoi}}}}}
+\cfoot{\raisebox{8pt}{\thepage}}
+
+\fancypagestyle{firstpage}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \rhead{\IfFileExists{SJUOZ.png}{\includegraphics[width=1.04in]{SJUOZ.png}}{\textbf{SJUOZ}}}
+  \lhead{\colorbox{sjuozblue}{%
+      \begin{minipage}[b]{0.83\textwidth}
+        \vspace{0.15cm}
+        \hspace{-3pt}\ \normalsize \noindent \garamond{Science Journal of University of Zakho}\\
+        \normalsize \textit{\garamond{DOI: \sjuozdoi}}
+        \vspace{0.2cm}
+      \end{minipage}}}
+}
+
+% İlk sayfanın altındaki bilgi kutusu (sayfaya mutlak konumla yerleştirilir)
+\newcommand{\sjuozfirstfooter}{%
+  \begin{minipage}[b]{\textwidth}
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \begin{minipage}[t]{0.2\textwidth}\hspace{1pt} \small Access this article online \\
+        \vspace{0.1cm}
+        {\hypersetup{urlcolor=black}\qrcode[height=2.6162cm]{https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/2001}}
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}
+        \small DOI:\href{\sjuozdoi}{\sjuozdoi} \\ \\[0.5cm]
+        Printed ISSN 2663-628X; \\
+        Electronic ISSN 2663-6298
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}\small \textbf{Science Journal of University of Zakho} \\
+        \textbf{Vol. 14, No. 04, pp. 1-\pageref*{LastPage}, October-2026} \\[0.5cm]
+        This is an open access article under a CC BY-NC-SA 4.0 license \\
+        (\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{https://creativecommons.org/licenses/by-nc-sa/4.0/})
+      \end{minipage} \\[0.15cm]
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \centering \normalsize \thepage
+  \end{minipage}}
+
+% ORCID simgesi: orcid.png varsa o, yoksa çizilmiş yeşil "iD" simgesi
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{\IfFileExists{orcid.png}{\includegraphics[width=9pt]{orcid.png}}{%
+  \tikz[baseline=-0.7ex]{\fill[orcidgreen] (0,0) circle (4.5pt);
+  \node[text=white, font=\fontsize{4.5pt}{4.5pt}\selectfont\bfseries, inner sep=0pt] at (0,0) {iD};}}}
+\newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
+
+\begin{document}
+\setcounter{page}{1}
+\thispagestyle{firstpage}
+\AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
+
+\noindent \large \textbf{Original Article} \\[-5pt]
+\begin{center} \titlesize \textbf{A STUDY OF SOMETHING\_WITH \& SPECIAL \% CHARS} \end{center}
+\begin{center} \large \textbf{Ali Hassan \textsuperscript{1,*}, Sara Ahmed \textsuperscript{2}, and John Smith \textsuperscript{1}}
+\end{center}
+\noindent
+\large \textsuperscript{1}Department of Physics, University of Zakho, Duhok, Iraq.\\
+\large \textsuperscript{2}Department of Math, University of Duhok, Duhok, Iraq.\\
+
+\begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:ali.hassan@uoz.edu.krd}{ali.hassan@uoz.edu.krd} (Tel: +964 750 123 4567)
+\end{center}
+\rule{\textwidth}{1.5pt}
+\begin{minipage}[t]{0.175\textwidth}
+  \hspace{0cm} \vspace{0cm}
+\end{minipage} \begin{minipage}[t]{0.8\textwidth}
+\large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
+\rule{\textwidth}{1.5pt} \\
+\begin{minipage}[t]{0.175\textwidth}
+  \vspace{1cm} Received \\ XX \\[0.5cm] Accepted \\ XX \\[0.5cm] Published \\ XX \\[0.25cm]
+\end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
+  \large{We study $E=mc^{2}$ and the fraction $\frac{a}{b}$ with 50\% accuracy \& more. The method is evaluated on two datasets and compared with earlier work in detail.
+  \\[2pt]
+  \normalsize \textbf{Keywords:} physics; math.
+  }
+\end{minipage}}
+\\[-10pt]
+
+\normalsize
+\noindent \rule{\textwidth}{0.75pt}
+\begin{multicols}{2}
+\section{INTRODUCTION}
+Intro text with a citation (\hyperlink{ref:2}{Smith \textit{et al.}, 2020}) and a narrative citation \hyperlink{ref:1}{Brown and Lee (2019)}, a URL \url{https://example.com/test_page} and an e-mail \href{mailto:info@example.org}{info@example.org}. See \hyperlink{tab:1}{Table 1} and \hyperlink{fig:1}{Figure 1}.
+
+\begin{equation*}
+  \int_{0}^{\infty} e^{-x^{2}} \mathit{dx}=\frac{\sqrt{\pi}}{2}
+\end{equation*}
+\subsection{Methods subsection}
+\begin{itemize}
+\item first bullet with $\alpha\leq\beta$
+\item second bullet
+\end{itemize}
+\begin{enumerate}
+\item numbered one
+\item numbered two
+\end{enumerate}
+\end{multicols}
+\noindent
+\begin{minipage}{\textwidth}
+\centering
+\hypertarget{tab:1}{}
+\captionof{table}{Sample results.}
+\vspace{-6pt}
+\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\toprule
+\textbf{Name} & \textbf{Value} & \textbf{Error} \\ \midrule
+A & 1.5 & 0.1 \\ \addlinespace[0.3em]
+B & 2.5 & 0.2 \\
+\bottomrule
+\end{tabularx}
+\end{minipage}
+\par\vspace{6pt}
+
+\setlength{\premulticols}{0.45\textheight}\begin{multicols}{2}\setlength{\premulticols}{50pt}
+\noindent\begin{minipage}{\linewidth}
+\centering\hypertarget{fig:1}{}
+\includegraphics[width=\linewidth, height=0.42\textheight, keepaspectratio]{figures/Figure1.IMG}
+\captionof{figure}{A figure caption with $x_{i}$.}
+\end{minipage}
+\par\vspace{6pt}
+
+\section{CONCLUSIONS}
+Done. The results agree with (\hyperlink{ref:1}{Brown \& Lee, 2019}; \hyperlink{ref:2}{Smith \textit{et al.}, 2020}).
+
+\subsection*{Acknowledgements}
+Thanks to everyone who helped with the experiments in this study.
+
+\section*{REFERENCES}
+\begin{list}{}{
+    \setlength{\leftmargin}{1.5em}
+    \setlength{\itemindent}{-1.5em}
+    \setlength{\parsep}{0pt}
+    \setlength{\itemsep}{6pt}
+}
+\item \hypertarget{ref:1}{}Brown, A., \& Lee, B. (2019). Another paper on things. \textit{Physics Letters}, 3, 10–20. DOI:\href{https://doi.org/10.1000/abc}{https://doi.org/10.1000/abc}
+
+\item \hypertarget{ref:2}{}Smith, J., Doe, J., \& Roe, R. (2020). A paper. \textit{Journal of the Best Things Ever}, 1(2), 3–4. DOI:\href{https://doi.org/10.1000/xyz}{https://doi.org/10.1000/xyz}
+
+\end{list}
+\end{multicols}
+
+\end{document}

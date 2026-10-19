@@ -81,6 +81,67 @@ aynı adla bu klasöre koyun.
 * **Kapak mektubundan:** her yazarın ORCID, e-posta, telefon ve affiliasyon bilgisi
   (yazarlar ada göre eşleştirilir; makale ile çelişen bilgi varsa uyarı verilir).
 
+## Kontrol raporu
+
+Her dönüşümden sonra `<makale no>_kontrol_raporu.html` üretilir ve özeti ekrana yazılır.
+Genel durum **TAMAM**, **KONTROL** (bakılması gereken şeyler var) veya **HATA** olur.
+Rapor, Word dosyasının kendisinden yapılan sayımları LaTeX/PDF çıktısıyla karşılaştırır:
+
+| Kontrol | Ne yapar |
+|---|---|
+| Resimler / tablolar / denklemler | Word'deki sayı ile LaTeX'teki sayı aynı mı; metinde "Figure 9"a atıf var ama 8 şekil mi var? |
+| Başlıksız şekil | Başlığı (caption) bulunamayan şekiller |
+| Metin bütünlüğü | Word'deki **her paragraf** PDF'te (PDF yoksa .tex'te) var mı? Kaybolan metin HATA verir. |
+| Atıflar | Kaynakçada bulunamayan atıflar, metinde atıf yapılmamış kaynaklar |
+| Ön bilgiler | Özet, anahtar kelime, yazar, ORCID, sorumlu yazar e-postası |
+| Derleme | LaTeX hataları, bulunamayan dosyalar, yazı tipinde olmayan (PDF'te görünmeyen) karakterler, sütundan taşan satırlar (.tex satır numarasıyla), sayfadan taşan içerik |
+| Uyarılar | Makale ile kapak mektubu arasındaki farklar vb. |
+
+`--strict` verilirse raporda HATA olduğunda program 2 çıkış koduyla biter (toplu işlemler için).
+
+## Testler
+
+```bash
+pip install lxml Pillow matplotlib pytest
+python -m pytest tests -v                  # bütün testler (xelatex yoksa derleme testleri atlanır)
+python -m pytest tests --update-golden     # bilerek yapılan değişiklikten sonra beklenen çıktıları güncelle
+```
+
+Test seti (`tests/fixtures/`):
+
+| Makale | Neyi sınar |
+|---|---|
+| `1993` | Gerçek SJUOZ makalesi + kapak mektubu: yazar-yıl atıfları, SEQ alan kodlu denklemler, birleştirilecek affiliasyonlar, ORCID |
+| `sentetik_temel` | Heading stilleri, madde/numaralı listeler, satır içi ve ayrı denklem, tablo, şekil, özel karakterler (`_ & %`), kapak mektubu yok |
+| `sentetik_grafik` | Word sütun grafiği (chart) ve EMF resim |
+| `sentetik_numerik` | IEEE tarzı `[n]` atıflar, "Review Article", üst simgesiz yazar satırı, tek affiliasyon, satır içi "Abstract:", "Index Terms—", dipnot, birleştirilmiş başlık hücreli tablo |
+
+Her makale için üç şey denetlenir:
+
+1. **Golden karşılaştırma:** üretilen `.tex`, daha önce kontrol edilip `tests/golden/` içine
+   saklanmış çıktıyla birebir karşılaştırılır. Kodda yapılan bir değişiklik başka bir makaleyi
+   bozarsa test farkı satır satır gösterir.
+2. **Sayımlar:** `case.json`'daki beklenen yazar, ORCID, affiliasyon, şekil, tablo, denklem,
+   kaynak ve bağlantı sayıları.
+3. **Derleme:** PDF hatasız derlenmeli, sayfa sayısı beklendiği gibi olmalı, raporda HATA
+   olmamalı ve hiçbir şey sayfadan taşmamalı.
+
+Ayrıca birim testleri (denklem çevirici, yazar ayrıştırma, atıf eşleştirme, log analizi) ve
+raporun gerçekten kaybı yakaladığını gösteren bir test (çıktıdan bir paragraf ve bir resim
+bilerek silinir) vardır.
+
+GitHub'da her push'ta `.github/workflows/sjuoz-word2latex.yml` bütün testleri çalıştırır ve
+test makalelerinin PDF'lerini ve kontrol raporlarını indirilebilir dosya olarak ekler.
+
+### Test setine yeni makale eklemek
+
+1. `tests/fixtures/<ad>/` klasörü açın; makale ve (varsa) kapak mektubu `.docx` dosyalarını koyun.
+2. Aynı klasöre `case.json` yazın (diğerlerini örnek alın): komut satırı seçenekleri ve beklenen sayılar.
+3. `python sjuoz_word2latex.py tests/fixtures/<ad>/*.docx ...` ile PDF'i üretin ve **gözle kontrol edin**.
+4. Çıktı doğruysa `python -m pytest tests --update-golden` ile beklenen `.tex`'i kaydedin.
+
+Dergiye gelen sorunlu her makale test setine eklenirse, aynı sorun bir daha sessizce geri gelemez.
+
 ## Bağlantılar
 
 Metindeki atıflar — (Yazar *et al.*, 2020), (A & B, 2016), Yazar (2019), [3] gibi — kaynakçadaki

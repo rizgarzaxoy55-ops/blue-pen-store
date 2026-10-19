@@ -11,6 +11,7 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{xltabular}
+\usepackage{pdflscape}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
@@ -159,13 +160,13 @@ The data set has 1,200 samples.\footnote{Collected in 2024.}
 \subsection{Models}
 \end{multicols}
 \noindent
-\begin{minipage}{\textwidth}
+\begin{minipage}{\linewidth}
 \centering
 \hypertarget{tab:1}{}
 \captionof{table}{Errors of the models.}
 \vspace{-6pt}
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
 \textbf{Model} & \multicolumn{2}{c}{\textbf{Error}} \\
  & \textbf{MAE} & \textbf{RMSE} \\ \midrule

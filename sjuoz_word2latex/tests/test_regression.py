@@ -109,3 +109,26 @@ def test_long_table_is_breakable(tmp_path):
         tex = f.read()
     assert r"\begin{xltabular}" in tex and r"\endhead" in tex
     assert all("S%02d &" % i in tex for i in range(1, 81))
+
+
+def test_landscape_sections_and_wide_tables(tmp_path):
+    case = next(c for c in CASES if c["name"] == "sentetik_yatay")
+    res = run_case(case, tmp_path / "out")
+    with open(res["tex_path"], encoding="utf-8") as f:
+        tex = f.read()
+    body = tex[tex.index(r"\begin{document}"):]
+    assert body.count(r"\begin{landscape}") == 2 == body.count(r"\end{landscape}")
+    first = body[body.index(r"\begin{landscape}"):body.index(r"\end{landscape}")]
+    assert "tab:1" in first and "fig:1" in first  # Word'deki yatay bölüm
+    second = body[body.rindex(r"\begin{landscape}"):]
+    assert "tab:2" in second  # 12 sütunlu tablo
+
+
+def test_landscape_option_for_any_table(tmp_path):
+    case = next(c for c in CASES if c["name"] == "sentetik_temel")
+    args = list(case["docx"]) + case["args"] + ["-o", str(tmp_path / "o"), "--no-zip", "--no-compile",
+                                                "--landscape-tables", "1"]
+    res = conv.convert(conv.build_parser().parse_args(args))
+    with open(res["tex_path"], encoding="utf-8") as f:
+        tex = f.read()
+    assert tex.count(r"\begin{landscape}") == 1

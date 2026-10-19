@@ -647,6 +647,17 @@ class Docx:
         body = self.doc.find(W + "body")
         blocks = []
         self._collect(body, blocks)
+        # Word bölümleri: bir bölümün sayfa yönü, bölümü bitiren sectPr'de yazar
+        start = 0
+        for k, b in enumerate(blocks):
+            sect = b.el.find("%spPr/%ssectPr" % (W, W)) if isinstance(b, Para) else None
+            if sect is not None:
+                for x in blocks[start:k + 1]:
+                    x.landscape = is_landscape(sect)
+                start = k + 1
+        final = is_landscape(body.find(W + "sectPr"))
+        for x in blocks[start:]:
+            x.landscape = final
         return blocks
 
     def _collect(self, parent, blocks):
@@ -661,6 +672,21 @@ class Docx:
                     self._collect(c, blocks)
             elif el.tag in (W + "customXml", W + "ins"):
                 self._collect(el, blocks)
+
+
+def is_landscape(sect):
+    """Word bölüm ayarı (sectPr) yatay sayfa mı?"""
+    if sect is None:
+        return False
+    pg = sect.find(W + "pgSz")
+    if pg is None:
+        return False
+    if pg.get(W + "orient") == "landscape":
+        return True
+    try:
+        return int(pg.get(W + "w", "0")) > int(pg.get(W + "h", "0")) > 0
+    except ValueError:
+        return False
 
 
 class Para:
@@ -1671,9 +1697,11 @@ class Writer:
         self.eq_display = 0         # numaralı + numarasız ayrı satır denklemler
         self.fig_captioned = 0
         self.pending_imgs = []      # [[rid,...], ...]
+        self.pending_landscape = False
         self.pending_fig_caption = None
         self.pending_tab_caption = None
         self.in_multicol = False
+        self.in_landscape = False
         self.list_env = None
         self.section = None         # o anki bölüm başlığı (küçük harf)
         self.contrib_items = []
@@ -1683,7 +1711,25 @@ class Writer:
     def emit(self, s=""):
         self.out.append(s)
 
+    def begin_landscape(self):
+        if not self.in_landscape:
+            self.close_cols()
+            self.emit(r"\begin{landscape}")
+            self.in_landscape = True
+
+    def end_landscape(self):
+        if self.in_landscape:
+            self.emit(r"\end{landscape}")
+            self.in_landscape = False
+
+    def wants_landscape(self, block, ncols=0, kind="table"):
+        number = str((self.tab_count if kind == "table" else self.fig_count) + 1)
+        manual = self.opts.landscape_tables if kind == "table" else set()
+        return bool(getattr(block, "landscape", False) or number in manual
+                    or (kind == "table" and ncols >= LANDSCAPE_COLS))
+
     def open_cols(self):
+        self.end_landscape()
         if not self.in_multicol:
             self.emit(r"\begin{multicols}{2}")
             self.in_multicol = True
@@ -1788,11 +1834,15 @@ class Writer:
                         n_eq += 1
         return n_fig, n_tab, n_eq
 
-    def emit_figure(self, items, caption):
+    def emit_figure(self, items, caption, landscape=False):
         """items: [(rid, etiket), ...] — bir şekle ait bir veya birden çok resim (alt şekiller)."""
         items = [it if isinstance(it, tuple) else (it, "") for it in items]
         wide = "all" in self.opts.wide_figs or str(self.fig_count + 1) in self.opts.wide_figs
-        if wide:
+        if landscape:
+            self.begin_landscape()
+            wide = True
+        elif wide:
+            self.end_landscape()
             self.close_cols()
         else:
             self.open_cols()
@@ -1814,7 +1864,7 @@ class Writer:
         if not files:
             return
         self.fig_count += 1
-        box = r"\textwidth" if wide else r"\linewidth"
+        box = r"\linewidth"  # sütunda sütun, geniş/yatay şekilde sayfa genişliği
         self.emit(r"\noindent\begin{minipage}{%s}" % box)
         self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
         if len(files) == 1:
@@ -1857,14 +1907,19 @@ class Writer:
 
     def flush_images(self):
         for rids in self.pending_imgs:
-            self.emit_figure(rids, None)
+            self.emit_figure(rids, None, self.pending_landscape)
         self.pending_imgs = []
+        self.pending_landscape = False
 
     # ---- tablolar
     def emit_table(self, tbl, caption):
-        self.close_cols()
-        self.tab_count += 1
         ncols = tbl.ncols()
+        if self.wants_landscape(tbl, ncols):
+            self.begin_landscape()  # yatay sayfa: genişlik = sayfanın uzun kenarı
+        else:
+            self.end_landscape()
+            self.close_cols()
+        self.tab_count += 1
         if ncols == 0:
             return
         body_cells = [c for r in tbl.rows[1:] for c in r]
@@ -1917,8 +1972,8 @@ class Writer:
             head[-1] = head[-1].replace(r" \midrule", "")
             self.emit(r"\begingroup")
             self.emit(size)
-            self.emit(r"\setlength{\LTcapwidth}{\textwidth}")
-            self.emit(r"\begin{xltabular}{\textwidth}{%s}" % colspec)
+            self.emit(r"\setlength{\LTcapwidth}{\linewidth}")
+            self.emit(r"\begin{xltabular}{\linewidth}{%s}" % colspec)
             self.emit((r"\caption{%s}\hypertarget{tab:%d}{}\\" % (caption, self.tab_count)) if caption
                       else r"\hypertarget{tab:%d}{}\\" % self.tab_count)
             self.emit(r"\toprule")
@@ -1939,14 +1994,14 @@ class Writer:
             self.emit()
             return
         self.emit(r"\noindent")
-        self.emit(r"\begin{minipage}{\textwidth}")
+        self.emit(r"\begin{minipage}{\linewidth}")
         self.emit(r"\centering")
         self.emit(r"\hypertarget{tab:%d}{}" % self.tab_count)
         if caption:
             self.emit(r"\captionof{table}{%s}" % caption)
         self.emit(r"\vspace{-6pt}")
         self.emit(size)
-        self.emit(r"\begin{tabularx}{\textwidth}{%s}" % colspec)
+        self.emit(r"\begin{tabularx}{\linewidth}{%s}" % colspec)
         self.emit(r"\toprule")
         self.emit("\n".join(lines))
         self.emit(r"\bottomrule")
@@ -2031,10 +2086,11 @@ class Writer:
                 # resim yerleştirmek için kullanılan kenarlıksız tablo: tablo değil, şekildir
                 items = layout_table_images(b)
                 if self.pending_fig_caption is not None:
-                    self.emit_figure(items, self.pending_fig_caption)
+                    self.emit_figure(items, self.pending_fig_caption, getattr(b, "landscape", False))
                     self.pending_fig_caption = None
                 else:
                     self.pending_imgs.append(items)
+                    self.pending_landscape |= getattr(b, "landscape", False)
                 continue
             if isinstance(b, Table):
                 self.flush_images()
@@ -2065,10 +2121,11 @@ class Writer:
                     if h not in [hashlib.md5((self.doc.media(r)[1] or b"")).hexdigest() for r in rids]:
                         rids.append(rid)
                 if self.pending_fig_caption is not None:
-                    self.emit_figure(rids, self.pending_fig_caption)
+                    self.emit_figure(rids, self.pending_fig_caption, getattr(p, "landscape", False))
                     self.pending_fig_caption = None
                 else:
                     self.pending_imgs.append(rids)
+                    self.pending_landscape |= getattr(p, "landscape", False)
                 if not txt:
                     continue
 
@@ -2078,8 +2135,9 @@ class Writer:
                 cap = self.caption_text(p)
                 if self.pending_imgs:
                     # başlıktan önceki bütün resimler bu şekle aittir (alt şekiller)
-                    self.emit_figure([it for grp in self.pending_imgs for it in grp], cap)
+                    self.emit_figure([it for grp in self.pending_imgs for it in grp], cap, self.pending_landscape)
                     self.pending_imgs = []
+                    self.pending_landscape = False
                 else:
                     self.pending_fig_caption = cap
                 continue
@@ -2220,6 +2278,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{xltabular}
+\usepackage{pdflscape}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
@@ -2360,6 +2419,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 
 FIGDIR = "figures"  # resimlerin konduğu alt klasör
 LONG_TABLE_ROWS = 34  # bundan uzun tablolar sayfalara bölünür (xltabular)
+LANDSCAPE_COLS = 10   # bu kadar veya daha çok sütunlu tablolar yatay sayfaya konur
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
@@ -2963,6 +3023,9 @@ def build_parser():
     ap.add_argument("--assets", default=None, help="SJUOZ.png ve orcid.png'nin bulunduğu klasör")
     ap.add_argument("--tex-name", default=None, help="çıktı .tex dosya adı (varsayılan: <makale no>.tex)")
     ap.add_argument("--wide-figs", default="", help="iki sütunu kaplayacak şekiller: '3,5' veya 'all'")
+    ap.add_argument("--landscape-tables", default="",
+                    help="yatay sayfaya konacak tablolar, ör. '2,3' (Word'de yatay bölümdekiler ve "
+                         "%d+ sütunlu tablolar zaten yatay konur)" % LANDSCAPE_COLS)
     ap.add_argument("--no-links", action="store_true", help="atıf/şekil/tablo bağlantılarını ekleme")
     ap.add_argument("--no-compile", dest="compile", action="store_false",
                     help="PDF derleme (varsayılan: xelatex varsa iki kez derlenir)")
@@ -3015,6 +3078,8 @@ def convert(opts):
     del WARNINGS[:]
     LINKER = None
     today = datetime.date.today()
+    if isinstance(getattr(opts, "landscape_tables", ""), str):
+        opts.landscape_tables = {x.strip() for x in opts.landscape_tables.split(",") if x.strip()}
     if isinstance(opts.wide_figs, str):
         opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
             {x.strip() for x in opts.wide_figs.split(",") if x.strip()}

@@ -220,6 +220,88 @@ Khalid, S. (2025). Placing pictures in Word. *Journal of Layout*, 3(1), 1–5.
 """
 
 
+def yatay_md():
+    head = "| " + " | ".join("Feature %d" % i for i in range(1, 13)) + " |"
+    sep = "|" + "---:|" * 12
+    rows = "\n".join("| " + " | ".join("%.2f" % ((r * 7 + c) / 9.0) for c in range(12)) + " |" for r in range(1, 9))
+    return r"""
+**WIDE TABLES ON LANDSCAPE PAGES**
+
+**Hevi Taha^1,\*^ and Azad Saleem^1^**
+
+^1^Department of Physics, University of Zakho, Duhok, Iraq.
+
+\* Corresponding author. E-mail: hevi.taha@uoz.edu.krd
+
+**Abstract**
+
+Wide tables are placed in a landscape section in Word, or are simply too wide for a portrait
+page; both must be printed on rotated pages without squeezing the columns.
+
+**Keywords:** landscape; tables.
+
+# Introduction
+
+Table 1 is in a landscape section of the Word file and Figure 1 is next to it. Table 2 has twelve
+columns in a normal portrait section (Taha, 2025).
+
+SECTIONPORTRAITMARK
+
+: Table 1 Measurements in a landscape section
+
+| Sample | Temperature | Pressure | Humidity | Wind speed | Notes about the measurement |
+|---|---:|---:|---:|---:|---|
+| A1 | 21.5 | 1012 | 40 | 3.2 | Morning, clear sky, calibrated sensor |
+| A2 | 25.1 | 1009 | 35 | 4.8 | Noon, light clouds, calibrated sensor |
+| A3 | 19.8 | 1015 | 55 | 2.1 | Evening, humid, sensor recalibrated |
+
+![](IMG_A){width=4in}
+
+Figure 1: A picture in the landscape section.
+
+SECTIONLANDSCAPEMARK
+
+The text continues on portrait pages after the landscape section.
+
+: Table 2 Twelve features
+
+""" + head + "\n" + sep + "\n" + rows + r"""
+
+# Conclusions
+
+Both tables must be readable (Taha, 2025).
+
+**References**
+
+Taha, H. (2025). Rotated pages in journals. *Journal of Layout*, 4(2), 10–12.
+"""
+
+
+SECT = ('<w:p><w:pPr><w:sectPr><w:pgSz w:w="%s" w:h="%s"%s/>'
+        '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>'
+        '</w:sectPr></w:pPr></w:p>')
+
+
+def add_sections(path):
+    """'SECTIONPORTRAITMARK' / 'SECTIONLANDSCAPEMARK' paragraflarını bölüm sonu (sectPr) ile değiştirir."""
+    import re
+    tmp = path + ".tmp"
+    zin = zipfile.ZipFile(path)
+    zout = zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED)
+    for it in zin.infolist():
+        d = zin.read(it.filename)
+        if it.filename == "word/document.xml":
+            x = d.decode("utf-8")
+            for marker, sect in (("SECTIONPORTRAITMARK", SECT % (12240, 15840, "")),
+                                 ("SECTIONLANDSCAPEMARK", SECT % (15840, 12240, ' w:orient="landscape"'))):
+                x = re.sub(r"<w:p>(?:(?!<w:p>).)*?%s.*?</w:p>" % marker, sect, x, count=1, flags=re.S)
+            d = x.encode("utf-8")
+        zout.writestr(it, d)
+    zin.close()
+    zout.close()
+    os.replace(tmp, path)
+
+
 def make_pictures(workdir):
     """Altı farklı, küçük test resmi (içerikleri farklı olmalı; aynı resimler birleştirilir)."""
     from PIL import Image, ImageDraw
@@ -337,6 +419,10 @@ def main(only=None):
         os.makedirs(os.path.join(HERE, "sentetik_alt_sekil"), exist_ok=True)
         pandoc(ALT_SEKIL, os.path.join(HERE, "sentetik_alt_sekil", "sentetik_alt_sekil.docx"), tmp,
                make_pictures(tmp))
+        os.makedirs(os.path.join(HERE, "sentetik_yatay"), exist_ok=True)
+        yatay = os.path.join(HERE, "sentetik_yatay", "sentetik_yatay.docx")
+        pandoc(yatay_md(), yatay, tmp, make_pictures(tmp))
+        add_sections(yatay)
         os.makedirs(os.path.join(HERE, "sentetik_grafik"), exist_ok=True)
         base = os.path.join(tmp, "base.docx")
         pandoc(TEMEL, base, tmp)

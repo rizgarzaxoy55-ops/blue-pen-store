@@ -11,6 +11,7 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{xltabular}
+\usepackage{pdflscape}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
@@ -153,13 +154,13 @@ The main contribution of the proposed algorithm is limiting the auto-valuing of 
 
 \end{multicols}
 \noindent
-\begin{minipage}{\textwidth}
+\begin{minipage}{\linewidth}
 \centering
 \hypertarget{tab:1}{}
 \captionof{table}{Related works' drawbacks.}
 \vspace{-6pt}
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
 \textbf{Reference} & \textbf{Algorithm} & \textbf{Threshold} & \textbf{Drawback} \\ \midrule
 (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}; \hyperlink{ref:5}{Ibrahim \& Mulvaney, 2015}; \hyperlink{ref:20}{Viola \& Jones, 2001}) & Standard Viola \& Jones algorithm & Static, based on distance and light contrast & Misses detection with varying light and distance \\ \addlinespace[0.3em]
@@ -305,13 +306,13 @@ The drawback of this study is that the experimental results are limited to a max
 
 \end{multicols}
 \noindent
-\begin{minipage}{\textwidth}
+\begin{minipage}{\linewidth}
 \centering
 \hypertarget{tab:2}{}
 \captionof{table}{Evaluation of the proposed and baseline methods.}
 \vspace{-6pt}
 \footnotesize
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
 \toprule
 \textbf{No. of speakers} & \textbf{No. of frames} & \textbf{Detected} & \textbf{Accuracy (\%)} & \textbf{Average thresholds} & \textbf{average T\textsubscript{D} (Sec.) (\hyperlink{ref:6}{Indrabayu \textit{et al.}, 2019})} & \textbf{The proposed method's average T\textsubscript{D} (Sec.)} \\ \midrule
 1 & 1019 & 1019 & 100 & 144 & 4.126 & 0.1748 \\ \addlinespace[0.3em]

@@ -11,6 +11,7 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{xltabular}
+\usepackage{pdflscape}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
@@ -151,8 +152,8 @@ The full results are listed in \hyperlink{tab:1}{Table 1} (\hyperlink{ref:1}{Sal
 \end{multicols}
 \begingroup
 \small
-\setlength{\LTcapwidth}{\textwidth}
-\begin{xltabular}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\setlength{\LTcapwidth}{\linewidth}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
 \caption{Results for all eighty speakers.}\hypertarget{tab:1}{}\\
 \toprule
 \textbf{Speaker} & \textbf{Frames} & \textbf{Time (s)} & \textbf{Accuracy (\%)} \\ \midrule

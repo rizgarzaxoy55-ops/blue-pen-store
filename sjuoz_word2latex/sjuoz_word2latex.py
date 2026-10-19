@@ -1419,6 +1419,44 @@ def parse_article(doc, cover=None):
 
 
 
+def layout_table_images(tbl):
+    """Tablo, resimleri yan yana dizmek için kullanılmışsa [(rid, etiket), ...] döndürür; değilse None.
+    Etiket, resmin bulunduğu hücredeki ya da aynı sütunda altındaki hücredeki kısa metindir."""
+    if not isinstance(tbl, Table):
+        return None
+    entries = []  # (sütun, [rid], metin)
+    for row in tbl.rows:
+        col = 0
+        for paras, span, vmerge in row:
+            ps = [p for p in paras if isinstance(p, Para)]
+            rids = [r for p in ps for r in p.images]
+            text = " ".join(p.text().strip() for p in ps).strip()
+            entries.append((col, rids, text))
+            col += span
+    n_img = sum(1 for _, r, _ in entries if r)
+    if not n_img or any(len(t) > 120 for _, _, t in entries):
+        return None
+    if sum(1 for _, r, t in entries if t and not r) > n_img:
+        return None
+    items = []  # [rid, etiket, sütun]
+    for col, rids, text in entries:
+        if rids:
+            for k, rid in enumerate(rids):
+                items.append([rid, text if k == 0 else "", col])
+        elif text:
+            for it in reversed(items):
+                if it[2] == col and not it[1]:
+                    it[1] = text
+                    break
+    return [(rid, label) for rid, label, _ in items]
+
+
+def clean_sub_label(label):
+    """'(a) Original image' -> 'Original image'; '(b)' -> ''."""
+    label = re.sub(r"^\s*\(?\s*[a-hA-H]\s*[).:]\s*", "", label or "").strip()
+    return render_plain(label) if label else ""
+
+
 # --------------------------------------------------------------------------
 # Resim dönüştürme ve Word grafikleri (chart)
 # --------------------------------------------------------------------------
@@ -1739,7 +1777,7 @@ class Writer:
         n_fig = n_tab = n_eq = 0
         for b in self.art.body:
             if isinstance(b, Table):
-                n_tab += 1
+                n_tab += 0 if layout_table_images(b) else 1
             elif not b.is_empty():
                 kind = self.is_caption(b)
                 if kind == "figure":
@@ -1750,51 +1788,69 @@ class Writer:
                         n_eq += 1
         return n_fig, n_tab, n_eq
 
-    def emit_figure(self, rids, caption):
+    def emit_figure(self, items, caption):
+        """items: [(rid, etiket), ...] — bir şekle ait bir veya birden çok resim (alt şekiller)."""
+        items = [it if isinstance(it, tuple) else (it, "") for it in items]
         wide = "all" in self.opts.wide_figs or str(self.fig_count + 1) in self.opts.wide_figs
         if wide:
             self.close_cols()
-            return self._emit_wide_figure(rids, caption)
-        self.open_cols()
-        self.close_list()
-        if self.out and self.out[-1] == r"\begin{multicols}{2}" and len(self.out) > 1:
-            # İki sütunlu bölüm bir şekille başlıyor (genelde tablodan sonra): sayfada şekle
-            # yetecek yer yoksa bölüm yeni sayfada başlasın; yoksa şekil sayfadan taşar.
-            self.out[-1] = (r"\setlength{\premulticols}{0.45\textheight}\begin{multicols}{2}"
-                            r"\setlength{\premulticols}{50pt}")
+        else:
+            self.open_cols()
+            self.close_list()
+            if self.out and self.out[-1] == r"\begin{multicols}{2}" and len(self.out) > 1:
+                # İki sütunlu bölüm bir şekille başlıyor (genelde tablodan sonra): sayfada şekle
+                # yetecek yer yoksa bölüm yeni sayfada başlasın; yoksa şekil sayfadan taşar.
+                self.out[-1] = (r"\setlength{\premulticols}{0.45\textheight}\begin{multicols}{2}"
+                                r"\setlength{\premulticols}{50pt}")
         files = []
-        for rid in rids:
-            fn = self.save_image(rid)
-            if fn and fn not in files:
-                files.append(fn)
+        letters = "abcdefghijklmnopqrstuvwxyz"
+        for rid, label in items:
+            name = None
+            if len(items) > 1:  # alt şekiller: Figure3a.png, Figure3b.png ...
+                name = "Figure%d%s" % (self.fig_count + 1, letters[min(len(files), 25)])
+            fn = self.save_image(rid, name)
+            if fn and fn not in [f for f, _ in files]:
+                files.append((fn, label))
         if not files:
             return
         self.fig_count += 1
-        w = r"\linewidth" if len(files) == 1 else r"%.2f\linewidth" % (0.98 / len(files))
-        self.emit(r"\noindent\begin{minipage}{\linewidth}")
+        box = r"\textwidth" if wide else r"\linewidth"
+        self.emit(r"\noindent\begin{minipage}{%s}" % box)
         self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
-        for fn in files:
-            self.emit(r"\includegraphics[width=%s, height=0.42\textheight, keepaspectratio]{%s}" % (w, fn))
+        if len(files) == 1:
+            self.emit(r"\includegraphics[width=%s, height=%s\textheight, keepaspectratio]{%s}"
+                      % (box, "0.45" if wide else "0.42", files[0][0]))
+        else:
+            self.emit(r"\captionsetup{type=figure}")
+            labels = [clean_sub_label(lb) for _, lb in files]
+            # (a)(b) etiketleri: Word'de etiket varsa veya başlık "(a) … (b) …" diyorsa
+            use_sub = any(labels) or bool(caption and re.search(r"\(\s*[a-h]\s*\)|(?:^|\s)[a-h]\)\s", caption))
+            per_row = min(len(files), 4) if wide else 2
+            width = 0.98 / per_row - 0.02
+            height = "0.3" if per_row <= 2 else "0.22"
+            for k, (fn, _) in enumerate(files):
+                img = r"\includegraphics[width=\linewidth, height=%s\textheight, keepaspectratio]{%s}" % (height, fn)
+                if use_sub:
+                    self.emit(r"\begin{subfigure}[t]{%.2f%s}\centering" % (width, box))
+                    self.emit(img)
+                    self.emit(r"\caption{%s}" % labels[k])
+                    self.emit(r"\end{subfigure}%")
+                else:
+                    self.emit(r"\begin{minipage}[t]{%.2f%s}\centering" % (width, box))
+                    self.emit(img)
+                    self.emit(r"\end{minipage}%")
+                if k + 1 == len(files):
+                    self.emit(r"\par\vspace{2pt}")
+                elif (k + 1) % per_row == 0:
+                    self.emit(r"\par\vspace{4pt}")
+                else:
+                    self.emit(r"\hfill")
         if caption:
             self.fig_captioned += 1
-            self.emit(r"\captionof{figure}{%s}" % caption)
-        self.emit(r"\end{minipage}")
-        self.emit(r"\par\vspace{6pt}")
-        self.emit()
-
-    def _emit_wide_figure(self, rids, caption):
-        files = [f for f in (self.save_image(r) for r in rids) if f]
-        if not files:
-            return
-        self.fig_count += 1
-        w = r"\textwidth" if len(files) == 1 else r"%.2f\textwidth" % (0.98 / len(files))
-        self.emit(r"\noindent\begin{minipage}{\textwidth}")
-        self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
-        for fn in files:
-            self.emit(r"\includegraphics[width=%s, height=0.45\textheight, keepaspectratio]{%s}" % (w, fn))
-        if caption:
-            self.fig_captioned += 1
-            self.emit(r"\captionof{figure}{%s}" % caption)
+            # alt şekilli kutuda tür zaten 'figure' olarak ayarlı: \caption kullanılır
+            self.emit((r"\caption{%s}" if len(files) > 1 else r"\captionof{figure}{%s}") % caption)
+        elif len(files) > 1:
+            self.emit(r"\addtocounter{figure}{1}")  # başlıksız alt şekilli şekil de numara alır
         self.emit(r"\end{minipage}")
         self.emit(r"\par\vspace{6pt}")
         self.emit()
@@ -1971,6 +2027,15 @@ class Writer:
         while k < len(blocks):
             b = blocks[k]
             k += 1
+            if isinstance(b, Table) and layout_table_images(b):
+                # resim yerleştirmek için kullanılan kenarlıksız tablo: tablo değil, şekildir
+                items = layout_table_images(b)
+                if self.pending_fig_caption is not None:
+                    self.emit_figure(items, self.pending_fig_caption)
+                    self.pending_fig_caption = None
+                else:
+                    self.pending_imgs.append(items)
+                continue
             if isinstance(b, Table):
                 self.flush_images()
                 cap = self.pending_tab_caption
@@ -2012,7 +2077,9 @@ class Writer:
             if kind == "figure":
                 cap = self.caption_text(p)
                 if self.pending_imgs:
-                    self.emit_figure(self.pending_imgs.pop(0), cap)
+                    # başlıktan önceki bütün resimler bu şekle aittir (alt şekiller)
+                    self.emit_figure([it for grp in self.pending_imgs for it in grp], cap)
+                    self.pending_imgs = []
                 else:
                     self.pending_fig_caption = cap
                 continue
@@ -2156,6 +2223,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{qrcode}
@@ -2179,6 +2247,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
 \captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
 \captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
 \definecolor{sjuozblue}{HTML}{C1D1EB}
 \definecolor{colorabs}{HTML}{E2EAF4}
 
@@ -2453,7 +2522,7 @@ def word_source_stats(doc, art):
             if data:
                 in_choice.add(hashlib.md5(data).hexdigest())
     images = len(hashes - (fallback - in_choice)) + charts
-    tables = len(body.findall(W + "tbl"))
+    tables = sum(1 for t in body.findall(W + "tbl") if not layout_table_images(Table(t, doc)))
     max_num = lambda pat: max([int(x) for x in re.findall(pat, text)] or [0])
     return {
         "images": images,
@@ -2571,7 +2640,7 @@ def build_report(ctx):
     blocks = list(art.body) + list(art.references)
     n_tab = 0
     for b in blocks:
-        if isinstance(b, Table):
+        if isinstance(b, Table) and not layout_table_images(b):
             # tablo hücreleri kısa olduğu için hücre hücre bakılır (sayfadan taşan satırlar)
             n_tab += 1
             cells = [" ".join(p.text() for p in c[0] if isinstance(p, Para)).strip() for r in b.rows for c in r]

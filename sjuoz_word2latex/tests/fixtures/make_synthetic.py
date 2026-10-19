@@ -57,7 +57,7 @@ $$\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}$$
 | A    | 1.5   | 0.1   |
 | B    | 2.5   | 0.2   |
 
-![](FIG)
+![](@@FIG@@)
 
 Figure 1: A figure caption with $x_i$.
 
@@ -173,6 +173,70 @@ Saleh, R. (2024). Long tables in journals. *Journal of Layout*, 2(1), 1–9.
 """
 
 
+ALT_SEKIL = r"""
+**SUBFIGURES PLACED IN DIFFERENT WAYS**
+
+**Shilan Khalid^1,\*^ and Bawar Yousif^1^**
+
+^1^Department of Computer Science, University of Zakho, Duhok, Iraq.
+
+\* Corresponding author. E-mail: shilan.khalid@uoz.edu.krd
+
+**Abstract**
+
+Authors place sub-figures in Word in several ways: inside a borderless table with labels under
+the pictures, as several pictures in one paragraph, or as pictures in separate paragraphs.
+
+**Keywords:** subfigures; layout.
+
+# Introduction
+
+Figure 1 uses a layout table, Figure 2 has two pictures in one paragraph and Figure 3 has two
+pictures in separate paragraphs.
+
+| ![](IMG_A){width=1.4in} | ![](IMG_B){width=1.4in} |
+|:---:|:---:|
+| (a) Original image | (b) Detected mouth |
+
+Figure 1: Pictures placed with a layout table.
+
+![](IMG_C){width=1.3in} ![](IMG_D){width=1.3in}
+
+Figure 2: (a) Left picture. (b) Right picture.
+
+![](IMG_E){width=1.5in}
+
+![](IMG_F){width=1.5in}
+
+Figure 3: Two pictures in separate paragraphs.
+
+# Conclusions
+
+All pictures must stay with their captions (Khalid, 2025).
+
+**References**
+
+Khalid, S. (2025). Placing pictures in Word. *Journal of Layout*, 3(1), 1–5.
+"""
+
+
+def make_pictures(workdir):
+    """Altı farklı, küçük test resmi (içerikleri farklı olmalı; aynı resimler birleştirilir)."""
+    from PIL import Image, ImageDraw
+    paths = {}
+    colors = ["#d92d20", "#1570ef", "#079455", "#dc6803", "#7a5af8", "#475467"]
+    for k, name in enumerate("ABCDEF"):
+        im = Image.new("RGB", (240, 160), "white")
+        d = ImageDraw.Draw(im)
+        d.rectangle([10, 10, 230, 150], outline="black", width=3)
+        d.ellipse([60 + 10 * k, 40, 180 - 5 * k, 120], fill=colors[k])
+        d.text((20, 18), name, fill="black")
+        path = os.path.join(workdir, "img_%s.png" % name.lower())
+        im.save(path)
+        paths["IMG_" + name] = path
+    return paths
+
+
 CHART_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"
  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><c:chart>
@@ -243,10 +307,12 @@ def add_chart_and_emf(src, dst, emf):
     zout.close()
 
 
-def pandoc(md, out, workdir):
+def pandoc(md, out, workdir, images=None):
     path = os.path.join(workdir, "in.md")
+    for key, img in (images or {}).items():
+        md = md.replace(key, img)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(md.replace("FIG", os.path.abspath(FIG)))
+        f.write(md.replace("@@FIG@@", os.path.abspath(FIG)))
     subprocess.run(["pandoc", path, "-f", "markdown+grid_tables", "-o", out], check=True)
 
 
@@ -261,13 +327,16 @@ def make_emf(workdir):
     return os.path.join(workdir, "pic.emf")
 
 
-def main():
+def main(only=None):
     tmp = tempfile.mkdtemp()
     try:
         for case, md in (("sentetik_temel", TEMEL), ("sentetik_numerik", NUMERIK),
                          ("sentetik_uzun_tablo", uzun_tablo_md())):
             os.makedirs(os.path.join(HERE, case), exist_ok=True)
             pandoc(md, os.path.join(HERE, case, "%s.docx" % case), tmp)
+        os.makedirs(os.path.join(HERE, "sentetik_alt_sekil"), exist_ok=True)
+        pandoc(ALT_SEKIL, os.path.join(HERE, "sentetik_alt_sekil", "sentetik_alt_sekil.docx"), tmp,
+               make_pictures(tmp))
         os.makedirs(os.path.join(HERE, "sentetik_grafik"), exist_ok=True)
         base = os.path.join(tmp, "base.docx")
         pandoc(TEMEL, base, tmp)

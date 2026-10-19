@@ -1,0 +1,8 @@
+{
+  "description": "Alt şekiller: kenarlıksız tabloyla dizilmiş etiketli resimler, aynı paragrafta iki resim, ayrı paragraflarda iki resim — her biri tek şekil olmalı",
+  "args": ["--article-id", "2005", "--volume", "14", "--issue", "4", "--year", "2026", "--month", "October"],
+  "expect": {"authors": 2, "orcids": 0, "affiliations": 1, "figures": 3, "figures_captioned": 3, "tables": 0,
+             "equations": 0, "numbered_equations": 0, "references": 1, "linked_references": 1},
+  "expect_pages": 1,
+  "max_status": "KONTROL"
+}

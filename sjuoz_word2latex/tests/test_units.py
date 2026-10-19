@@ -161,3 +161,9 @@ def test_analyze_log(tmp_path):
     assert res["errors"] and res["pages"] == 3
     assert [o["line"] for o in res["overfull_h"]] == [2]  # 2pt altı sayılmaz
     assert res["missing_chars"] == ["ş"]
+
+
+def test_clean_sub_label():
+    assert conv.clean_sub_label("(a) Original image") == "Original image"
+    assert conv.clean_sub_label("b) Detected") == "Detected"
+    assert conv.clean_sub_label("(c)") == ""

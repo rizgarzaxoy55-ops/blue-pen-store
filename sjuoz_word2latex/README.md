@@ -44,6 +44,13 @@ Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
 
 Dosya adı verilmeden çalıştırılırsa (`python sjuoz_word2latex.py`) dosya seçme penceresi açılır.
 
+## Logolar
+
+`SJUOZ.png` (sağ üst köşedeki dergi logosu) ve `orcid.png` bu klasörde hazırdır; program
+bunları kendiliğinden çıktı klasörüne kopyalar. Bu dosyalar örnek PDF'ten çıkarıldığı için
+düşük çözünürlüklüdür (143×72 piksel); elinizde daha yüksek çözünürlüklü orijinali varsa
+aynı adla bu klasöre koyun.
+
 ## Nereden ne alınıyor?
 
 * **Makaleden:** başlık, yazarlar ve üst simge numaraları, affiliasyonlar (aynı olanlar

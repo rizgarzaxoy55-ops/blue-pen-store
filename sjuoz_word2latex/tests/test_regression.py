@@ -132,3 +132,21 @@ def test_landscape_option_for_any_table(tmp_path):
     with open(res["tex_path"], encoding="utf-8") as f:
         tex = f.read()
     assert tex.count(r"\begin{landscape}") == 1
+
+
+def test_right_to_left_text(tmp_path):
+    case = next(c for c in CASES if c["name"] == "sentetik_rtl")
+    res = run_case(case, tmp_path / "out")
+    with open(res["tex_path"], encoding="utf-8") as f:
+        tex = f.read()
+    assert r"\TeXXeTstate=1" in tex
+    assert r"\rtl{زانکۆ}" in tex and r"\rtl{جامعة}" in tex  # cümle içindeki kelimeler
+    assert tex.count(r"\begin{rtlpar}") == 2  # Kürtçe (Word'de RTL) + Arapça (oranla bulunan)
+    assert r"\ltr{2024}." in tex  # sayı soldan sağa, nokta sağdan sola akışta
+
+
+def test_rtl_preamble_only_when_needed(tmp_path):
+    case = next(c for c in CASES if c["name"] == "sentetik_temel")
+    res = run_case(case, tmp_path / "out")
+    with open(res["tex_path"], encoding="utf-8") as f:
+        assert "TeXXeTstate" not in f.read()

@@ -130,15 +130,55 @@ def clean_url(u):
     return u, trail
 
 
+# Sağdan sola yazılar (Arapça, Kürtçe Sorani, Farsça)
+RTL_CHARS = "؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿"
+RTL_RUN_RE = re.compile("[%s](?:[%s\\s‌‍0-9٠-٩.,:;!?()\\-]*[%s])?" % ((RTL_CHARS,) * 3))
+BIDI = {"used": False, "par": False}  # belgede RTL metin var mı / şu an RTL paragraf mı yazılıyor
+
+
+def is_rtl_text(text):
+    letters = [c for c in text if c.isalpha()]
+    rtl = sum(1 for c in letters if re.match("[%s]" % RTL_CHARS, c))
+    return bool(letters) and rtl / len(letters) > 0.5
+
+
+def _bidi(text, italic):
+    """Metni kaçırır; Arap harfli parçaları sağdan sola (\\rtl), RTL paragraftaki
+    Latin parçaları soldan sağa (\\ltr) yazdırır."""
+    if not RTL_RUN_RE.search(text) and not BIDI["par"]:
+        return _etal(tex_escape(text), italic)
+    out, pos = [], 0
+    for mt in RTL_RUN_RE.finditer(text):
+        out.append(_ltr(text[pos:mt.start()], italic))
+        if BIDI["par"]:
+            out.append(tex_escape(mt.group(0)))
+        else:
+            out.append(r"\rtl{%s}" % tex_escape(mt.group(0)))
+        pos = mt.end()
+        BIDI["used"] = True
+    out.append(_ltr(text[pos:], italic))
+    return "".join(out)
+
+
+def _ltr(text, italic):
+    s = _etal(tex_escape(text), italic)
+    if BIDI["par"] and re.search(r"[A-Za-z0-9]", text):
+        # sondaki noktalama sağdan sola akışta kalmalı ("2024." -> ".2024" değil)
+        mt = re.match(r"^(\s*)(.*?)([\s.,;:!?)\]]*)$", s, re.S)
+        lead, core, trail = mt.group(1), mt.group(2), mt.group(3)
+        return lead + (r"\ltr{%s}" % core if core else "") + trail
+    return s
+
+
 def render_plain(text, italic=False, ref_mode=False, link=False):
     """Düz metni LaTeX'e çevirir: URL/e-posta bağlantıları, 'et al.' italik."""
     if link:
-        return _etal(tex_escape(text), italic)
+        return _bidi(text, italic)
     out = []
     pos = 0
     pattern = re.compile(URL_RE.pattern + "|" + EMAIL_RE.pattern, re.I)
     for mt in pattern.finditer(text):
-        out.append(_etal(tex_escape(text[pos:mt.start()]), italic))
+        out.append(_bidi(text[pos:mt.start()], italic))
         tok = mt.group(0)
         if "@" in tok and not tok.lower().startswith(("http", "www")):
             out.append(r"\href{mailto:%s}{%s}" % (tok, tex_escape(tok)))
@@ -154,7 +194,7 @@ def render_plain(text, italic=False, ref_mode=False, link=False):
                 out.append(r"\url{%s}" % url_escape(u))
             out.append(tex_escape(trail))
         pos = mt.end()
-    out.append(_etal(tex_escape(text[pos:]), italic))
+    out.append(_bidi(text[pos:], italic))
     return "".join(out)
 
 
@@ -709,6 +749,7 @@ class Para:
             self.num_id = "style"
         outline = wval(ppr.find(W + "outlineLvl")) if ppr is not None else None
         self.outline = int(outline) if outline and outline.isdigit() else st.get("outline")
+        self.bidi = ppr is not None and on_off(ppr.find(W + "bidi"))
         self.tokens = []   # ('t', text, fmt) | ('m', latex, display, number) | ('img', rid)
         self._fld = []
         self._omml = OMML()
@@ -2176,6 +2217,17 @@ class Writer:
 
             # Normal paragraf
             self.open_cols()
+            if p.bidi or is_rtl_text(txt):
+                # sağdan sola paragraf (Arapça / Kürtçe Sorani)
+                BIDI["par"] = True
+                try:
+                    s = render_tokens(p.tokens)
+                finally:
+                    BIDI["par"] = False
+                BIDI["used"] = True
+                self.emit(r"\begin{rtlpar}%s\end{rtlpar}" % s)
+                self.emit()
+                continue
             s = render_tokens(p.tokens)
             if self.section and re.search(r"contribution", self.section):
                 s = self.abbreviate_names(s)
@@ -2317,7 +2369,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \IfFontExistsTF{<<HEADFONT>>}{\newfontfamily{\garamond}{<<HEADFONT>>}}{%
   \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
 
-\newcommand{\sjuozdoi}{<<DOI>>}
+<<RTL>>\newcommand{\sjuozdoi}{<<DOI>>}
 % İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
 \newcommand{\firstfooterbottom}{0.4in}
 \newcommand{\firstpagereserve}{1.4in}
@@ -2421,6 +2473,18 @@ FIGDIR = "figures"  # resimlerin konduğu alt klasör
 LONG_TABLE_ROWS = 34  # bundan uzun tablolar sayfalara bölünür (xltabular)
 LANDSCAPE_COLS = 10   # bu kadar veya daha çok sütunlu tablolar yatay sayfaya konur
 
+RTL_PREAMBLE = r"""% Sağdan sola yazılar (Arapça, Kürtçe Sorani, Farsça): XeTeX TeX--XeT
+\TeXXeTstate=1
+\IfFontExistsTF{Amiri}{\newfontfamily\arabicfont[Script=Arabic]{Amiri}}{%
+  \IfFontExistsTF{Noto Naskh Arabic}{\newfontfamily\arabicfont[Script=Arabic]{Noto Naskh Arabic}}{%
+    \IfFontExistsTF{Times New Roman}{\newfontfamily\arabicfont[Script=Arabic]{Times New Roman}}{%
+      \newfontfamily\arabicfont[Script=Arabic]{DejaVu Sans}}}}
+\newcommand{\rtl}[1]{{\arabicfont\beginR #1\endR}}
+\newcommand{\ltr}[1]{{\rmfamily\beginL #1\endL}}
+\newenvironment{rtlpar}{\par\raggedleft\arabicfont\beginR\ignorespaces}{\unskip\endR\par}
+
+"""
+
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
 
@@ -2490,6 +2554,7 @@ def build_tex(art, writer, opts):
         "ABSTRACT": abstract,
         "KEYWORDS": kw,
         "BODY": "\n".join(writer.out),
+        "RTL": RTL_PREAMBLE if BIDI["used"] else "",
     }
     tex = TEMPLATE
     for k, v in rep.items():
@@ -2696,6 +2761,8 @@ def build_report(ctx):
     if not out_text:
         out_text, where = tex_to_text(ctx["tex"]), ".tex"
     out_letters = _letters(out_text)
+    # pdftotext sağdan sola/soldan sağa karışık satırları bozuk çıkarabilir: bu paragraflar .tex'le de denenir
+    tex_letters = _letters(tex_to_text(ctx["tex"])) if where == "PDF" else out_letters
     lost = []
     blocks = list(art.body) + list(art.references)
     n_tab = 0
@@ -2721,6 +2788,8 @@ def build_report(ctx):
             if cap:  # "Figure 8" numarasını LaTeX kendisi yazar
                 src_text = cap.group(3)
             found = max(found_ratio(v, out_letters) for v in (src_text, writer.abbreviate_names(src_text)))
+            if found < 0.7 and RTL_RUN_RE.search(src_text):
+                found = max(found, found_ratio(src_text, tex_letters))
             if found < 0.7:
                 lost.append("%s… (%%%d bulundu)" % (" ".join(p.text().split()[:12]), round(found * 100)))
     if lost:
@@ -3076,6 +3145,7 @@ def convert(opts):
     """Dönüşümü yapar. Sonuçları (dosya yolları, sayımlar, rapor) sözlük olarak döndürür."""
     global LINKER
     del WARNINGS[:]
+    BIDI.update(used=False, par=False)
     LINKER = None
     today = datetime.date.today()
     if isinstance(getattr(opts, "landscape_tables", ""), str):

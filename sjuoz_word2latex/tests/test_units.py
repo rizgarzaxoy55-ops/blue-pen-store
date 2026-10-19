@@ -167,3 +167,11 @@ def test_clean_sub_label():
     assert conv.clean_sub_label("(a) Original image") == "Original image"
     assert conv.clean_sub_label("b) Detected") == "Detected"
     assert conv.clean_sub_label("(c)") == ""
+
+
+def test_bidi_inline_and_rtl_detection():
+    conv.BIDI.update(used=False, par=False)
+    s = conv.render_plain("the word زانکۆ means university")
+    assert s == r"the word \rtl{زانکۆ} means university" and conv.BIDI["used"]
+    assert conv.is_rtl_text("ئەم توێژینەوەیە باس لە 2024")
+    assert not conv.is_rtl_text("Mostly English text with one word زانکۆ")

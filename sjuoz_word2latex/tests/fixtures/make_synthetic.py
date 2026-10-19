@@ -302,6 +302,47 @@ def add_sections(path):
     os.replace(tmp, path)
 
 
+RTL = r"""
+**KURDISH AND ARABIC TEXT IN AN ENGLISH ARTICLE**
+
+**Lana Ahmed^1,\*^ and Karzan Hassan^1^**
+
+^1^Department of Kurdish Language, University of Zakho, Duhok, Iraq.
+
+\* Corresponding author. E-mail: lana.ahmed@uoz.edu.krd
+
+**Abstract**
+
+Some articles contain a Kurdish (Sorani) or Arabic summary and Arabic words inside English
+sentences; these must be printed right to left with a font that has all the letters.
+
+**Keywords:** Kurdish; Arabic; right-to-left.
+
+# Introduction
+
+The word زانکۆ means university in Kurdish and the Arabic word جامعة has the same meaning
+(Ahmed, 2024).
+
+# Kurdish summary
+
+::: {dir=rtl}
+ئەم توێژینەوەیە باس لە چۆنیەتی نووسینی دەقی کوردی دەکات لە گۆڤاری زانستیدا، و گرنگی فۆنتی گونجاو و ئاراستەی ڕاست بۆ چەپ ڕوون دەکاتەوە.
+:::
+
+# Arabic summary
+
+يتناول هذا البحث كيفية كتابة النصوص العربية في المجلات العلمية، ويوضح أهمية الخط المناسب واتجاه الكتابة من اليمين إلى اليسار في عام 2024.
+
+# Conclusions
+
+Right-to-left text must keep its letters and order.
+
+**References**
+
+Ahmed, L. (2024). نووسینی کوردی لە گۆڤاردا. *Journal of Kurdish Studies*, 5(1), 1–9.
+"""
+
+
 def make_pictures(workdir):
     """Altı farklı, küçük test resmi (içerikleri farklı olmalı; aynı resimler birleştirilir)."""
     from PIL import Image, ImageDraw
@@ -419,6 +460,8 @@ def main(only=None):
         os.makedirs(os.path.join(HERE, "sentetik_alt_sekil"), exist_ok=True)
         pandoc(ALT_SEKIL, os.path.join(HERE, "sentetik_alt_sekil", "sentetik_alt_sekil.docx"), tmp,
                make_pictures(tmp))
+        os.makedirs(os.path.join(HERE, "sentetik_rtl"), exist_ok=True)
+        pandoc(RTL, os.path.join(HERE, "sentetik_rtl", "sentetik_rtl.docx"), tmp)
         os.makedirs(os.path.join(HERE, "sentetik_yatay"), exist_ok=True)
         yatay = os.path.join(HERE, "sentetik_yatay", "sentetik_yatay.docx")
         pandoc(yatay_md(), yatay, tmp, make_pictures(tmp))

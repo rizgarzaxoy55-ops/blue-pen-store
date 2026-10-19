@@ -22,7 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             texlive-xetex texlive-latex-extra texlive-fonts-recommended fonts-urw-base35 \
-            fonts-liberation poppler-utils libreoffice-draw
+            fonts-liberation fonts-hosny-amiri poppler-utils libreoffice-draw
 
       - name: Python paketleri
         run: pip install lxml Pillow matplotlib pytest

@@ -1,0 +1,8 @@
+{
+  "description": "Sağdan sola: İngilizce cümlede Kürtçe/Arapça kelime, Word'de RTL işaretli Kürtçe (Sorani) paragraf, işaretsiz Arapça paragraf, Arapça başlıklı kaynak",
+  "args": ["--article-id", "2007", "--volume", "14", "--issue", "4", "--year", "2026", "--month", "October"],
+  "expect": {"authors": 2, "orcids": 0, "affiliations": 1, "figures": 0, "figures_captioned": 0, "tables": 0,
+             "equations": 0, "numbered_equations": 0, "references": 1, "linked_references": 1},
+  "expect_pages": 1,
+  "max_status": "KONTROL"
+}

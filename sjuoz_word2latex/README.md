@@ -36,7 +36,13 @@ Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
 | `--keep-heading-case` | Ana bölüm başlıklarını BÜYÜK harfe çevirme. |
 | `--keep-title-case` | Makale başlığını BÜYÜK harfe çevirme. |
 | `--main-font`, `--header-font` | Varsayılan: Times New Roman / Garamond. Bilgisayarda yoksa benzer yazı tipi otomatik seçilir. |
-| `--assets` | `SJUOZ.png` ve `orcid.png` klasörü. `orcid.png` yoksa ORCID simgesi çizilir. |
+| `--assets` | `SJUOZ.png` ve `orcid.png` klasörü (verilmezse makalenin, programın ve çalışma klasöründe aranır). `orcid.png` yoksa ORCID simgesi çizilir. |
+| `--compile` | `xelatex` ile iki kez derleyip PDF üretir. |
+| `--zip` | Overleaf'e yüklemek için `<makale no>_latex.zip` üretir. |
+| `--wide-figs` | İki sütunu kaplayacak şekiller: `3,5` veya `all`. |
+| `--no-links` | Atıf/şekil/tablo/denklem bağlantılarını ekleme. |
+
+Dosya adı verilmeden çalıştırılırsa (`python sjuoz_word2latex.py`) dosya seçme penceresi açılır.
 
 ## Nereden ne alınıyor?
 
@@ -49,7 +55,39 @@ Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
 * **Kapak mektubundan:** her yazarın ORCID, e-posta, telefon ve affiliasyon bilgisi
   (yazarlar ada göre eşleştirilir; makale ile çelişen bilgi varsa uyarı verilir).
 
-## Önceki çıktıya göre düzeltilen hatalar
+## Bağlantılar
+
+Metindeki atıflar — (Yazar *et al.*, 2020), (A & B, 2016), Yazar (2019), [3] gibi — kaynakçadaki
+kayda, "Figure 2 / Table 1 / Equation 5" ifadeleri ilgili şekil/tablo/denkleme tıklanabilir
+bağlantı olur. Kaynakçada bulunamayan atıflar ve metinde hiç atıf yapılmamış kaynaklar
+uyarı olarak yazılır.
+
+## Eski `docx2sjuoz.py` koduna göre düzeltilen hatalar
+
+1993 makalesi ve kapak mektubuyla iki kod da çalıştırıldı. Eski kodda görülen hatalar ve
+yeni koddaki durumu:
+
+| Eski kodda | Yeni kodda |
+|---|---|
+| "ABASTRACT" yazım hatası yüzünden özet bulunamıyor, uyarı veriyor | Özet bulunuyor (`Abstract`, `ABASTRACT`, `Abstract:` …) |
+| Denklemlerde `SEQ Equation \* ARABIC` yazısı çıkıyor, denklem numarası yok | Alan kodları atlanıyor, denklemler (1)–(6) numaralı |
+| Denklem (1) metin içinde `)1(` olarak bozuk kalıyor | Numaralı ayrı denklem |
+| `ī` (üst çizgi) yerine `î` çıkıyor | `\bar{i}` |
+| "white region" → "whiteregion" | Boşluk korunuyor |
+| Aynı iki affiliasyon ayrı ayrı yazılıyor (1, 2, 3) | Birleştiriliyor (1, 1, 2) |
+| ORCID eklenmiyor (kapak mektubu kullanılmıyor) | ORCID'ler kapak mektubundan ekleniyor |
+| Kapak mektubu "Click or tap here to enter text." yazılarıyla ayrı sayfalar olarak basılıyor (9 sayfa) | Kapak mektubu sadece bilgi kaynağı; makale 6 sayfa |
+| Şekil 6 resmi iki kez basılıyor | Bir kez |
+| Şekil 7 ve 8 başlıkları bulunamıyor, Şekil 7 başlığı düz metin oluyor | Bütün başlıklar doğru şekilde |
+| Sadece "Introduction" ve "Experimental Results" numaralı bölüm, diğerleri numarasız alt bölüm | Word'deki numaralandırma: 1–5 |
+| Telefon "(Tel: …))" çift parantez | Düzgün |
+| 21 kaynaktan 6'sına atıf bağlantısı kurulamıyor ("Mohammed E. Safi & Abbas", "Wisam H Ali et al.") | 21 / 21 bağlantı |
+| `\enlargethispage` kısa özetlerde ilk sayfa düzenini bozabiliyor | İlk sayfa metin alanı güvenli şekilde kısaltılıyor |
+
+Eski koddaki iyi özellikler (atıf bağlantıları, `--compile`, zip, dosya seçme penceresi,
+geniş şekiller) yeni koda da eklendi.
+
+## Önceki `.tex` dosyasına göre düzeltilen hatalar
 
 * Denklemlerdeki `SEQ Equation \* ARABIC` alan kodları artık LaTeX'e sızmıyor; Word'deki
   denklem numaraları `equation` ortamıyla doğru numaralanıyor (`)1(` gibi ters numaralar dahil).

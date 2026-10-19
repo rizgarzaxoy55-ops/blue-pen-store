@@ -833,8 +833,135 @@ class Table:
 # --------------------------------------------------------------------------
 # Biçimli metni LaTeX'e çevirme
 # --------------------------------------------------------------------------
+def norm_key(s):
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+YEAR_PAT = r"(?:(?:19|20)\d\d[a-z]?|n\.\s?d\.)"
+CITE_PAREN = re.compile(r"\(([^()]*?%s[^()]*?)\)" % YEAR_PAT)
+CITE_PART = re.compile(r"^(?P<auth>[^\d]+?),?\s*(?P<years>%s(?:\s*,\s*%s)*)\s*$" % (YEAR_PAT, YEAR_PAT))
+CITE_NARR = re.compile(r"(?P<auth>[A-Z][\w'’\-]+(?:\s+et\s+al\.|\s+(?:&|and)\s+[A-Z][\w'’\-]+)?)\s*\((?P<yr>%s)\)"
+                       % YEAR_PAT)
+NUM_CITE = re.compile(r"\[\s*(\d+(?:\s*[,;–\-]\s*\d+)*)\s*\]")
+XREF_RE = re.compile(r"\b(Tables?|Figures?|Figs?\.|Equations?|Eqs?\.)\s*\(?(\d+)\)?")
+
+
+class Linker:
+    """Metindeki atıfları kaynakçaya, 'Figure 2 / Table 1 / Equation 3' ifadelerini
+    ilgili şekil/tablo/denkleme tıklanabilir bağlantı yapar."""
+
+    def __init__(self, ref_paras, n_fig, n_tab, n_eq):
+        self.refs = []
+        self.n = {"fig": n_fig, "tab": n_tab, "eq": n_eq}
+        self.used = set()
+        self.missing = set()
+        numbered = 0
+        for k, p in enumerate(ref_paras):
+            txt = p.text().strip()
+            ym = re.search(r"\((%s)\)" % YEAR_PAT, txt)
+            head = txt[:ym.start()] if ym else txt
+            first = re.split(r"[,(]", re.sub(r"^\s*\[?\d+[\].]\s*", "", head), maxsplit=1)[0].strip(" .")
+            mnum = re.match(r"^\s*\[(\d+)\]|^\s*(\d+)[.)]\s", txt)
+            if mnum:
+                numbered += 1
+            self.refs.append({"key": "ref:%d" % (k + 1), "first": norm_key(first),
+                              "year": (ym.group(1).replace(" ", "") if ym else ""), "head": norm_key(head),
+                              "num": int(mnum.group(1) or mnum.group(2)) if mnum else (k + 1),
+                              "label": "%s (%s)" % (first, ym.group(1) if ym else "?")})
+        self.numeric = bool(self.refs) and numbered >= 0.6 * len(self.refs)
+
+    def find(self, auth, year):
+        parts = [x for x in re.split(r"\s*(?:&|\band\b)\s*", re.sub(r",?\s*et\s*al\.?", "", auth)) if x.strip()]
+        if not parts:
+            return None
+        words = parts[0].split()
+        keys = {norm_key(parts[0]), norm_key(words[-1]), norm_key(words[0])}
+        year = year.replace(" ", "")
+        cands = [r for r in self.refs if r["first"] in keys and r["year"] == year]
+        if not cands:
+            cands = [r for r in self.refs if r["first"] in keys and r["year"][:4] == year[:4]]
+        if len(cands) > 1 and len(parts) > 1:
+            second = norm_key(parts[1].split()[-1])
+            cands = [r for r in cands if second in r["head"]] or cands
+        return cands[0] if cands else None
+
+    def spans(self, text):
+        out = []
+        if self.refs:
+            if self.numeric:
+                bynum = {r["num"]: r for r in self.refs}
+                for mt in NUM_CITE.finditer(text):
+                    for nm in re.finditer(r"\d+", mt.group(1)):
+                        r = bynum.get(int(nm.group(0)))
+                        if r:
+                            a = mt.start(1) + nm.start()
+                            out.append((a, a + len(nm.group(0)), r["key"]))
+                            self.used.add(r["key"])
+            else:
+                for mt in CITE_PAREN.finditer(text):
+                    pos = mt.start(1)
+                    for part in mt.group(1).split(";"):
+                        lead = len(part) - len(part.lstrip())
+                        pm = CITE_PART.match(part.strip())
+                        if pm:
+                            a0 = pos + lead
+                            years = list(re.finditer(YEAR_PAT, pm.group("years")))
+                            for j, y in enumerate(years):
+                                r = self.find(pm.group("auth"), y.group(0))
+                                ys = a0 + pm.start("years")
+                                a, b = (a0, ys + y.end()) if j == 0 else (ys + y.start(), ys + y.end())
+                                if r:
+                                    out.append((a, b, r["key"]))
+                                    self.used.add(r["key"])
+                                else:
+                                    self.missing.add("%s, %s" % (pm.group("auth").strip(), y.group(0)))
+                        pos += len(part) + 1
+                for mt in CITE_NARR.finditer(text):
+                    if any(a <= mt.start() < b for a, b, _ in out):
+                        continue
+                    r = self.find(mt.group("auth"), mt.group("yr"))
+                    if r:
+                        out.append((mt.start(), mt.end(), r["key"]))
+                        self.used.add(r["key"])
+        for mt in XREF_RE.finditer(text):
+            kind = {"t": "tab", "f": "fig", "e": "eq"}[mt.group(1)[0].lower()]
+            n = int(mt.group(2))
+            if 1 <= n <= self.n[kind] and not any(a <= mt.start() < b for a, b, _ in out):
+                out.append((mt.start(), mt.end(), "%s:%d" % (kind, n)))
+        return sorted(out)
+
+    def apply(self, tokens):
+        text = "".join(t[1] for t in tokens if t[0] == "t")
+        spans = self.spans(text)
+        if not spans:
+            return tokens
+        cuts = sorted({a for a, _, _ in spans} | {b for _, b, _ in spans})
+        out, pos = [], 0
+        for t in tokens:
+            if t[0] != "t":
+                out.append(t)
+                continue
+            s, start = t[1], pos
+            pos += len(s)
+            pieces = [start] + [c for c in cuts if start < c < pos] + [pos]
+            for a, b in zip(pieces, pieces[1:]):
+                piece = s[a - start:b - start]
+                target = next((tg for x, y, tg in spans if x <= a and b <= y), None)
+                fmt = t[2]
+                if target and not fmt[3]:
+                    fmt = fmt[:3] + ("@@" + target,)
+                out.append(("t", piece, fmt))
+        return out
+
+
+LINKER = None
+
+
 def render_tokens(tokens, ref_mode=False, keep_newlines=False):
     """Paragraf token'larını LaTeX'e çevirir (kalın/italik/alt-üst simge/bağlantı/denklem)."""
+    if LINKER is not None and not ref_mode:
+        tokens = LINKER.apply(tokens)
     # aynı biçimdeki ardışık metinleri birleştir
     merged = []
     for t in tokens:
@@ -862,7 +989,9 @@ def render_tokens(tokens, ref_mode=False, keep_newlines=False):
             if not core:
                 out.append(" ")
                 continue
-            if link and not link.startswith("#"):
+            if link and link.startswith("@@"):
+                s = r"\hyperlink{%s}{%s}" % (link[2:], render_plain(core, italic, False, True))
+            elif link and not link.startswith("#"):
                 if core == link or URL_RE.fullmatch(core):
                     s = (r"DOI:\href{%s}{%s}" if ref_mode and "doi.org/" in link.lower() and not "".join(out).rstrip().lower().endswith("doi:")
                          else r"\href{%s}{%s}") % (url_escape(link), url_escape(DOI_DUP_RE.sub("https://doi.org/", core)))
@@ -1337,7 +1466,27 @@ class Writer:
         self.saved_hashes[h] = fname
         return fname
 
+    def prescan(self):
+        """Bağlantılar için şekil/tablo/denklem sayılarını önceden bulur."""
+        n_fig = n_tab = n_eq = 0
+        for b in self.art.body:
+            if isinstance(b, Table):
+                n_tab += 1
+            elif not b.is_empty():
+                kind = self.is_caption(b)
+                if kind == "figure":
+                    n_fig += 1
+                elif b.maths and kind is None:
+                    ok, num = strip_eq_number_text(b.text().strip())
+                    if ok and (num or any(m_[3] for m_ in b.maths)):
+                        n_eq += 1
+        return n_fig, n_tab, n_eq
+
     def emit_figure(self, rids, caption):
+        wide = "all" in self.opts.wide_figs or str(self.fig_count + 1) in self.opts.wide_figs
+        if wide:
+            self.close_cols()
+            return self._emit_wide_figure(rids, caption)
         self.open_cols()
         self.close_list()
         files = []
@@ -1350,9 +1499,25 @@ class Writer:
         self.fig_count += 1
         w = r"\linewidth" if len(files) == 1 else r"%.2f\linewidth" % (0.98 / len(files))
         self.emit(r"\noindent\begin{minipage}{\linewidth}")
-        self.emit(r"\centering")
+        self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
         for fn in files:
             self.emit(r"\includegraphics[width=%s, height=0.42\textheight, keepaspectratio]{%s}" % (w, fn))
+        if caption:
+            self.emit(r"\captionof{figure}{%s}" % caption)
+        self.emit(r"\end{minipage}")
+        self.emit(r"\par\vspace{6pt}")
+        self.emit()
+
+    def _emit_wide_figure(self, rids, caption):
+        files = [f for f in (self.save_image(r) for r in rids) if f]
+        if not files:
+            return
+        self.fig_count += 1
+        w = r"\textwidth" if len(files) == 1 else r"%.2f\textwidth" % (0.98 / len(files))
+        self.emit(r"\noindent\begin{minipage}{\textwidth}")
+        self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
+        for fn in files:
+            self.emit(r"\includegraphics[width=%s, height=0.45\textheight, keepaspectratio]{%s}" % (w, fn))
         if caption:
             self.emit(r"\captionof{figure}{%s}" % caption)
         self.emit(r"\end{minipage}")
@@ -1383,6 +1548,7 @@ class Writer:
         self.emit(r"\noindent")
         self.emit(r"\begin{minipage}{\textwidth}")
         self.emit(r"\centering")
+        self.emit(r"\hypertarget{tab:%d}{}" % self.tab_count)
         if caption:
             self.emit(r"\captionof{table}{%s}" % caption)
         self.emit(r"\vspace{-6pt}")
@@ -1424,6 +1590,7 @@ class Writer:
             tag = "" if number == str(self.eq_count) else r" \tag{%s}" % number
             if tag:
                 warn("Denklem numarası sırası farklı: beklenen %d, Word'de (%s)." % (self.eq_count, number))
+            self.emit(r"\hypertarget{eq:%d}{}" % self.eq_count)
             self.emit(r"\begin{equation}")
             self.emit("  " + latex + tag)
             self.emit(r"\end{equation}")
@@ -1623,8 +1790,8 @@ class Writer:
         self.emit(r"    \setlength{\parsep}{0pt}")
         self.emit(r"    \setlength{\itemsep}{6pt}")
         self.emit(r"}")
-        for p in self.art.references:
-            s = render_tokens(p.tokens, ref_mode=True)
+        for k, p in enumerate(self.art.references):
+            s = r"\hypertarget{ref:%d}{}" % (k + 1) + render_tokens(p.tokens, ref_mode=True)
             s = re.sub(r"^\s*\[?\d+[\].]\s+", "", s) if self.opts.strip_ref_numbers else s
             self.emit(r"\item " + s)
             self.emit()
@@ -1901,7 +2068,8 @@ def main(argv=None):
     today = datetime.date.today()
     ap = argparse.ArgumentParser(
         description="SJUOZ makale + kapak mektubu Word dosyalarını tek bir XeLaTeX dosyasına çevirir.")
-    ap.add_argument("docx", nargs="+", help="makale .docx (ve isteğe bağlı kapak mektubu .docx)")
+    ap.add_argument("docx", nargs="*", help="makale .docx (ve isteğe bağlı kapak mektubu .docx); "
+                    "verilmezse dosya seçme penceresi açılır")
     ap.add_argument("-o", "--outdir", default=None, help="çıktı klasörü (varsayılan: makale no)")
     ap.add_argument("--article-id", help="makale numarası (varsayılan: dosya adındaki sayı)")
     ap.add_argument("--volume", type=int, help="cilt (varsayılan: yıl-2012)")
@@ -1922,7 +2090,26 @@ def main(argv=None):
     ap.add_argument("--strip-ref-numbers", action="store_true", help="kaynakların başındaki [1] numaralarını sil")
     ap.add_argument("--assets", default=None, help="SJUOZ.png ve orcid.png'nin bulunduğu klasör")
     ap.add_argument("--tex-name", default=None, help="çıktı .tex dosya adı (varsayılan: <makale no>.tex)")
+    ap.add_argument("--wide-figs", default="", help="iki sütunu kaplayacak şekiller: '3,5' veya 'all'")
+    ap.add_argument("--no-links", action="store_true", help="atıf/şekil/tablo bağlantılarını ekleme")
+    ap.add_argument("--compile", action="store_true", help="xelatex ile PDF de üret (iki kez çalıştırır)")
+    ap.add_argument("--zip", action="store_true", help="Overleaf'e yüklemek için <makale no>_latex.zip üret")
     opts = ap.parse_args(argv)
+    opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
+        {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
+
+    if not opts.docx:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            opts.docx = list(filedialog.askopenfilenames(
+                title="Makale ve kapak mektubu (.docx) seçin", filetypes=[("Word", "*.docx")]))
+        except Exception:  # noqa
+            pass
+        if not opts.docx:
+            ap.error("en az bir .docx dosyası verin")
 
     for p in opts.docx:
         if not os.path.isfile(p):
@@ -1959,6 +2146,9 @@ def main(argv=None):
     art = parse_article(manuscript, cl)
 
     writer = Writer(art, manuscript, outdir, opts)
+    global LINKER
+    if not opts.no_links:
+        LINKER = Linker(art.references, *writer.prescan())
     writer.run()
     writer.references()
     writer.close_cols()
@@ -1968,14 +2158,27 @@ def main(argv=None):
     with open(tex_path, "w", encoding="utf-8") as f:
         f.write(tex)
 
-    if opts.assets:
-        for fn in ("SJUOZ.png", "orcid.png"):
-            src = os.path.join(opts.assets, fn)
-            if os.path.isfile(src):
-                shutil.copy(src, os.path.join(outdir, fn))
+    if LINKER is not None:
+        for m_ in sorted(LINKER.missing):
+            warn("Atıf kaynakçada bulunamadı: (%s)" % m_)
+        for r in LINKER.refs:
+            if r["key"] not in LINKER.used:
+                warn("Metinde atıf yapılmamış kaynak: %s" % r["label"])
+        print("Bilgi: %d / %d kaynağa metinden bağlantı verildi." % (len(LINKER.used), len(LINKER.refs)))
+
+    # logolar: --assets, makalenin klasörü, programın klasörü veya çalışma klasörü
+    bases = [opts.assets] if opts.assets else []
+    bases += [os.path.dirname(os.path.abspath(manuscript.path)),
+              os.path.dirname(os.path.abspath(__file__)), os.getcwd()]
     for fn in ("SJUOZ.png", "orcid.png"):
-        if not os.path.isfile(os.path.join(outdir, fn)):
-            warn("%s çıktı klasöründe yok; logo yerine yazı gösterilecek (--assets ile verin)." % fn)
+        dst = os.path.join(outdir, fn)
+        for base in bases:
+            src = os.path.join(base, fn)
+            if os.path.isfile(src) and os.path.abspath(src) != os.path.abspath(dst):
+                shutil.copy(src, dst)
+                break
+        if not os.path.isfile(dst) and fn == "SJUOZ.png":
+            warn("SJUOZ.png bulunamadı; logo yerine yazı gösterilecek (--assets ile verin).")
 
     print()
     print("Oluşturuldu: %s" % tex_path)
@@ -1984,8 +2187,33 @@ def main(argv=None):
                                                           " ORCID" if a.get("orcid") else "") for a in art.authors))
     print("  Affiliasyon : %d   Şekil: %d   Tablo: %d   Denklem: %d   Kaynak: %d"
           % (len(art.affiliations), writer.fig_count, writer.tab_count, writer.eq_count, len(art.references)))
-    print("Derlemek için: cd %s && xelatex %s && xelatex %s" % (outdir, os.path.basename(tex_path),
-                                                                 os.path.basename(tex_path)))
+    tex_name = os.path.basename(tex_path)
+    pdf_path = os.path.splitext(tex_path)[0] + ".pdf"
+    if opts.compile:
+        exe = shutil.which("xelatex")
+        if not exe:
+            warn("xelatex bulunamadı; derleme atlandı (MiKTeX / TeX Live kurun).")
+        else:
+            import subprocess
+            ok = True
+            for _ in range(2):
+                r = subprocess.run([exe, "-interaction=nonstopmode", tex_name], cwd=outdir,
+                                   capture_output=True, text=True, errors="replace")
+                ok = r.returncode == 0
+            if ok and os.path.isfile(pdf_path):
+                print("PDF üretildi: %s" % pdf_path)
+            else:
+                warn("xelatex hata verdi; ayrıntılar: %s" % (os.path.splitext(tex_path)[0] + ".log"))
+    else:
+        print("Derlemek için: cd %s && xelatex %s && xelatex %s" % (outdir, tex_name, tex_name))
+    if opts.zip:
+        zp = os.path.join(os.path.dirname(os.path.abspath(outdir)), "%s_latex.zip" % opts.article_id)
+        with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
+            for fn in sorted(os.listdir(outdir)):
+                if fn == tex_name or fn in ("SJUOZ.png", "orcid.png") or re.match(r"Figure\d+\.\w+$", fn) \
+                        or fn == os.path.basename(pdf_path):
+                    z.write(os.path.join(outdir, fn), fn)
+        print("Zip (Overleaf'e yüklenebilir): %s" % zp)
     if WARNINGS:
         print("\n%d uyarı var (yukarıya bakın)." % len(WARNINGS))
     return 0

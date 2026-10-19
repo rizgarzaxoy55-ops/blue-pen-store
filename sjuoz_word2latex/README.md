@@ -8,20 +8,39 @@ XeLaTeX dosyası üretir.
 
 ```bash
 pip install lxml          # zorunlu
-pip install Pillow        # isteğe bağlı (TIFF/GIF/BMP resimleri için)
+pip install Pillow        # önerilir (TIFF/GIF/BMP resimleri, kenar kırpma)
+pip install matplotlib    # önerilir (Word grafiklerini resme çevirmek için)
 ```
+
+EMF/WMF/SVG resimleri için bilgisayarda LibreOffice, Inkscape veya ImageMagick'ten biri
+kurulu olmalıdır. PDF'in otomatik derlenmesi için XeLaTeX (MiKTeX / TeX Live) gerekir.
 
 ## Kullanım
 
 ```bash
-python sjuoz_word2latex.py makale.docx kapak_mektubu.docx -o 1993 \
-    --article-id 1993 --volume 14 --issue 4 --year 2026 --month October \
-    --first-page 571 --received "12 May 2026" --accepted "1 Aug 2026" --published "15 Oct 2026" \
-    --assets klasor_logolar     # SJUOZ.png ve orcid.png buradan kopyalanır
-cd 1993
-xelatex 1993.tex
-xelatex 1993.tex          # ikinci çalıştırma son sayfa numarası için gerekli
+python sjuoz_word2latex.py makale.docx kapak_mektubu.docx \
+    --volume 14 --issue 4 --year 2026 --month October --first-page 571 \
+    --received "12 May 2026" --accepted "1 Aug 2026" --published "15 Oct 2026"
 ```
+
+Tek komut her şeyi yapar:
+
+```
+1993/
+├── 1993.tex          ← resimleri figures/… yoluyla çağırır
+├── 1993.pdf          ← xelatex kuruluysa otomatik derlenir (iki kez)
+├── SJUOZ.png, orcid.png
+└── figures/          ← Word'deki TÜM resimler ve grafikler
+    ├── Figure1.png
+    ├── Figure2.png   (Word grafiği → PNG)
+    └── …
+1993_latex.zip        ← yukarıdakilerin hepsi tek zip'te (Overleaf'e doğrudan yüklenebilir)
+```
+
+* Word'e eklenmiş resimler (PNG, JPG, TIFF, GIF, BMP, EMF, WMF, SVG…) çıkarılır ve gerekirse PNG'ye çevrilir.
+* Word grafikleri (sütun, çubuk, çizgi, alan, pasta, dağılım) verisinden yeniden çizilir.
+* Gruplanmış resimler, metin kutusundaki resimler ve tablo hücresindeki resimler de alınır.
+* Aynı resim iki kez eklenmişse bir kez kaydedilir.
 
 İki dosyanın sırası önemli değil; kapak mektubu içeriğine göre otomatik tanınır.
 Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
@@ -37,8 +56,8 @@ Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
 | `--keep-title-case` | Makale başlığını BÜYÜK harfe çevirme. |
 | `--main-font`, `--header-font` | Varsayılan: Times New Roman / Garamond. Bilgisayarda yoksa benzer yazı tipi otomatik seçilir. |
 | `--assets` | `SJUOZ.png` ve `orcid.png` klasörü (verilmezse makalenin, programın ve çalışma klasöründe aranır). `orcid.png` yoksa ORCID simgesi çizilir. |
-| `--compile` | `xelatex` ile iki kez derleyip PDF üretir. |
-| `--zip` | Overleaf'e yüklemek için `<makale no>_latex.zip` üretir. |
+| `--no-compile` | PDF derleme (varsayılan: xelatex varsa derlenir). |
+| `--no-zip` | Zip üretme (varsayılan: zip üretilir). |
 | `--wide-figs` | İki sütunu kaplayacak şekiller: `3,5` veya `all`. |
 | `--no-links` | Atıf/şekil/tablo/denklem bağlantılarını ekleme. |
 
@@ -91,7 +110,7 @@ yeni koddaki durumu:
 | 21 kaynaktan 6'sına atıf bağlantısı kurulamıyor ("Mohammed E. Safi & Abbas", "Wisam H Ali et al.") | 21 / 21 bağlantı |
 | `\enlargethispage` kısa özetlerde ilk sayfa düzenini bozabiliyor | İlk sayfa metin alanı güvenli şekilde kısaltılıyor |
 
-Eski koddaki iyi özellikler (atıf bağlantıları, `--compile`, zip, dosya seçme penceresi,
+Eski koddaki iyi özellikler (atıf bağlantıları, PDF derleme, zip, dosya seçme penceresi,
 geniş şekiller) yeni koda da eklendi.
 
 ## Önceki `.tex` dosyasına göre düzeltilen hatalar

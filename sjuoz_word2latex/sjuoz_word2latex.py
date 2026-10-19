@@ -51,6 +51,7 @@ NS = {
     "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
     "pr": "http://schemas.openxmlformats.org/package/2006/relationships",
 }
+C_NS = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 W = "{%s}" % NS["w"]
 M = "{%s}" % NS["m"]
 R = "{%s}" % NS["r"]
@@ -614,6 +615,8 @@ class Docx:
         return res
 
     def media(self, rid):
+        if rid.startswith("chart:"):
+            rid = rid[6:]
         target = self.rels.get(rid, (None,))[0]
         if not target:
             return None, None
@@ -774,8 +777,9 @@ class Para:
         rids = el.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS)
         for rid in rids:
             self.tokens.append(("img", rid))
-        if el.xpath(".//c:chart", namespaces={"c": "http://schemas.openxmlformats.org/drawingml/2006/chart"}):
-            warn("Word grafiği (chart) bulundu; resim olarak kaydedip Word'e tekrar ekleyin.")
+        # Word grafikleri (chart): resim olarak çizilip eklenir
+        for rid in el.xpath(".//c:chart/@r:id", namespaces={"c": C_NS, "r": NS["r"]}):
+            self.tokens.append(("img", "chart:" + rid))
 
     # ---- yardımcı özellikler
     def text(self):
@@ -1381,6 +1385,205 @@ def parse_article(doc, cover=None):
     return art
 
 
+
+# --------------------------------------------------------------------------
+# Resim dönüştürme ve Word grafikleri (chart)
+# --------------------------------------------------------------------------
+def convert_external(src, dst_png):
+    """EMF/WMF/SVG/EPS gibi biçimleri PNG'ye çevirir (LibreOffice, Inkscape veya ImageMagick)."""
+    import subprocess
+    import tempfile
+    outdir = os.path.dirname(dst_png)
+    tools = []
+    for exe in ("soffice", "libreoffice"):
+        if shutil.which(exe):
+            tools.append(("lo", [shutil.which(exe), "--headless", "--convert-to", "png", "--outdir"]))
+            break
+    if shutil.which("inkscape"):
+        tools.append(("ink", [shutil.which("inkscape"), src, "-o", dst_png]))
+    for exe in ("magick", "convert"):
+        if shutil.which(exe):
+            tools.append(("im", [shutil.which(exe), "-density", "300", src, dst_png]))
+            break
+    for kind, cmd in tools:
+        try:
+            if kind == "lo":
+                tmp = tempfile.mkdtemp()
+                subprocess.run(cmd + [tmp, src], check=True, capture_output=True, timeout=180)
+                out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + ".png")
+                if os.path.isfile(out):
+                    shutil.move(out, dst_png)
+                shutil.rmtree(tmp, ignore_errors=True)
+            else:
+                subprocess.run(cmd, check=True, capture_output=True, timeout=180)
+            if os.path.isfile(dst_png) and os.path.getsize(dst_png) > 0:
+                trim_whitespace(dst_png)
+                return True
+        except Exception:  # noqa
+            continue
+    return False
+
+
+def trim_whitespace(png):
+    """Dönüştürülen resmin etrafındaki boş beyaz alanı kırpar (Pillow varsa)."""
+    try:
+        from PIL import Image, ImageChops
+        im = Image.open(png)
+        rgb = im.convert("RGB")
+        bbox = ImageChops.difference(rgb, Image.new("RGB", rgb.size, (255, 255, 255))).getbbox()
+        if bbox and (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) < 0.95 * rgb.size[0] * rgb.size[1]:
+            pad = 10
+            bbox = (max(0, bbox[0] - pad), max(0, bbox[1] - pad),
+                    min(rgb.size[0], bbox[2] + pad), min(rgb.size[1], bbox[3] + pad))
+            im.crop(bbox).save(png)
+    except Exception:  # noqa
+        pass
+
+
+def _chart_text(el):
+    if el is None:
+        return ""
+    return "".join(el.itertext()).strip() if el.find(".//{%s}t" % NS["a"]) is None else \
+        "".join(t.text or "" for t in el.iter("{%s}t" % NS["a"])).strip()
+
+
+def _chart_cache(el):
+    """c:cat / c:val / c:tx içindeki önbellek değerlerini (sırayla) döndürür."""
+    if el is None:
+        return []
+    C = "{%s}" % C_NS
+    pts = {}
+    for pt in el.iter(C + "pt"):
+        v = pt.find(C + "v")
+        pts[int(pt.get("idx", len(pts)))] = v.text if v is not None else ""
+    if pts:
+        return [pts[k] for k in sorted(pts)]
+    v = el.find(".//" + C + "v")
+    return [v.text] if v is not None else []
+
+
+def _num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+def render_chart(xml_bytes, dst_png):
+    """Word grafiğini (DrawingML chart) matplotlib ile PNG olarak çizer."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        warn("Word grafiği çizilemedi: matplotlib gerekli (pip install matplotlib).")
+        return False
+    C = "{%s}" % C_NS
+    root = etree.fromstring(xml_bytes)
+    chart = root.find(C + "chart")
+    plot = chart.find(C + "plotArea") if chart is not None else None
+    if plot is None:
+        return False
+    plt.rcParams.update({"font.family": "serif", "font.size": 9})
+    fig, ax = plt.subplots(figsize=(5, 3.2), dpi=200)
+    drawn = False
+    for ctype in plot:
+        name = local(ctype.tag)
+        if not name.endswith("Chart"):
+            continue
+        sers = ctype.findall(C + "ser")
+        if not sers:
+            continue
+        if name in ("pieChart", "pie3DChart", "doughnutChart"):
+            s0 = sers[0]
+            cats = _chart_cache(s0.find(C + "cat"))
+            vals = [_num(v) for v in _chart_cache(s0.find(C + "val"))]
+            ax.pie(vals, labels=cats or None, autopct="%1.1f%%", startangle=90,
+                   wedgeprops={"width": 0.45} if name == "doughnutChart" else None)
+            ax.axis("equal")
+            drawn = True
+            continue
+        bar_dir = wval_c(ctype.find(C + "barDir"), "col")
+        grouping = wval_c(ctype.find(C + "grouping"), "clustered")
+        n = len(sers)
+        bottoms = None
+        for k, ser in enumerate(sers):
+            label = (_chart_cache(ser.find(C + "tx")) or ["Series %d" % (k + 1)])[0]
+            if name in ("scatterChart", "bubbleChart"):
+                xs = [_num(v) for v in _chart_cache(ser.find(C + "xVal"))]
+                ys = [_num(v) for v in _chart_cache(ser.find(C + "yVal"))]
+                style = wval_c(ctype.find(C + "scatterStyle"), "marker")
+                line = "-" if "line" in style.lower() or "smooth" in style.lower() else ""
+                ax.plot(xs, ys, line + "o", markersize=3, label=label)
+                drawn = True
+                continue
+            cats = _chart_cache(ser.find(C + "cat"))
+            vals = [_num(v) for v in _chart_cache(ser.find(C + "val"))]
+            if not cats:
+                cats = [str(i + 1) for i in range(len(vals))]
+            xs = list(range(len(vals)))
+            if name in ("barChart", "bar3DChart"):
+                stacked = grouping in ("stacked", "percentStacked")
+                width = 0.8 if stacked else 0.8 / n
+                pos = xs if stacked else [x - 0.4 + width * (k + 0.5) for x in xs]
+                if bottoms is None or not stacked:
+                    bottoms_k = [0] * len(vals)
+                else:
+                    bottoms_k = bottoms
+                if bar_dir == "bar":
+                    ax.barh(pos, vals, height=width, left=bottoms_k, label=label)
+                    ax.set_yticks(xs)
+                    ax.set_yticklabels(cats)
+                else:
+                    ax.bar(pos, vals, width=width, bottom=bottoms_k, label=label)
+                    ax.set_xticks(xs)
+                    ax.set_xticklabels(cats, rotation=0 if len(cats) < 8 else 45, ha="center" if len(cats) < 8 else "right")
+                if stacked:
+                    bottoms = [a + b for a, b in zip(bottoms_k, vals)]
+            elif name in ("areaChart", "area3DChart"):
+                ax.fill_between(xs, vals, alpha=0.5, label=label)
+                ax.set_xticks(xs)
+                ax.set_xticklabels(cats)
+            else:  # lineChart, radarChart vb.
+                marker = "o" if ser.find(C + "marker") is None or \
+                    wval_c(ser.find("%smarker/%ssymbol" % (C, C)), "auto") != "none" else ""
+                ax.plot(xs, vals, "-" + marker, markersize=3, label=label)
+                ax.set_xticks(xs)
+                ax.set_xticklabels(cats, rotation=0 if len(cats) < 8 else 45, ha="center" if len(cats) < 8 else "right")
+            drawn = True
+        if (n > 1 or chart.find(C + "legend") is not None) and name not in ("pieChart", "pie3DChart"):
+            ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.18),
+                      ncol=min(n, 4))
+    if not drawn:
+        plt.close(fig)
+        return False
+    title = chart.find(C + "title")
+    auto_del = wval_c(chart.find(C + "autoTitleDeleted"), "0") in ("1", "true")
+    if title is not None and not auto_del:
+        t = _chart_text(title.find(C + "tx"))
+        if t:
+            ax.set_title(t, fontsize=10)
+    axes = {wval_c(a.find(C + "axPos"), ""): _chart_text(a.find("%stitle/%stx" % (C, C)))
+            for a in list(plot.findall(C + "catAx")) + list(plot.findall(C + "valAx"))}
+    if axes.get("b"):
+        ax.set_xlabel(axes["b"])
+    if axes.get("l"):
+        ax.set_ylabel(axes["l"])
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(dst_png)
+    plt.close(fig)
+    return True
+
+
+def wval_c(el, default=None):
+    if el is None:
+        return default
+    v = el.get("val")
+    return default if v is None else v
+
+
 # --------------------------------------------------------------------------
 # LaTeX üretimi
 # --------------------------------------------------------------------------
@@ -1433,7 +1636,8 @@ class Writer:
             self.contrib_items = []
 
     # ---- resimler
-    def save_image(self, rid):
+    def save_image(self, rid, name=None):
+        """Resmi figures/ klasörüne kaydeder; LaTeX'te kullanılacak yolu döndürür."""
         path, data = self.doc.media(rid)
         if data is None:
             warn("Resim bulunamadı: %s" % rid)
@@ -1441,30 +1645,59 @@ class Writer:
         h = hashlib.md5(data).hexdigest()
         if h in self.saved_hashes:
             return self.saved_hashes[h]
+        figdir = os.path.join(self.outdir, FIGDIR)
+        os.makedirs(figdir, exist_ok=True)
         ext = os.path.splitext(path)[1].lower()
-        name = "Figure%d" % (self.fig_count + 1)
-        if ext in (".png", ".jpg", ".jpeg", ".pdf"):
+        name = name or "Figure%d" % (self.fig_count + 1)
+        if any(v == FIGDIR + "/" + name + e for v in self.saved_hashes.values()
+               for e in (".png", ".jpg", ".jpeg", ".pdf")):
+            name += "_%d" % (len(self.saved_hashes) + 1)  # aynı şekilde birden fazla resim
+        fname = None
+        if rid.startswith("chart:"):
+            if render_chart(data, os.path.join(figdir, name + ".png")):
+                fname = name + ".png"
+                print("Bilgi: Word grafiği resme çevrildi: %s" % fname)
+            else:
+                warn("Word grafiği çizilemedi (%s)." % path)
+                return None
+        elif ext in (".png", ".jpg", ".jpeg", ".pdf"):
             fname = name + ext
-            with open(os.path.join(self.outdir, fname), "wb") as f:
+            with open(os.path.join(figdir, fname), "wb") as f:
                 f.write(data)
-        elif ext in (".tif", ".tiff", ".gif", ".bmp", ".webp"):
+        elif ext in (".tif", ".tiff", ".gif", ".bmp", ".webp", ".jfif"):
             fname = name + ".png"
             try:
                 import io
                 from PIL import Image
-                Image.open(io.BytesIO(data)).save(os.path.join(self.outdir, fname))
+                im = Image.open(io.BytesIO(data))
+                if im.mode not in ("RGB", "RGBA", "L"):
+                    im = im.convert("RGBA")
+                im.save(os.path.join(figdir, fname))
             except Exception as e:  # noqa
-                warn("%s resmi PNG'ye çevrilemedi (Pillow kurun: pip install Pillow): %s" % (path, e))
-                fname = name + ext
-                with open(os.path.join(self.outdir, fname), "wb") as f:
+                fname = None
+                src = os.path.join(figdir, name + ext)
+                with open(src, "wb") as f:
                     f.write(data)
-        else:
-            fname = name + ext
-            with open(os.path.join(self.outdir, fname), "wb") as f:
+                if convert_external(src, os.path.join(figdir, name + ".png")):
+                    os.remove(src)
+                    fname = name + ".png"
+                else:
+                    warn("%s resmi PNG'ye çevrilemedi (pip install Pillow): %s" % (path, e))
+                    fname = name + ext
+        else:  # .emf, .wmf, .svg, .eps ...
+            src = os.path.join(figdir, name + ext)
+            with open(src, "wb") as f:
                 f.write(data)
-            warn("%s biçimi (%s) LaTeX'te doğrudan kullanılamaz; PNG/PDF'ye çevirin." % (fname, ext))
-        self.saved_hashes[h] = fname
-        return fname
+            if convert_external(src, os.path.join(figdir, name + ".png")):
+                os.remove(src)
+                fname = name + ".png"
+                print("Bilgi: %s resmi PNG'ye çevrildi: %s" % (ext, fname))
+            else:
+                fname = name + ext
+                warn("%s (%s) PNG'ye çevrilemedi; LibreOffice, Inkscape veya ImageMagick kurun." % (fname, ext))
+        rel = FIGDIR + "/" + fname
+        self.saved_hashes[h] = rel
+        return rel
 
     def prescan(self):
         """Bağlantılar için şekil/tablo/denklem sayılarını önceden bulur."""
@@ -1561,8 +1794,17 @@ class Writer:
                 if vmerge == "continue":
                     content = ""
                 else:
-                    content = r" \newline ".join(
-                        render_tokens(p.tokens) for p in paras if isinstance(p, Para) and not p.is_empty())
+                    parts = []
+                    for p in paras:
+                        if not isinstance(p, Para) or p.is_empty():
+                            continue
+                        for rid in p.images:  # hücre içindeki resimler
+                            fn = self.save_image(rid, "Table%d_img%d" % (self.tab_count, len(self.saved_hashes) + 1))
+                            if fn:
+                                parts.append(r"\includegraphics[width=\linewidth, keepaspectratio]{%s}" % fn)
+                        if p.text().strip() or p.maths:
+                            parts.append(render_tokens(p.tokens))
+                    content = r" \newline ".join(parts)
                 if ri == 0 and content and not content.startswith(r"\textbf"):
                     content = r"\textbf{%s}" % content
                 if span > 1:
@@ -1969,6 +2211,8 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \end{document}
 """
 
+FIGDIR = "figures"  # resimlerin konduğu alt klasör
+
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December"]
 
@@ -2092,8 +2336,12 @@ def main(argv=None):
     ap.add_argument("--tex-name", default=None, help="çıktı .tex dosya adı (varsayılan: <makale no>.tex)")
     ap.add_argument("--wide-figs", default="", help="iki sütunu kaplayacak şekiller: '3,5' veya 'all'")
     ap.add_argument("--no-links", action="store_true", help="atıf/şekil/tablo bağlantılarını ekleme")
-    ap.add_argument("--compile", action="store_true", help="xelatex ile PDF de üret (iki kez çalıştırır)")
-    ap.add_argument("--zip", action="store_true", help="Overleaf'e yüklemek için <makale no>_latex.zip üret")
+    ap.add_argument("--no-compile", dest="compile", action="store_false",
+                    help="PDF derleme (varsayılan: xelatex varsa iki kez derlenir)")
+    ap.add_argument("--no-zip", dest="zip", action="store_false",
+                    help="zip üretme (varsayılan: .tex + figures/ + logolar + PDF tek zip'e konur)")
+    ap.add_argument("--compile", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--zip", action="store_true", help=argparse.SUPPRESS)
     opts = ap.parse_args(argv)
     opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
         {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
@@ -2192,7 +2440,7 @@ def main(argv=None):
     if opts.compile:
         exe = shutil.which("xelatex")
         if not exe:
-            warn("xelatex bulunamadı; derleme atlandı (MiKTeX / TeX Live kurun).")
+            print("Bilgi: xelatex bulunamadı; PDF derlenmedi (MiKTeX / TeX Live kurun ya da zip'i Overleaf'e yükleyin).")
         else:
             import subprocess
             ok = True
@@ -2208,12 +2456,18 @@ def main(argv=None):
         print("Derlemek için: cd %s && xelatex %s && xelatex %s" % (outdir, tex_name, tex_name))
     if opts.zip:
         zp = os.path.join(os.path.dirname(os.path.abspath(outdir)), "%s_latex.zip" % opts.article_id)
+        n_img = 0
         with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
             for fn in sorted(os.listdir(outdir)):
-                if fn == tex_name or fn in ("SJUOZ.png", "orcid.png") or re.match(r"Figure\d+\.\w+$", fn) \
-                        or fn == os.path.basename(pdf_path):
+                if fn == tex_name or fn in ("SJUOZ.png", "orcid.png") or fn == os.path.basename(pdf_path):
                     z.write(os.path.join(outdir, fn), fn)
-        print("Zip (Overleaf'e yüklenebilir): %s" % zp)
+            figdir = os.path.join(outdir, FIGDIR)
+            if os.path.isdir(figdir):
+                for fn in sorted(os.listdir(figdir)):
+                    z.write(os.path.join(figdir, fn), FIGDIR + "/" + fn)
+                    n_img += 1
+        print("Zip (Overleaf'e yüklenebilir): %s  [%s + %d resim/grafik + logolar%s]"
+              % (zp, tex_name, n_img, " + PDF" if os.path.isfile(pdf_path) else ""))
     if WARNINGS:
         print("\n%d uyarı var (yukarıya bakın)." % len(WARNINGS))
     return 0

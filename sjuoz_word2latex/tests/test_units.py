@@ -240,3 +240,31 @@ def test_xelatex_command_enables_miktex_installer(tmp_path):
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
     if os.name != "nt":
         assert "--enable-installer" in xelatex_command(str(fake), "a.tex")
+
+
+def test_glued_heading_numbers():
+    assert conv.clean_heading("1.INTRODUCTION") == "INTRODUCTION"
+    assert conv.clean_heading("6-REFERENCES") == "REFERENCES"
+    assert conv.manual_number_level("2.MATERIAL AND METHOD") == 1
+    assert conv.clean_heading("3D Images") == "3D Images" and conv.manual_number_level("3D Images") is None
+
+
+def test_caption_forms():
+    from sjuoz.parse import CAPTION_RE, SUBFIG_RE
+    assert CAPTION_RE.match("Fig (1): Workflow").group(2, 3) == ("1", "Workflow")
+    assert CAPTION_RE.match("Table (2): Values").group(2) == "2"
+    assert SUBFIG_RE.match("Figure 1-A: Gel").group(1, 2) == ("1", "A")
+    assert SUBFIG_RE.match("Figure 1- Overview of the method") is None
+
+
+def test_superscript_minus_is_typeset():
+    assert conv.tex_escape("mg g⁻¹") == "mg g$^{-}$¹"
+
+
+def test_inline_math_does_not_look_lost():
+    class P:
+        tokens = [("t", "Where ", None), ("m", "y", False, None), ("t", " is the final prediction from the model.", None)]
+    segs = report.text_segments(P())
+    out = report._letters("Where y is the final prediction from the model.")
+    assert report.found_ratio("Where  is the final prediction from the model.", out) < 0.7
+    assert report.found_ratio_segments(segs, out) == 1.0

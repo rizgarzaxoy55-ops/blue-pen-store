@@ -80,6 +80,9 @@ _TEX_SPECIAL = {
     "~": r"\textasciitilde{}",
     "^": r"\textasciicircum{}",
     "\u00a0": "~",
+    # üst/alt simge işaretleri çoğu yazı tipinde yok ("mg g⁻¹"): matematik kipinde yazılır
+    "\u207a": r"\textsuperscript{+}", "\u207b": r"$^{-}$", "\u207c": r"$^{=}$",
+    "\u208a": r"\textsubscript{+}", "\u208b": r"$_{-}$",
     "\u200b": "",
     "\u00ad": "",
     "\ufeff": "",
@@ -99,6 +102,11 @@ URL_RE = re.compile(r"(?:https?://|www\.)[^\s<>\"]+", re.I)
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 DOI_DUP_RE = re.compile(r"https?://(?:dx\.)?doi\.org/(?:https?://(?:dx\.)?doi\.org/)+", re.I)
 ETAL_RE = re.compile(r"\bet\s+al\.")
+
+
+def href(link, shown):
+    """Görünen metni de adres olan bağlantı: "_" gibi karakterler metin kipinde hata vermesin."""
+    return r"\href{%s}{{\urlstyle{same}\nolinkurl{%s}}}" % (url_escape(link), url_escape(shown))
 
 
 def clean_url(u):
@@ -166,12 +174,12 @@ def render_plain(text, italic=False, ref_mode=False, link=False):
             out.append(r"\href{mailto:%s}{%s}" % (tok, tex_escape(tok)))
         else:
             u, trail = clean_url(tok)
-            href = u if u.lower().startswith("http") else "https://" + u
+            link = u if u.lower().startswith("http") else "https://" + u
             if ref_mode and "doi.org/" in u.lower():
                 # "DOI:" etiketi metinde zaten yoksa ekle
                 prev = "".join(out).rstrip()
                 label = "" if prev.lower().endswith("doi:") else "DOI:"
-                out.append(r"%s\href{%s}{%s}" % (label, url_escape(href), url_escape(u)))
+                out.append(label + href(link, u))
             else:
                 out.append(r"\url{%s}" % url_escape(u))
             out.append(tex_escape(trail))

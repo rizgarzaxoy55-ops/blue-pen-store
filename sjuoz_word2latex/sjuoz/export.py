@@ -356,7 +356,7 @@ def jats_xml(meta, art, writer):
         container = sec if sec is not None else body
         cap = CAPTION_RE.match(txt)
         if cap and (p.jc == "center" or "caption" in p.style.lower() or p.images or
-                    re.match(r"^\s*(figure|fig\.?|table)\s*\d+\s*[:.\-–—]", txt, re.I)):
+                    re.match(r"^\s*(figure|fig\.?|table)\s*\(?\s*\d+\s*\)?\s*[:.\-–—]", txt, re.I)):
             if cap.group(1).lower().startswith("fig") and figures:
                 f = figures.pop(0)
                 fig = _jel(container, "fig", id="fig%d" % f["number"])

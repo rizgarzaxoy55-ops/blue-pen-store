@@ -44,7 +44,7 @@ def test_jats_matches_article(case, tmp_path):
     assert len(root.findall(".//disp-formula")) == stats["equations"]
     assert len(root.findall(".//ref-list/ref")) == stats["references"]
     hrefs = [g.get("{http://www.w3.org/1999/xlink}href") for g in root.iter("graphic")]
-    assert all(re.match(r"figures/Figure\d+[a-z]?\.\w+$", h) for h in hrefs), hrefs
+    assert all(re.match(r"figures/Figure\d+(?:-[A-Z])?[a-z]?\.\w+$", h) for h in hrefs), hrefs
     hist = root.find(".//history")
     assert hist is not None and hist.find("date[@date-type='accepted']/month").text == "08"
 

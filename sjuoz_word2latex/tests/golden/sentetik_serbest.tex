@@ -1,0 +1,221 @@
+%!TEX TS-program = xelatex
+% Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
+\documentclass[9pt]{extarticle}
+\usepackage{multicol}
+\usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{qrcode}
+\usepackage{xurl}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+
+\titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+\newcommand{\titlesize}{\fontsize{12}{10}}
+\renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
+\renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
+\renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
+\definecolor{sjuozblue}{HTML}{C1D1EB}
+\definecolor{colorabs}{HTML}{E2EAF4}
+
+% Yazı tipleri: Times New Roman / Garamond yoksa benzerleri kullanılır
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{%
+  \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}{%
+    \IfFontExistsTF{Liberation Serif}{\setmainfont{Liberation Serif}}{}}}
+\IfFontExistsTF{Garamond}{\newfontfamily{\garamond}{Garamond}}{%
+  \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
+
+\newcommand{\sjuozdoi}{https://doi.org/10.25271/sjuoz.2026.14.4.2010}
+% İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
+\newcommand{\firstfooterbottom}{0.4in}
+\newcommand{\firstpagereserve}{1.4in}
+% Sadece ilk sayfada metin alanını kısalt; ilk sayfa basıldıktan sonra eski haline döndür
+\makeatletter
+\newlength{\sjuozfulltextheight}
+\AtBeginDocument{%
+  \setlength{\sjuozfulltextheight}{\textheight}%
+  \global\advance\textheight by -\firstpagereserve
+  \global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight
+  \AddToHookNext{shipout/after}{\global\textheight\sjuozfulltextheight}}
+\makeatother
+
+% Başlık ve altlık (header/footer)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\large \textit{Muhammed \& Salah}}
+\rhead{\small{\garamond{\textbf{SJUOZ|VOL14|OCT 2026|P1-\pageref*{LastPage}}}}}
+\lfoot{\raisebox{8pt}{\textit{DOI:}\href{\sjuozdoi}{\textit{\small{\sjuozdoi}}}}}
+\cfoot{\raisebox{8pt}{\thepage}}
+
+\fancypagestyle{firstpage}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \rhead{\IfFileExists{SJUOZ.png}{\includegraphics[width=1.04in]{SJUOZ.png}}{\textbf{SJUOZ}}}
+  \lhead{\colorbox{sjuozblue}{%
+      \begin{minipage}[b]{0.83\textwidth}
+        \vspace{0.15cm}
+        \hspace{-3pt}\ \normalsize \noindent \garamond{Science Journal of University of Zakho}\\
+        \normalsize \textit{\garamond{DOI: \sjuozdoi}}
+        \vspace{0.2cm}
+      \end{minipage}}}
+}
+
+% İlk sayfanın altındaki bilgi kutusu (sayfaya mutlak konumla yerleştirilir)
+\newcommand{\sjuozfirstfooter}{%
+  \begin{minipage}[b]{\textwidth}
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \begin{minipage}[t]{0.2\textwidth}\hspace{1pt} \small Access this article online \\
+        \vspace{0.1cm}
+        {\hypersetup{urlcolor=black}\qrcode[height=2.6162cm]{https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/2010}}
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}
+        \small DOI:\href{\sjuozdoi}{\sjuozdoi} \\ \\[0.5cm]
+        Printed ISSN 2663-628X; \\
+        Electronic ISSN 2663-6298
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}\small \textbf{Science Journal of University of Zakho} \\
+        \textbf{Vol. 14, No. 04, pp. 1-\pageref*{LastPage}, October-2026} \\[0.5cm]
+        This is an open access article under a CC BY-NC-SA 4.0 license \\
+        (\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{https://creativecommons.org/licenses/by-nc-sa/4.0/})
+      \end{minipage} \\[0.15cm]
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \centering \normalsize \thepage
+  \end{minipage}}
+
+% ORCID simgesi: orcid.png varsa o, yoksa çizilmiş yeşil "iD" simgesi
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{\IfFileExists{orcid.png}{\includegraphics[width=9pt]{orcid.png}}{%
+  \tikz[baseline=-0.7ex]{\fill[orcidgreen] (0,0) circle (4.5pt);
+  \node[text=white, font=\fontsize{4.5pt}{4.5pt}\selectfont\bfseries, inner sep=0pt] at (0,0) {iD};}}}
+\newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
+
+\begin{document}
+\setcounter{page}{1}
+\thispagestyle{firstpage}
+\AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
+
+\noindent \large \textbf{Original Article} \\[-5pt]
+\begin{center} \titlesize \textbf{GENOTYPES OF A GENE IN A SMALL STUDY GROUP} \end{center}
+\begin{center} \large \textbf{Rezan Muhammed \textsuperscript{*} and Hero Salah}
+\end{center}
+\noindent
+\large Department of Biology, College of Education, Salahaddin University-Erbil, Erbil, Iraq.\\
+
+\begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:rezan.muhammed@su.edu.krd}{rezan.muhammed@su.edu.krd}
+\end{center}
+\rule{\textwidth}{1.5pt}
+\begin{minipage}[t]{0.175\textwidth}
+  \hspace{0cm} \vspace{0cm}
+\end{minipage} \begin{minipage}[t]{0.8\textwidth}
+\large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
+\rule{\textwidth}{1.5pt} \\
+\begin{minipage}[t]{0.175\textwidth}
+  \vspace{1cm} Received \\ XX \\[0.5cm] Accepted \\ XX \\[0.5cm] Published \\ XX \\[0.25cm]
+\end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
+  \large{Authors format manuscripts freely: numbers glued to headings, parenthesised figure numbers, lettered figure parts and table captions typed inside the first row of the table.
+  \\[2pt]
+  \normalsize \textbf{Keywords:} formatting; captions.
+  }
+\end{minipage}}
+\\[-10pt]
+
+\normalsize
+\noindent \rule{\textwidth}{0.75pt}
+\begin{multicols}{2}
+\section{INTRODUCTION}
+Earlier work by \hyperlink{ref:2}{Van Hai \textit{et al.}~(2022)} and (\hyperlink{ref:1}{Smith, 2019}) measured the content in mg g$^{-}$¹ dry weight. The bands are shown in \hyperlink{fig:2-A}{figure 2-A} and \hyperlink{fig:2-B}{figure 2-B}, the workflow in \hyperlink{fig:1}{Fig (1)} and the values in \hyperlink{tab:1}{Table 1}.
+
+\noindent\begin{minipage}{\linewidth}
+\centering\hypertarget{fig:1}{}
+\includegraphics[width=\linewidth, height=0.42\textheight, keepaspectratio]{figures/Figure1.IMG}
+\captionof{figure}{Workflow of the study.}
+\end{minipage}
+\par\vspace{6pt}
+
+\section{MATERIAL AND METHOD}
+The model output is computed as follows and compared with the observed values in every run.
+
+\begin{equation*}
+  y=\mathit{ax}+b
+\end{equation*}
+Where $y$ is the final prediction from the model, and $b$ denotes the constant bias of the fitted line.
+
+\noindent\begin{minipage}{\linewidth}
+\setcounter{figure}{1}\renewcommand{\thefigure}{2-A}\renewcommand{\theHfigure}{2-A}
+\centering\hypertarget{fig:2}{}\hypertarget{fig:2-A}{}
+\includegraphics[width=\linewidth, height=0.42\textheight, keepaspectratio]{figures/Figure2-A.IMG}
+\captionof{figure}{Gel electrophoresis of the first locus.}
+\end{minipage}
+\renewcommand{\thefigure}{\arabic{figure}}\renewcommand{\theHfigure}{\arabic{figure}}
+\par\vspace{6pt}
+
+\noindent\begin{minipage}{\linewidth}
+\setcounter{figure}{1}\renewcommand{\thefigure}{2-B}\renewcommand{\theHfigure}{2-B}
+\centering\hypertarget{fig:2-B}{}
+\includegraphics[width=\linewidth, height=0.42\textheight, keepaspectratio]{figures/Figure2-B.IMG}
+\captionof{figure}{Genotyping outcomes of the second locus.}
+\end{minipage}
+\renewcommand{\thefigure}{\arabic{figure}}\renewcommand{\theHfigure}{\arabic{figure}}
+\par\vspace{6pt}
+
+\end{multicols}
+\noindent
+\begin{minipage}{\linewidth}
+\centering
+\hypertarget{tab:1}{}
+\captionof{table}{Values measured in both groups.}
+\vspace{-6pt}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\toprule
+\textbf{Group} & \textbf{Mean} & \textbf{SD} \\ \midrule
+Patients & 9.43 & 0.15 \\ \addlinespace[0.3em]
+Controls & 2.10 & 0.12 \\
+\bottomrule
+\end{tabularx}
+\end{minipage}
+\par\vspace{6pt}
+
+\begin{multicols}{2}
+\section{RESULTS}
+The values differ between the groups.
+
+\section*{REFERENCES}
+\begin{list}{}{
+    \setlength{\leftmargin}{1.5em}
+    \setlength{\itemindent}{-1.5em}
+    \setlength{\parsep}{0pt}
+    \setlength{\itemsep}{6pt}
+}
+\item \hypertarget{ref:1}{}Smith, J. (2019). A paper with an underscore DOI. \textit{Saudi Journal of Medicine \& Medical Sciences}, 8(3), 188-195. DOI:\href{https://doi.org/10.4103/sjmms.sjmms_357_19}{{\urlstyle{same}\nolinkurl{https://doi.org/10.4103/sjmms.sjmms_357_19}}}
+
+\item \hypertarget{ref:2}{}Van Hai, V., Nhung, H. L. T. K., \& Silhavy, P. (2022). Toward improving effort estimation. \textit{IEEE Access}, 10, 1–10.
+
+\end{list}
+\end{multicols}
+
+\end{document}

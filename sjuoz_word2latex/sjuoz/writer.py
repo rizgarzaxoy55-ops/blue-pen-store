@@ -8,7 +8,7 @@ import re
 from .common import (BIDI, is_rtl_text, tex_escape, warn)
 from .docx import Para, Table
 from .render import render_tokens, strip_eq_number_text
-from .parse import (BACK_MATTER, CAPTION_RE, clean_heading, manual_number_level)
+from .parse import (BACK_MATTER, CAPTION_RE, SUBFIG_RE, clean_heading, manual_number_level)
 from .figures import (clean_sub_label, convert_external, layout_table_images, placeholder_png,
                       render_chart)
 from .template import FIGDIR, LANDSCAPE_COLS, LONG_TABLE_ROWS
@@ -26,6 +26,8 @@ class Writer:
         self.opts = opts
         self.out = []
         self.fig_count = 0
+        self.caption_sub = {}      # başlık -> parça harfi ("Figure 1-A" -> "A")
+        self.sub_targets = set()   # bağlanabilir parça şekiller: "1-A", "1-B"
         self.tab_count = 0
         self.eq_count = 0
         self.eq_display = 0         # numaralı + numarasız ayrı satır denklemler
@@ -166,8 +168,13 @@ class Writer:
                 n_tab += 0 if layout_table_images(b) else 1
             elif not b.is_empty():
                 kind = self.is_caption(b)
-                if kind == "figure":
+                sub = SUBFIG_RE.match(b.text().strip())
+                if kind == "figure" and sub and sub.group(2).upper() != "A":
+                    self.sub_targets.add("%d-%s" % (n_fig, sub.group(2).upper()))  # 1-B: numara artmaz
+                elif kind == "figure":
                     n_fig += 1
+                    if sub:
+                        self.sub_targets.add("%d-A" % n_fig)
                 elif b.maths and kind is None:
                     ok, num = strip_eq_number_text(b.text().strip())
                     if ok and (num or any(m_[3] for m_ in b.maths)):
@@ -194,19 +201,27 @@ class Writer:
                                 r"\setlength{\premulticols}{50pt}")
         files = []
         letters = "abcdefghijklmnopqrstuvwxyz"
+        part = self.caption_sub.get(caption) if caption else None  # "Figure 1-B" gibi parça şekil
+        same_number = bool(part and part != "A" and self.fig_count)
+        number = self.fig_count if same_number else self.fig_count + 1
         for rid, label in items:
-            name = None
+            name = "Figure%d-%s" % (number, part) if part else None
             if len(items) > 1:  # alt şekiller: Figure3a.png, Figure3b.png ...
-                name = "Figure%d%s" % (self.fig_count + 1, letters[min(len(files), 25)])
+                name = "Figure%d%s%s" % (number, "-" + part if part else "", letters[min(len(files), 25)])
             fn = self.save_image(rid, name)
             if fn and fn not in [f for f, _ in files]:
                 files.append((fn, label))
         if not files:
             return
-        self.fig_count += 1
+        self.fig_count = number
         box = r"\linewidth"  # sütunda sütun, geniş/yatay şekilde sayfa genişliği
         self.emit(r"\noindent\begin{minipage}{%s}" % box)
-        self.emit(r"\centering\hypertarget{fig:%d}{}" % self.fig_count)
+        if part:
+            # "Figure 1-A": numara Word'deki gibi kalır; 1-A ile 1-B aynı numarayı paylaşır
+            self.emit(r"\setcounter{figure}{%d}\renewcommand{\thefigure}{%d-%s}\renewcommand{\theHfigure}{%d-%s}"
+                      % (number - 1, number, part, number, part))
+        targets = ([] if same_number else ["fig:%d" % number]) + (["fig:%d-%s" % (number, part)] if part else [])
+        self.emit(r"\centering" + "".join(r"\hypertarget{%s}{}" % t for t in targets))
         if len(files) == 1:
             self.emit(r"\includegraphics[width=%s, height=%s\textheight, keepaspectratio]{%s}"
                       % (box, "0.45" if wide else "0.42", files[0][0]))
@@ -245,6 +260,8 @@ class Writer:
         elif len(files) > 1:
             self.emit(r"\addtocounter{figure}{1}")  # başlıksız alt şekilli şekil de numara alır
         self.emit(r"\end{minipage}")
+        if part:
+            self.emit(r"\renewcommand{\thefigure}{\arabic{figure}}\renewcommand{\theHfigure}{\arabic{figure}}")
         self.emit(r"\par\vspace{6pt}")
         self.emit()
 
@@ -378,7 +395,11 @@ class Writer:
         """LaTeX başlığı döndürür; düz metnini (JATS/Crossref için) saklar."""
         latex = self.caption_text(p)
         mt = CAPTION_RE.match(p.text().strip())
-        self.caption_plain[latex] = re.sub(r"\s+", " ", mt.group(3)).strip(" .:") + "." if mt else ""
+        sub = SUBFIG_RE.match(p.text().strip())
+        plain = p.text().strip()[sub.end():] if sub else (mt.group(3) if mt else "")
+        self.caption_plain[latex] = re.sub(r"\s+", " ", plain).strip(" .:") + "." if mt else ""
+        if sub:
+            self.caption_sub[latex] = sub.group(2).upper()
         return latex
 
     @staticmethod
@@ -387,7 +408,8 @@ class Writer:
         # "Figure 1" önekini token'lardan kaldır
         full = p.text()
         mt = CAPTION_RE.match(full)
-        cut = len(full) - len(mt.group(3))
+        sub = SUBFIG_RE.match(full)
+        cut = sub.end() if sub else len(full) - len(mt.group(3))
         out, pos = [], 0
         for t in toks:
             if t[0] != "t":
@@ -409,6 +431,17 @@ class Writer:
             cap += "."
         return cap
 
+    def caption_in_first_row(self, tbl):
+        """Başlık tablonun içinde, bütün sütunları kaplayan ilk satırda olabilir ("Table (1): …").
+        Bulunursa o satır tablodan çıkarılır ve başlık olarak döner."""
+        if len(tbl.rows) < 2 or len(tbl.rows[0]) != 1:
+            return None
+        paras = [p for p in tbl.rows[0][0][0] if isinstance(p, Para) and not p.is_empty()]
+        if len(paras) != 1 or self.is_caption(paras[0]) != "table":
+            return None
+        tbl.rows = tbl.rows[1:]
+        return self.cap_of(paras[0])
+
     def is_caption(self, p):
         txt = p.text().strip()
         mt = CAPTION_RE.match(txt)
@@ -417,7 +450,7 @@ class Writer:
         rest = mt.group(3)
         style = p.style.lower()
         if ("caption" in style or p.jc == "center" or p.images or
-                re.match(r"^\s*(figure|fig\.?|table)\s*\d+\s*[:.\-–—]", txt, re.I)):
+                re.match(r"^\s*(figure|fig\.?|table)\s*\(?\s*\d+\s*\)?\s*[:.\-–—]", txt, re.I)):
             return "table" if mt.group(1).lower().startswith("tab") else "figure"
         # Gövde cümlesi mi? ("Figure 5 shows ...")
         if rest and rest[0].islower():
@@ -454,6 +487,8 @@ class Writer:
                     if j < len(blocks) and isinstance(blocks[j], Para) and self.is_caption(blocks[j]) == "table":
                         cap = self.cap_of(blocks[j])
                         k = j + 1
+                if cap is None:
+                    cap = self.caption_in_first_row(b)
                 if cap is None:
                     warn("Tablo %d için başlık (caption) bulunamadı." % (self.tab_count + 1))
                 self.emit_table(b, cap)
@@ -587,6 +622,8 @@ class Writer:
         return s
 
     def references(self):
+        if not self.art.references:  # boş list ortamı LaTeX'te "missing \item" hatası verir
+            return
         self.open_cols()
         self.close_list()
         self.emit(r"\section*{REFERENCES}")

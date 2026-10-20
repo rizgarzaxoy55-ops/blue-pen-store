@@ -134,6 +134,69 @@ The LSTM model is best [3].
 [3] C. Author, "Third paper," *Journal C*, vol. 3, pp. 21–30, 2022. doi: 10.1000/ccc
 """
 
+SERBEST = r"""
+**GENOTYPES OF A GENE IN A SMALL STUDY GROUP**
+
+**Rezan Muhammed^1,\*^ ![](IMG_F){width=0.3cm}, and Hero Salah^1^ ![](IMG_F){width=0.3cm}**
+
+^1^Department of Biology, College of Education, Salahaddin University-Erbil, Erbil, Iraq.
+
+\* Corresponding author, E-mail: rezan.muhammed@su.edu.krd
+
+**ABSTRACT**
+
+Authors format manuscripts freely: numbers glued to headings, parenthesised figure numbers,
+lettered figure parts and table captions typed inside the first row of the table.
+
+**KEYWORDS:** formatting; captions.
+
+**1.INTRODUCTION**
+
+Earlier work by Van Hai et al. (2022) and (Smith, 2019) measured the content in mg g⁻¹ dry weight.
+The bands are shown in figure 2-A and figure 2-B, the workflow in Fig (1) and the values in Table 1.
+
+![](IMG_A){width=1.6in}
+
+Fig (1): Workflow of the study.
+
+**2.MATERIAL AND METHOD**
+
+The model output is computed as follows and compared with the observed values in every run.
+
+$$y = a x + b$$
+
+Where $y$ is the final prediction from the model, and $b$ denotes the constant bias of the fitted line.
+
+![](IMG_B){width=1.6in}
+
+Figure 2-A: Gel electrophoresis of the first locus.
+
+![](IMG_C){width=1.6in}
+
+Figure 2-B: Genotyping outcomes of the second locus.
+
++-------------------------------------------+
+| Table (1): Values measured in both groups |
++==============+=============+==============+
+| Group        | Mean        | SD           |
++--------------+-------------+--------------+
+| Patients     | 9.43        | 0.15         |
++--------------+-------------+--------------+
+| Controls     | 2.10        | 0.12         |
++--------------+-------------+--------------+
+
+**3.RESULTS**
+
+The values differ between the groups.
+
+**6-REFERENCES**
+
+Smith, J. (2019). A paper with an underscore DOI. *Saudi Journal of Medicine & Medical Sciences*, 8(3), 188-195. https://doi.org/10.4103/sjmms.sjmms_357_19
+
+Van Hai, V., Nhung, H. L. T. K., & Silhavy, P. (2022). Toward improving effort estimation. *IEEE Access*, 10, 1–10.
+"""
+
+
 def uzun_tablo_md():
     rows = "\n".join("| S%02d | %d | %.3f | %.1f |" % (i, 700 + 13 * i, 0.1 + i / 97.0, 90 + (i % 10) / 2.0)
                      for i in range(1, 81))
@@ -460,6 +523,8 @@ def main(only=None):
         os.makedirs(os.path.join(HERE, "sentetik_alt_sekil"), exist_ok=True)
         pandoc(ALT_SEKIL, os.path.join(HERE, "sentetik_alt_sekil", "sentetik_alt_sekil.docx"), tmp,
                make_pictures(tmp))
+        os.makedirs(os.path.join(HERE, "sentetik_serbest"), exist_ok=True)
+        pandoc(SERBEST, os.path.join(HERE, "sentetik_serbest", "sentetik_serbest.docx"), tmp, make_pictures(tmp))
         os.makedirs(os.path.join(HERE, "sentetik_rtl"), exist_ok=True)
         pandoc(RTL, os.path.join(HERE, "sentetik_rtl", "sentetik_rtl.docx"), tmp)
         os.makedirs(os.path.join(HERE, "sentetik_yatay"), exist_ok=True)

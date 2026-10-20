@@ -10,7 +10,7 @@ import unicodedata
 from .common import (C_NS, M, MC, NO_WINDOW, NS, RTL_RUN_RE, W)
 from .docx import Para, Table
 from .render import strip_eq_number_text
-from .parse import CAPTION_RE
+from .parse import CAPTION_RE, SUBFIG_RE
 from .figures import layout_table_images
 from .export import JOURNAL
 from . import render
@@ -48,6 +48,32 @@ def found_ratio(src_text, out_letters, size=24, step=12):
     return sum(1 for c in chunks if c in out_letters) / len(chunks)
 
 
+def text_segments(p):
+    """Paragraf metnini satır içi denklemlerden böler: "Where [y] is …" Word metninde "Where is …"
+    olur ama PDF'te arada denklem vardır; sınırı aşan parçalar yanlış "kayıp" alarmı verir."""
+    segs, cur = [], []
+    for t in p.tokens:
+        if t[0] == "t":
+            cur.append(t[1])
+        elif t[0] == "m":
+            segs.append("".join(cur))
+            cur = []
+    segs.append("".join(cur))
+    return segs
+
+
+def found_ratio_segments(segs, out_letters):
+    """Parçaların bulunma oranının harf sayısına göre ağırlıklı ortalaması."""
+    total = found = 0
+    for seg in segs:
+        n = len(_letters(seg))
+        if n < 8:  # denklem arasındaki "and", "where" gibi kısa parçalar
+            continue
+        total += n
+        found += n * found_ratio(seg, out_letters)
+    return found / total if total else 1.0
+
+
 def tex_to_text(tex):
     """PDF metni yoksa .tex'ten kaba düz metin çıkarır (kayıp metin kontrolü için)."""
     body = tex[tex.find(r"\begin{document}"):]
@@ -76,14 +102,29 @@ def pdf_to_text(pdf_path):
         return None
 
 
+WP = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}"
+ICON_EMU = 300000  # ~0,8 cm: yazar satırındaki ORCID/e-posta simgeleri şekil sayılmaz
+
+
+def is_icon(blip):
+    for anc in blip.iterancestors(WP + "inline", WP + "anchor"):
+        ext = anc.find(WP + "extent")
+        if ext is not None:
+            return int(ext.get("cx", "0")) < ICON_EMU and int(ext.get("cy", "0")) < ICON_EMU
+        break
+    return False
+
+
 def word_source_stats(doc, art):
     """Word dosyasının kendisinden (dönüştürücüden bağımsız) sayımlar."""
     body = doc.doc.find(W + "body")
     text = "".join(t.text or "" for t in body.iter(W + "t"))
     hashes = set()
-    for rid in body.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS):
+    for att in body.xpath(".//a:blip/@r:embed | .//v:imagedata/@r:id", namespaces=NS):
         # mc:Fallback içindeki yedek resimleri sayma
-        _, data = doc.media(rid)
+        if is_icon(att.getparent()):
+            continue
+        _, data = doc.media(str(att))
         if data:
             hashes.add(hashlib.md5(data).hexdigest())
     charts = len(body.xpath(".//c:chart", namespaces={"c": C_NS}))
@@ -161,9 +202,10 @@ def build_report(ctx):
     if src["max_figure_ref"] > writer.fig_count:
         add(REPORT_ERROR, "Şekil sayısı tutmuyor",
             "Metinde 'Figure %d'e kadar atıf var, PDF'te %d şekil var." % (src["max_figure_ref"], writer.fig_count))
-    if writer.fig_count != writer.fig_captioned:
+    n_figs = len(writer.figure_log)  # "Figure 1-A/1-B" iki ayrı şekil kutusudur
+    if n_figs != writer.fig_captioned:
         add(REPORT_CHECK, "Başlıksız şekil",
-            "%d şeklin %d tanesinde başlık (caption) bulunamadı." % (writer.fig_count, writer.fig_count - writer.fig_captioned))
+            "%d şeklin %d tanesinde başlık (caption) bulunamadı." % (n_figs, n_figs - writer.fig_captioned))
     if writer.tab_count != src["tables"]:
         add(REPORT_ERROR, "Tablo sayısı tutmuyor",
             "Word'de %d tablo var, LaTeX'te %d." % (src["tables"], writer.tab_count))
@@ -238,9 +280,12 @@ def build_report(ctx):
             # yazar adları bilerek kısaltılmış olabilir (M. E. Safi): o biçimi de dene
             src_text = p.text()
             cap = CAPTION_RE.match(src_text)
-            if cap:  # "Figure 8" numarasını LaTeX kendisi yazar
-                src_text = cap.group(3)
+            sub = SUBFIG_RE.match(src_text)
+            if cap:  # "Figure 8" / "Figure 2-A:" numarasını LaTeX kendisi yazar
+                src_text = src_text[sub.end():] if sub else cap.group(3)
             found = max(found_ratio(v, out_letters) for v in (src_text, writer.abbreviate_names(src_text)))
+            if found < 0.7 and any(t[0] == "m" for t in p.tokens):
+                found = max(found, found_ratio_segments(text_segments(p), out_letters))
             if found < 0.7 and RTL_RUN_RE.search(src_text):
                 found = max(found, found_ratio(src_text, tex_letters))
             if found < 0.7:

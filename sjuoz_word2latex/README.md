@@ -114,12 +114,17 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
   birleştirilir), sorumlu yazar, özet, anahtar kelimeler; **kapak mektubundan** ORCID, e-posta, telefon.
 * **Gövde:** numaralı bölümler/alt bölümler, kalın/italik/alt-üst simge, listeler, dipnotlar,
   bağlantılar, son bölümler (Acknowledgements, Ethical Statement, Author Contributions …), kaynakça.
+  Elle numaralanmış başlıklar boşluksuz da olsa tanınır: `1.INTRODUCTION`, `2.1 Data`, `6-REFERENCES`.
 * **Denklemler:** Word denklemleri (OMML) LaTeX'e çevrilir; `SEQ` alan kodlu, `)1(` ya da `(1)`
   biçimindeki numaralar tanınır.
 * **Şekiller:** PNG/JPG/TIFF/GIF/BMP/EMF/WMF/SVG (gerekirse PNG'ye çevrilir), **Word grafikleri**
   (veriden yeniden çizilir), gruplanmış/metin kutusundaki resimler, **alt şekiller (a)(b)(c)**
   (kenarlıksız tabloyla dizilmiş etiketli resimler, aynı paragraftaki ya da ardışık paragraflardaki resimler).
-* **Tablolar:** birleştirilmiş hücreler, iki satırlı başlıklar, hücre içi resimler; **34 satırdan uzun
+  Başlıklar `Figure 1:`, `Fig. 1.`, `Fig (1):` biçimlerinde olabilir; `Figure 1-A` / `Figure 1-B` gibi harfli
+  parçalar Word'deki numarasıyla ayrı şekil olarak konur ve metindeki "figure 1-B" o parçaya bağlanır.
+  Yazar satırındaki küçük simgeler (ORCID vb.) şekil sayılmaz.
+* **Tablolar:** birleştirilmiş hücreler, iki satırlı başlıklar, hücre içi resimler; tablonun üstünde,
+  altında ya da **tablonun ilk satırına** yazılmış başlık (`Table (1): …`); **34 satırdan uzun
   tablolar sayfalara bölünür** (başlık her sayfada tekrarlanır); Word'de **yatay bölümdeki** tablo ve
   şekiller ile 10+ sütunlu tablolar **yatay sayfaya** konur.
 * **Sağdan sola metin:** Kürtçe (Sorani) ve Arapça kelime ve paragraflar doğru yön ve yazı tipiyle.
@@ -224,6 +229,7 @@ python -m pytest tests --update-golden     # bilerek yapılan değişiklikten so
 | `sentetik_alt_sekil` | Alt şekiller: düzen tablosu, aynı paragrafta ve ardışık paragraflarda resimler |
 | `sentetik_yatay` | Word'deki yatay bölüm ve 12 sütunlu tablo |
 | `sentetik_rtl` | Kürtçe (Sorani) ve Arapça paragraf ve kelimeler |
+| `sentetik_serbest` | `1.INTRODUCTION` / `6-REFERENCES` başlıkları, `Fig (1):`, `Figure 2-A/2-B`, ilk satırdaki tablo başlığı, yazar simgeleri, `Van Hai et al.`, alt çizgili DOI, mg g⁻¹ |
 
 Her makale için: üretilen `.tex` saklanmış doğru çıktıyla (`tests/golden/`) birebir
 karşılaştırılır; yazar/ORCID/şekil/tablo/denklem/kaynak sayıları; PDF hatasız derlenmeli ve hiçbir

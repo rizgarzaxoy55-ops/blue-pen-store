@@ -172,6 +172,7 @@ def convert(opts):
     writer = Writer(art, manuscript, outdir, opts)
     if not opts.no_links:
         render.LINKER = Linker(art.references, *writer.prescan())
+        render.LINKER.sub_targets = writer.sub_targets
     writer.run()
     writer.references()
     writer.close_cols()

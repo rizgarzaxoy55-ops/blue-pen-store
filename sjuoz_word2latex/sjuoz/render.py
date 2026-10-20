@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 
-from .common import (DOI_DUP_RE, URL_RE, render_plain, title_case_caps, url_escape)
+from .common import (DOI_DUP_RE, URL_RE, href, render_plain, title_case_caps, url_escape)
 
 # --------------------------------------------------------------------------
 # Biçimli metni LaTeX'e çevirme
@@ -19,10 +19,12 @@ def norm_key(s):
 YEAR_PAT = r"(?:(?:19|20)\d\d[a-z]?|n\.\s?d\.)"
 CITE_PAREN = re.compile(r"\(([^()]*?%s[^()]*?)\)" % YEAR_PAT)
 CITE_PART = re.compile(r"^(?P<auth>[^\d]+?),?\s*(?P<years>%s(?:\s*,\s*%s)*)\s*$" % (YEAR_PAT, YEAR_PAT))
-CITE_NARR = re.compile(r"(?P<auth>[A-Z][\w'’\-]+(?:\s+et\s+al\.|\s+(?:&|and)\s+[A-Z][\w'’\-]+)?)\s*\((?P<yr>%s)\)"
-                       % YEAR_PAT)
+# "Van Hai et al. (2022)", "De Souza (2019)": soyadındaki ön ekler de yazarın parçasıdır
+NAME_PARTICLE = r"(?:(?:[Vv]an|[Vv]on|[Dd]e|[Dd]el|[Dd]er|[Dd]i|[Dd]a|[Ll]a|[Ll]e|Al|El)\s+)?"
+CITE_NARR = re.compile(r"(?P<auth>%s[A-Z][\w'’\-]+(?:\s+et\s+al\.|\s+(?:&|and)\s+[A-Z][\w'’\-]+)?)\s*\((?P<yr>%s)\)"
+                       % (NAME_PARTICLE, YEAR_PAT))
 NUM_CITE = re.compile(r"\[\s*(\d+(?:\s*[,;–\-]\s*\d+)*)\s*\]")
-XREF_RE = re.compile(r"\b(Tables?|Figures?|Figs?\.|Equations?|Eqs?\.)\s*\(?(\d+)\)?")
+XREF_RE = re.compile(r"\b(Tables?|Figures?|Figs?\.?|Equations?|Eqs?\.)\s*\(?(\d+)\)?(?:\s*[-–]\s*([A-Za-z])\b)?", re.I)
 
 
 class Linker:
@@ -34,6 +36,7 @@ class Linker:
         self.n = {"fig": n_fig, "tab": n_tab, "eq": n_eq}
         self.used = set()
         self.missing = set()
+        self.sub_targets = set()  # Writer.prescan doldurur
         numbered = 0
         for k, p in enumerate(ref_paras):
             txt = p.text().strip()
@@ -106,7 +109,12 @@ class Linker:
             kind = {"t": "tab", "f": "fig", "e": "eq"}[mt.group(1)[0].lower()]
             n = int(mt.group(2))
             if 1 <= n <= self.n[kind] and not any(a <= mt.start() < b for a, b, _ in out):
-                out.append((mt.start(), mt.end(), "%s:%d" % (kind, n)))
+                part = "%d-%s" % (n, (mt.group(3) or "").upper())
+                if kind == "fig" and part in self.sub_targets:  # "figure 1-B" -> o parçaya
+                    out.append((mt.start(), mt.end(), "fig:" + part))
+                else:
+                    end = mt.end(2) + (1 if mt.group(0)[mt.end(2) - mt.start():][:1] == ")" else 0)
+                    out.append((mt.start(), end, "%s:%d" % (kind, n)))
         return sorted(out)
 
     def apply(self, tokens):
@@ -173,8 +181,8 @@ def render_tokens(tokens, ref_mode=False, keep_newlines=False):
                 s = r"\hyperlink{%s}{%s}" % (link[2:], render_plain(core, italic, False, True))
             elif link and not link.startswith("#"):
                 if core == link or URL_RE.fullmatch(core):
-                    s = (r"DOI:\href{%s}{%s}" if ref_mode and "doi.org/" in link.lower() and not "".join(out).rstrip().lower().endswith("doi:")
-                         else r"\href{%s}{%s}") % (url_escape(link), url_escape(DOI_DUP_RE.sub("https://doi.org/", core)))
+                    s = ("DOI:" if ref_mode and "doi.org/" in link.lower() and not "".join(out).rstrip().lower().endswith("doi:")
+                         else "") + href(link, DOI_DUP_RE.sub("https://doi.org/", core))
                     if not (ref_mode and "doi.org/" in link.lower()):
                         s = r"\url{%s}" % url_escape(core)
                 elif link.lower().startswith("mailto:"):

@@ -101,18 +101,25 @@ BACK_MATTER = re.compile(
 REF_HEAD = re.compile(r"^(references?|bibliography|literature cited|kaynaklar)$", re.I)
 ABSTRACT_HEAD = re.compile(r"^\s*a\w{0,3}stract\b\s*[:.\-–]?\s*", re.I)
 KEYWORDS_HEAD = re.compile(r"^\s*(key\s*-?\s*words?|index terms)\s*[:.\-–—]?\s*", re.I)
-CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(\d+)\s*[:.\-–—]?\s*(.*)$", re.I | re.S)
+CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*\(?\s*(\d+)\s*\)?\s*[:.\-–—]?\s*(.*)$", re.I | re.S)
+# Harfle ayrılmış parça şekiller: "Figure 1-A: …", "Figure 1-B: …" (ayrı resimler, ortak numara)
+SUBFIG_RE = re.compile(r"^\s*(?:figure|fig\.?)\s*\(?\s*(\d+)\s*[-–]\s*([A-Za-z])\s*\)?\s*[:.]", re.I)
 ARTICLE_TYPE_RE = re.compile(r"^(original|review|research|short|case)\s+(article|paper|communication|report)$", re.I)
+
+
+# Elle yazılmış bölüm numarası: "2.1 ", "1.INTRODUCTION", "6-REFERENCES", "3) Results"
+# ("3D Images" gibi sayıyla başlayan sözcükler numara sayılmaz: ayraç ya da boşluk gerekir)
+MANUAL_NUMBER = re.compile(r"^\s*(\d+(?:\.\d+)*)(?:\s*[.\-–)]\s*|\s+)(?=[A-Za-z])")
 
 
 def clean_heading(txt):
     t = re.sub(r"\s+", " ", txt).strip()
-    t = re.sub(r"^\d+(\.\d+)*\.?\s+(?=[A-Za-z])", "", t)  # elle yazılmış numarayı kaldır
+    t = MANUAL_NUMBER.sub("", t)  # elle yazılmış numarayı kaldır
     return t.rstrip(":").strip()
 
 
 def manual_number_level(txt):
-    mt = re.match(r"^\s*(\d+(?:\.\d+)*)\.?\s+[A-Za-z]", txt)
+    mt = MANUAL_NUMBER.match(txt)
     return len(mt.group(1).split(".")) if mt else None
 
 

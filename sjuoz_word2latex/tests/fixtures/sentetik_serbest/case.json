@@ -1,0 +1,27 @@
+{
+  "description": "Serbest biçim: '1.INTRODUCTION' / '6-REFERENCES' gibi boşluksuz numaralı başlıklar, 'Fig (1):' parantezli şekil numarası, 'Figure 2-A/2-B' parça şekiller, tablonun ilk satırına yazılmış başlık, yazar satırında küçük simgeler, 'Van Hai et al.' ön ekli soyadı, satır içi denklemli 'Where …' paragrafı, alt çizgili DOI, mg g⁻¹",
+  "args": [
+    "--article-id",
+    "2010",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October"
+  ],
+  "expect": {
+    "authors": 2,
+    "orcids": 0,
+    "affiliations": 1,
+    "figures": 2,
+    "figures_captioned": 3,
+    "tables": 1,
+    "references": 2,
+    "linked_references": 2
+  },
+  "expect_pages": 2,
+  "max_status": "KONTROL"
+}

@@ -71,6 +71,9 @@ def build_parser():
                     help="yatay sayfaya konacak tablolar, ör. '2,3' (Word'de yatay bölümdekiler ve "
                          "%d+ sütunlu tablolar zaten yatay konur)" % LANDSCAPE_COLS)
     ap.add_argument("--no-links", action="store_true", help="atıf/şekil/tablo bağlantılarını ekleme")
+    ap.add_argument("--link-color", default="black",
+                    help="metindeki şekil/tablo/denklem/atıf bağlantılarının rengi (varsayılan: black — dergi "
+                         "görünümü; tıklanabilirlik görünsün diye ör. blue)")
     ap.add_argument("--no-export", dest="export", action="store_false",
                     help="Crossref XML, JATS XML ve BibTeX dosyalarını üretme")
     ap.add_argument("--depositor-name", default=None, help="Crossref gönderen adı (varsayılan: dergi adı)")

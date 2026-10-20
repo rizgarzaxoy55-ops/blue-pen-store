@@ -37,7 +37,7 @@ def build_args(values, mode="makale"):
 
     values: {"manuscript", "cover", "issue_folder", "outdir", "article_id", "volume", "issue", "year",
              "month", "first_page", "received", "accepted", "published", "article_type",
-             "depositor_email", "compile", "zip", "export", "links"}
+             "depositor_email", "compile", "zip", "export", "links", "link_blue"}
     """
     v = {k: (val.strip() if isinstance(val, str) else val) for k, val in values.items()}
     if mode == "sayi":
@@ -74,6 +74,8 @@ def build_args(values, mode="makale"):
         args.append("--no-export")
     if not v.get("links", True):
         args.append("--no-links")
+    elif v.get("link_blue"):
+        args += ["--link-color", "blue"]
     return args
 
 
@@ -176,8 +178,9 @@ class App:
         opts = ttk.Frame(out)
         opts.grid(row=1, column=1, columnspan=2, sticky="w", pady=(4, 0))
         for k, (key, label) in enumerate((("compile", "PDF derle"), ("zip", "Overleaf zip"),
-                                          ("export", "Crossref / JATS / BibTeX"), ("links", "Atıf bağlantıları"))):
-            self.vars[key] = tk.BooleanVar(value=settings.get(key, True))
+                                          ("export", "Crossref / JATS / BibTeX"), ("links", "Tıklanabilir bağlantılar"),
+                                          ("link_blue", "Bağlantılar mavi"))):
+            self.vars[key] = tk.BooleanVar(value=settings.get(key, key != "link_blue"))
             ttk.Checkbutton(opts, text=label, variable=self.vars[key]).grid(row=0, column=k, padx=(0, 14))
 
         # --- Düğmeler
@@ -257,7 +260,7 @@ class App:
 
     def save_settings(self):
         keep = ("volume", "issue", "year", "month", "depositor_email", "outdir", "issue_folder",
-                "compile", "zip", "export", "links")
+                "compile", "zip", "export", "links", "link_blue")
         try:
             with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
                 json.dump({k: v for k, v in self.values().items() if k in keep}, f, ensure_ascii=False, indent=1)

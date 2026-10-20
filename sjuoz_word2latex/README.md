@@ -76,6 +76,7 @@ sjuoz-word2latex makale.docx kapak_mektubu.docx \
 | `--main-font`, `--header-font` | Varsayılan Times New Roman / Garamond; yoksa benzeri seçilir. |
 | `--assets KLASÖR` | Başka bir `SJUOZ.png` / `orcid.png` kullan. |
 | `--no-compile`, `--no-zip`, `--no-export`, `--no-report`, `--no-links` | İlgili adımı atla. |
+| `--link-color RENK` | Şekil/tablo/denklem/atıf bağlantılarının rengi (`black` varsayılan; `blue`, `red`, `blue!70!black` …). |
 | `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
 | `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
 
@@ -111,7 +112,9 @@ sjuoz-word2latex makale.docx kapak_mektubu.docx \
   şekiller ile 10+ sütunlu tablolar **yatay sayfaya** konur.
 * **Sağdan sola metin:** Kürtçe (Sorani) ve Arapça kelime ve paragraflar doğru yön ve yazı tipiyle.
 * **Bağlantılar:** (Yazar *et al.*, 2020), Yazar (2019), [3] gibi atıflar kaynakçaya; "Figure 2",
-  "Table 1", "Equation 5" ilgili yere tıklanabilir bağlantı olur.
+  "Table 1", "Equation 5" ilgili yere tıklanabilir bağlantı olur (tıklayınca şeklin/tablonun üstüne
+  gidilir). Bağlantılar dergi görünümü için varsayılan olarak siyahtır; görünür olmaları için
+  `--link-color blue` (ya da arayüzde **Bağlantılar mavi**) kullanın.
 
 ## 5. Bütün sayıyı tek seferde işlemek
 

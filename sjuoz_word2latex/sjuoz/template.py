@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """SJUOZ LaTeX şablonu ve ön bilgilerin yazılması."""
 
+import re
 
 from .common import (BIDI, render_plain, tex_escape, url_escape)
 
@@ -33,7 +34,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \usepackage{indentfirst}
 \usepackage{eso-pic}
 \usepackage{tikz}
-\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=<<LINKCOLOR>>, citecolor=<<LINKCOLOR>>]{hyperref}
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
@@ -179,6 +180,12 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
           "September", "October", "November", "December"]
 
 
+def link_color(name):
+    """xcolor renk adı (blue, red, teal, blue!70!black …); geçersizse siyah."""
+    name = (name or "black").strip()
+    return name if re.fullmatch(r"[A-Za-z]+(?:![0-9]{1,3}(?:![A-Za-z]+)?)*", name) else "black"
+
+
 def build_tex(art, writer, opts):
     # yazarlar
     au_tex = []
@@ -222,6 +229,7 @@ def build_tex(art, writer, opts):
     last = str(opts.last_page) if opts.last_page else r"\pageref*{LastPage}"
     rep = {
         "MAINFONT": opts.main_font,
+        "LINKCOLOR": link_color(getattr(opts, "link_color", None)),
         "HEADFONT": opts.header_font,
         "DOI": doi,
         "RUNHEAD": runhead,

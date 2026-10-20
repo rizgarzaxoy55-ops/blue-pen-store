@@ -19,6 +19,20 @@ def test_build_args_single_article():
     assert opts.depositor_email == "e@x.org"
 
 
+def test_build_args_blue_links():
+    base = {"manuscript": "m.docx", "links": True}
+    assert conv.build_parser().parse_args(gui.build_args(base)).link_color == "black"
+    opts = conv.build_parser().parse_args(gui.build_args(dict(base, link_blue=True)))
+    assert opts.link_color == "blue"
+
+
+def test_link_color_sanitized():
+    from sjuoz.template import link_color
+    assert link_color("blue!70!black") == "blue!70!black"
+    assert link_color(None) == "black"
+    assert link_color("red}\\evil") == "black"
+
+
 def test_build_args_issue_and_validation():
     args = gui.build_args({"issue_folder": "sayi", "volume": "14", "issue": "4", "year": "2026",
                            "month": "October", "first_page": "571"}, mode="sayi")

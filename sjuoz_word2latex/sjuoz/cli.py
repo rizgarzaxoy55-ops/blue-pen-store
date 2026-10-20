@@ -15,6 +15,30 @@ def _key(name):
     return re.sub(r"(docx)+$", "", re.sub(r"[^0-9a-z]", "", name.lower()))
 
 
+def _nearby_dirs(folder):
+    """Word dosyalarının sık bulunduğu yerler: üst klasör, Masaüstü, İndirilenler, Belgeler."""
+    home = os.path.expanduser("~")
+    dirs = [os.path.dirname(os.path.abspath(folder))]
+    for base in (home, os.path.join(home, "OneDrive"), os.environ.get("OneDrive", "")):
+        if base:
+            dirs += [os.path.join(base, d) for d in ("Desktop", "Masaüstü", "Downloads", "Documents", "Belgeler")]
+    seen, out = set(), []
+    for d in dirs:
+        key = os.path.normcase(os.path.abspath(d))
+        if key not in seen and key != os.path.normcase(os.path.abspath(folder)) and os.path.isdir(d):
+            seen.add(key)
+            out.append(d)
+    return out
+
+
+def _matches(folder, want):
+    try:
+        return [os.path.join(folder, n) for n in sorted(os.listdir(folder))
+                if n.lower().endswith(".docx") and not n.startswith("~$") and _key(n) == want]
+    except OSError:
+        return []
+
+
 def resolve_docx(path):
     """Verilen yolu bulmaya çalışır; (yol, None) ya da (None, hata mesajı) döner.
 
@@ -33,7 +57,14 @@ def resolve_docx(path):
     hits = [n for n in docx if _key(n) == want]
     if len(hits) == 1:
         return os.path.join(folder, hits[0]) if folder != "." else hits[0], None
+    if not os.path.dirname(path):  # yalnız ad verildiyse yakın klasörlere de bak
+        hits = [h for d in _nearby_dirs(folder) for h in _matches(d, want)]
+        if len(hits) == 1:
+            return hits[0], None
     msg = ["dosya bulunamadı: %s" % path]
+    if len(hits) > 1:
+        msg.append("  Bu adla birden çok dosya var; hangisi olduğunu tam yoluyla yazın:")
+        msg += ['    "%s"' % h for h in hits]
     old = [n for n in names if n.lower().endswith(".doc") and _key(n[:-4]) == want]
     if old:
         msg.append("  '%s' eski .doc biçiminde; Word'de Farklı Kaydet → .docx yapın." % old[0])
@@ -42,8 +73,10 @@ def resolve_docx(path):
         msg += ['    "%s"' % n for n in docx]
         msg.append("  Ad boşluk içeriyorsa tırnak içinde yazın; dosya adını yazarken Tab tuşu tamamlar.")
     else:
-        msg.append("  %s klasöründe hiç .docx dosyası yok; komutu dosyaların olduğu klasörde çalıştırın"
-                   " ya da tam yolunu verin." % os.path.abspath(folder))
+        msg.append("  %s klasöründe hiç .docx dosyası yok (Masaüstü, İndirilenler ve Belgeler'de de"
+                   " bulunamadı)." % os.path.abspath(folder))
+        msg.append("  Word dosyalarını bu klasöre kopyalayın, tam yolunu verin ya da programı dosya adı"
+                   " vermeden çalıştırıp pencereden seçin.")
     return None, "\n".join(msg)
 
 

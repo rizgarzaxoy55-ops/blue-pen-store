@@ -71,3 +71,18 @@ def test_resolve_docx_forgives_windows_typos(tmp_path):
     assert resolve_docx(str(tmp_path / "1995+Cover+Letterdocx"))[0] == str(tmp_path / "1995+Cover+Letter.docx")
     real, err = resolve_docx(str(tmp_path / "eski.docx"))
     assert real is None and "Farklı Kaydet" in err and '"paper1995.docx.docx"' in err
+
+
+def test_resolve_docx_looks_in_desktop(tmp_path, monkeypatch):
+    from sjuoz.cli import resolve_docx
+    home, work = tmp_path / "home", tmp_path / "home" / "OneDrive" / "Desktop" / "kod"
+    work.mkdir(parents=True)
+    (home / "Downloads").mkdir()
+    (home / "Downloads" / "paper1995.docx").write_bytes(b"x")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("OneDrive", raising=False)
+    monkeypatch.chdir(work)
+    assert resolve_docx("paper1995.docx") == (str(home / "Downloads" / "paper1995.docx"), None)
+    real, err = resolve_docx("yok.docx")
+    assert real is None and "pencereden seçin" in err

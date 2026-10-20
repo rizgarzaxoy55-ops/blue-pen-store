@@ -9,7 +9,8 @@ from .common import (BIDI, is_rtl_text, tex_escape, warn)
 from .docx import Para, Table
 from .render import render_tokens, strip_eq_number_text
 from .parse import (BACK_MATTER, CAPTION_RE, clean_heading, manual_number_level)
-from .figures import clean_sub_label, convert_external, layout_table_images, render_chart
+from .figures import (clean_sub_label, convert_external, layout_table_images, placeholder_png,
+                      render_chart)
 from .template import FIGDIR, LANDSCAPE_COLS, LONG_TABLE_ROWS
 
 # --------------------------------------------------------------------------
@@ -148,8 +149,11 @@ class Writer:
                 fname = name + ".png"
                 print("Bilgi: %s resmi PNG'ye çevrildi: %s" % (ext, fname))
             else:
-                fname = name + ext
-                warn("%s (%s) PNG'ye çevrilemedi; LibreOffice, Inkscape veya ImageMagick kurun." % (fname, ext))
+                # Orijinali klasörde kalır (elle çevrilebilir); LaTeX takılmasın diye yer tutucu konur
+                placeholder_png(os.path.join(figdir, name + ".png"), name + ext)
+                fname = name + ".png"
+                warn("%s%s PNG'ye çevrilemedi, yerine yer tutucu kondu; LibreOffice kurun ya da %s/%s%s"
+                     " dosyasını PNG olarak kaydedip %s/%s yerine koyun." % (name, ext, FIGDIR, name, ext, FIGDIR, fname))
         rel = FIGDIR + "/" + fname
         self.saved_hashes[h] = rel
         return rel

@@ -210,3 +210,33 @@ def test_parse_date_and_title_case():
     assert conv.parse_date("XX") is None
     assert conv.title_case_caps("MOUTH DETECTION BASED ON MODIFIED VIOLA-JONES ALGORITHM") == \
         "Mouth Detection Based on Modified Viola-Jones Algorithm"
+
+
+def test_placeholder_png_is_valid(tmp_path, monkeypatch):
+    from PIL import Image
+    from sjuoz import figures
+    figures.placeholder_png(str(tmp_path / "a.png"), "Figure3.emf")
+    assert Image.open(tmp_path / "a.png").size == (1200, 600)
+    Image.open(__import__("io").BytesIO(figures._GRAY_PNG)).load()  # Pillow'suz yedek de geçerli PNG
+
+
+def test_unmarked_asterisk_is_not_an_author():
+    class P:
+        tokens = [("t", "Ban J. Khoshaba", (0, 0, None)), ("t", "1", (0, 0, "superscript")),
+                  ("t", ", Layla S. Mohammed", (0, 0, None)), ("t", "1", (0, 0, "superscript")), ("t", "*", (0, 0, None))]
+    from sjuoz.parse import parse_authors
+    authors = parse_authors(P())
+    assert [a["name"] for a in authors] == ["Ban J. Khoshaba", "Layla S. Mohammed"]
+    assert authors[1]["marks"] == ["1", "*"]
+
+
+def test_xelatex_command_enables_miktex_installer(tmp_path):
+    import os
+    import stat
+    import sys
+    from sjuoz.pipeline import xelatex_command
+    fake = tmp_path / "xelatex"
+    fake.write_text("#!%s\nprint('MiKTeX-XeTeX 4.10 (MiKTeX 23.10)')\n" % sys.executable)
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+    if os.name != "nt":
+        assert "--enable-installer" in xelatex_command(str(fake), "a.tex")

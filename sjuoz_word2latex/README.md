@@ -37,7 +37,8 @@ pip install lxml Pillow matplotlib
 python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
 ```
 
-İsteğe bağlı araçlar: EMF/WMF/SVG resimleri için LibreOffice, Inkscape veya ImageMagick;
+İsteğe bağlı araçlar: EMF/WMF/SVG resimleri için LibreOffice, Inkscape veya ImageMagick (Windows'ta
+EMF/WMF için Pillow yeterli; hiçbiri yoksa resmin yerine yer tutucu konur ve PDF yine derlenir);
 Arapça/Kürtçe metin için Amiri veya Noto Naskh Arabic yazı tipi (Windows'ta Times New Roman yeterli).
 
 ## 2. Pencere arayüzü
@@ -69,6 +70,9 @@ noktası unutulmuş `Kapakdocx` gibi adlar kendiliğinden bulunur. Yalnız ad ve
 klasörde yoksa üst klasöre, Masaüstü, İndirilenler ve Belgeler'e (OneDrive dahil) de bakılır. Dosya
 yine bulunamazsa program klasördeki Word dosyalarını listeler. Hiç dosya adı vermeden çalıştırırsanız
 dosyaları seçmeniz için bir pencere açılır.
+
+**MiKTeX:** ilk derlemede eksik LaTeX paketleri sormadan indirilir (`--enable-installer`); bu birkaç
+dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdurulur ve uyarı verilir.
 
 | Seçenek | Açıklama |
 |---|---|

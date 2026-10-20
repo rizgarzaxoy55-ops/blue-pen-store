@@ -55,11 +55,14 @@ def convert_external(src, dst_png):
     """EMF/WMF/SVG/EPS gibi biçimleri PNG'ye çevirir (LibreOffice, Inkscape veya ImageMagick)."""
     import subprocess
     import tempfile
+    if src.lower().endswith((".emf", ".wmf")) and _pillow_metafile(src, dst_png):
+        return True
     tools = []
-    for exe in ("soffice", "libreoffice"):
-        if shutil.which(exe):
-            tools.append(("lo", [shutil.which(exe), "--headless", "--convert-to", "png", "--outdir"]))
-            break
+    soffice = shutil.which("soffice") or shutil.which("libreoffice") or next(
+        (p for p in (os.path.join(os.environ.get(v, ""), "LibreOffice", "program", "soffice.exe")
+                     for v in ("ProgramFiles", "ProgramFiles(x86)")) if os.path.isfile(p)), None)
+    if soffice:
+        tools.append(("lo", [soffice, "--headless", "--convert-to", "png", "--outdir"]))
     if shutil.which("inkscape"):
         tools.append(("ink", [shutil.which("inkscape"), src, "-o", dst_png]))
     for exe in ("magick", "convert"):
@@ -83,6 +86,43 @@ def convert_external(src, dst_png):
         except Exception:  # noqa
             continue
     return False
+
+
+def _pillow_metafile(src, dst_png):
+    """Windows'ta Pillow EMF/WMF dosyalarını ek program olmadan çizebilir."""
+    if os.name != "nt":
+        return False
+    try:
+        from PIL import Image
+        im = Image.open(src)
+        try:
+            im.load(dpi=300)
+        except TypeError:
+            im.load()
+        im.convert("RGB").save(dst_png)
+        trim_whitespace(dst_png)
+        return os.path.getsize(dst_png) > 0
+    except Exception:  # noqa
+        return False
+
+
+# 1x1 gri PNG: Pillow da yoksa yer tutucu olarak kullanılır
+_GRAY_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55"
+                          "0000000a49444154789c636800000082008177cd72b60000000049454e44ae426082")
+
+
+def placeholder_png(dst_png, label):
+    """Çevrilemeyen resim yerine LaTeX'in derlenebilmesi için yer tutucu PNG yazar."""
+    try:
+        from PIL import Image, ImageDraw
+        im = Image.new("RGB", (1200, 600), (240, 240, 240))
+        d = ImageDraw.Draw(im)
+        d.rectangle((4, 4, 1195, 595), outline=(160, 0, 0), width=6)
+        d.text((40, 260), "Resim cevrilemedi / image not converted: %s" % label, fill=(160, 0, 0))
+        im.save(dst_png)
+    except Exception:  # noqa
+        with open(dst_png, "wb") as f:
+            f.write(_GRAY_PNG)
 
 
 def trim_whitespace(png):

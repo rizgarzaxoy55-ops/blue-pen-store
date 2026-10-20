@@ -236,6 +236,9 @@ def _looks_like_authors(p):
     return bool(sup) and ("," in txt or " and " in txt or len(sup) >= 1)
 
 
+MARKS_ONLY = re.compile(r"^[\s,\d*†‡§]+$")
+
+
 def parse_authors(p):
     s = ""
     has_sup = False
@@ -254,11 +257,15 @@ def parse_authors(p):
             name = re.sub(r"^\s*(,|;|&|\band\b)\s*", "", mt.group(1).strip(" ,;")).strip(" ,;")
             name = re.sub(r"^and\s+", "", name, flags=re.I)
             marks = [x for x in re.split(r"[,\s]+", mt.group(2)) if x]
-            if name:
+            if MARKS_ONLY.match(name) and authors:  # üst simge yapılmamış "*" önceki yazara ait
+                authors[-1]["marks"] += [x for x in re.split(r"[,\s]+", name) if x] + marks
+            elif name:
                 authors.append({"name": name, "marks": marks})
         tail = s[s.rfind("}") + 1:].strip(" ,;")
         tail = re.sub(r"^and\s+", "", tail, flags=re.I).strip()
-        if tail:
+        if tail and MARKS_ONLY.match(tail) and authors:
+            authors[-1]["marks"] += [x for x in re.split(r"[,\s]+", tail) if x]
+        elif tail:
             authors.append({"name": tail, "marks": []})
     else:
         for mt in re.finditer(r"([A-Z][^\d,*;&]+?)\s*((?:\d+|\*)(?:\s*,\s*(?:\d+|\*))*)\s*(?:,|;|&|\band\b|$)", s):

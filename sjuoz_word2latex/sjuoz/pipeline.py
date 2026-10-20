@@ -94,6 +94,38 @@ def build_parser():
     return ap
 
 
+XELATEX_TIMEOUT = 600  # saniye, her geçiş için
+
+
+def xelatex_command(exe, tex_name):
+    """MiKTeX eksik paketleri sormadan kursun: aksi halde gizli bir pencerede onay bekleyip takılır."""
+    import subprocess
+    cmd = [exe, "-interaction=nonstopmode"]
+    try:
+        ver = subprocess.run([exe, "--version"], capture_output=True, text=True, errors="replace",
+                             timeout=60, **NO_WINDOW).stdout
+    except Exception:  # noqa
+        ver = ""
+    if "MiKTeX" in ver:
+        cmd.append("--enable-installer")
+    return cmd + [tex_name]
+
+
+def run_xelatex(exe, tex_name, outdir, passes=2):
+    """xelatex'i iki kez çalıştırır; süre aşılırsa False döner."""
+    import subprocess
+    cmd = xelatex_command(exe, tex_name)
+    print("PDF derleniyor (xelatex; ilk seferde MiKTeX eksik paketleri indirirse birkaç dakika sürebilir)...",
+          flush=True)
+    for _ in range(passes):
+        try:
+            subprocess.run(cmd, cwd=outdir, capture_output=True, text=True, errors="replace",
+                           timeout=XELATEX_TIMEOUT, **NO_WINDOW)
+        except subprocess.TimeoutExpired:
+            return False
+    return True
+
+
 def convert(opts):
     """Dönüşümü yapar. Sonuçları (dosya yolları, sayımlar, rapor) sözlük olarak döndürür."""
     del WARNINGS[:]
@@ -188,15 +220,15 @@ def convert(opts):
         if not exe:
             print("Bilgi: xelatex bulunamadı; PDF derlenmedi (MiKTeX / TeX Live kurun ya da zip'i Overleaf'e yükleyin).")
         else:
-            import subprocess
             if os.path.isfile(pdf_path):
                 os.remove(pdf_path)
-            for _ in range(2):
-                subprocess.run([exe, "-interaction=nonstopmode", tex_name], cwd=outdir,
-                               capture_output=True, text=True, errors="replace", **NO_WINDOW)
+            timed_out = not run_xelatex(exe, tex_name, outdir)
             compiled = os.path.isfile(pdf_path)
             log_info = analyze_log(stem + ".log", tex.splitlines())
-            if compiled and not log_info["errors"]:
+            if timed_out:
+                warn("xelatex %d dakikada bitmedi ve durduruldu; MiKTeX Console'dan eksik paketleri kurup"
+                     " tekrar deneyin ya da zip'i Overleaf'e yükleyin." % (XELATEX_TIMEOUT // 60))
+            elif compiled and not log_info["errors"]:
                 print("PDF üretildi: %s" % pdf_path)
             else:
                 warn("xelatex hata verdi; ayrıntılar: %s" % (stem + ".log"))

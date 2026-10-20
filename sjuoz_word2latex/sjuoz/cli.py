@@ -3,12 +3,14 @@
 import os
 
 
+from .common import safe_console
 from .report import REPORT_ERROR
 from .pipeline import build_parser, convert
 from .issue import convert_issue
 
 
 def main(argv=None):
+    safe_console()
     ap = build_parser()
     opts = ap.parse_args(argv)
     if opts.sayi:

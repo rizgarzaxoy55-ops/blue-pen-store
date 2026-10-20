@@ -7,7 +7,7 @@ import shutil
 import unicodedata
 
 
-from .common import (C_NS, M, MC, NS, RTL_RUN_RE, W)
+from .common import (C_NS, M, MC, NO_WINDOW, NS, RTL_RUN_RE, W)
 from .docx import Para, Table
 from .render import strip_eq_number_text
 from .parse import CAPTION_RE
@@ -65,7 +65,7 @@ def pdf_to_text(pdf_path):
     if exe and os.path.isfile(pdf_path):
         import subprocess
         try:
-            r = subprocess.run([exe, "-enc", "UTF-8", pdf_path, "-"], capture_output=True, timeout=120)
+            r = subprocess.run([exe, "-enc", "UTF-8", pdf_path, "-"], capture_output=True, **NO_WINDOW, timeout=120)
             return r.stdout.decode("utf-8", "replace")
         except Exception:  # noqa
             return None

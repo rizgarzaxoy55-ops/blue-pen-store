@@ -33,3 +33,17 @@ def test_build_args_issue_and_validation():
 def test_guess_article_id():
     assert gui.guess_article_id("/x/1993_Finalversion.docx") == "1993"
     assert gui.guess_article_id("makale.docx") == ""
+
+
+def test_cli_survives_non_utf8_console(tmp_path):
+    """Windows konsolu (cp1252) Türkçe/Arapça karakterleri gösteremese de program çökmemeli."""
+    import os
+    import subprocess
+    import sys
+    from conftest import FIXTURES, ROOT
+    env = dict(os.environ, PYTHONIOENCODING="cp1252")
+    docx = os.path.join(FIXTURES, "sentetik_rtl", "sentetik_rtl.docx")
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "sjuoz_word2latex.py"), docx, "-o", str(tmp_path / "o"),
+                        "--no-compile", "--no-zip"], env=env, capture_output=True, timeout=120)
+    assert r.returncode == 0, r.stderr.decode("cp1252", "replace")[-500:]
+    assert (tmp_path / "o" / "0000.tex").exists()

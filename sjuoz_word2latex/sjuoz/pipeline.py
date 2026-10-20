@@ -8,7 +8,7 @@ import shutil
 import zipfile
 
 
-from .common import (BIDI, DATA_DIR, WARNINGS, warn)
+from .common import (BIDI, DATA_DIR, NO_WINDOW, warn, WARNINGS)
 from .docx import Docx, Para
 from .render import Linker
 from .parse import parse_article, parse_cover_letter
@@ -190,7 +190,7 @@ def convert(opts):
                 os.remove(pdf_path)
             for _ in range(2):
                 subprocess.run([exe, "-interaction=nonstopmode", tex_name], cwd=outdir,
-                               capture_output=True, text=True, errors="replace")
+                               capture_output=True, text=True, errors="replace", **NO_WINDOW)
             compiled = os.path.isfile(pdf_path)
             log_info = analyze_log(stem + ".log", tex.splitlines())
             if compiled and not log_info["errors"]:

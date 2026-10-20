@@ -6,7 +6,7 @@ import shutil
 
 from lxml import etree
 
-from .common import C_NS, NS, local, render_plain, warn
+from .common import (C_NS, local, NO_WINDOW, NS, render_plain, warn)
 from .docx import Para, Table
 
 
@@ -70,13 +70,13 @@ def convert_external(src, dst_png):
         try:
             if kind == "lo":
                 tmp = tempfile.mkdtemp()
-                subprocess.run(cmd + [tmp, src], check=True, capture_output=True, timeout=180)
+                subprocess.run(cmd + [tmp, src], check=True, capture_output=True, **NO_WINDOW, timeout=180)
                 out = os.path.join(tmp, os.path.splitext(os.path.basename(src))[0] + ".png")
                 if os.path.isfile(out):
                     shutil.move(out, dst_png)
                 shutil.rmtree(tmp, ignore_errors=True)
             else:
-                subprocess.run(cmd, check=True, capture_output=True, timeout=180)
+                subprocess.run(cmd, check=True, capture_output=True, **NO_WINDOW, timeout=180)
             if os.path.isfile(dst_png) and os.path.getsize(dst_png) > 0:
                 trim_whitespace(dst_png)
                 return True

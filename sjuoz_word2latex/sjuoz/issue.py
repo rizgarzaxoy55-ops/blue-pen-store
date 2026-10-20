@@ -6,7 +6,7 @@ import re
 import shutil
 
 
-from .common import warn
+from .common import NO_WINDOW, warn
 from .template import MONTHS
 from .export import crossref_xml, validate_crossref
 from .report import (REPORT_CHECK, REPORT_ERROR, REPORT_OK, tex_escape_html)
@@ -63,7 +63,7 @@ def merge_pdfs(paths, out):
     exe = shutil.which("pdfunite")
     if exe:
         import subprocess
-        return subprocess.run([exe] + list(paths) + [out], capture_output=True).returncode == 0
+        return subprocess.run([exe] + list(paths) + [out], capture_output=True, **NO_WINDOW).returncode == 0
     return False
 
 

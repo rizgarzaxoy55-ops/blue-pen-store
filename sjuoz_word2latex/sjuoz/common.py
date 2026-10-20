@@ -26,12 +26,25 @@ MC = "{%s}" % NS["mc"]
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")  # logolar, şemalar
 
+# Windows'ta alt süreçler (xelatex, LibreOffice, pdftotext) konsol penceresi açmasın
+NO_WINDOW = {"creationflags": 0x08000000} if os.name == "nt" else {}  # CREATE_NO_WINDOW
+
 WARNINGS = []
 
 
 def warn(msg):
     WARNINGS.append(msg)
     print("UYARI: " + msg, file=sys.stderr)
+
+
+def safe_console():
+    """Konsolun kodlamasında olmayan karakterler (Windows) programı çökertmesin."""
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(errors="replace")
+            except (ValueError, OSError):
+                pass
 
 
 def local(tag):

@@ -62,6 +62,12 @@ sjuoz-word2latex makale.docx kapak_mektubu.docx \
 
 İki dosyanın sırası önemli değil; kapak mektubu içeriğinden tanınır.
 
+**Dosya adları (Windows):** komutu `.docx` dosyalarının bulunduğu klasörde çalıştırın (ya da tam yolu
+verin); adında boşluk varsa tırnak içine alın: `"1995 Cover Letter.docx"`. Adın bir kısmını yazıp
+**Tab** tuşuna basarsanız Windows adı tamamlar. Gizli uzantı yüzünden oluşan `makale.docx.docx` ve
+noktası unutulmuş `Kapakdocx` gibi adlar kendiliğinden bulunur; dosya yine bulunamazsa program
+klasördeki Word dosyalarını listeler.
+
 | Seçenek | Açıklama |
 |---|---|
 | `--article-id` | Makale no (DOI, QR kod, dosya adları). Verilmezse dosya adındaki sayı. |

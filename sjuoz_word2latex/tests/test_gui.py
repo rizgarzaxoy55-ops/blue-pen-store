@@ -61,3 +61,13 @@ def test_cli_survives_non_utf8_console(tmp_path):
                         "--no-compile", "--no-zip"], env=env, capture_output=True, timeout=120)
     assert r.returncode == 0, r.stderr.decode("cp1252", "replace")[-500:]
     assert (tmp_path / "o" / "0000.tex").exists()
+
+
+def test_resolve_docx_forgives_windows_typos(tmp_path):
+    from sjuoz.cli import resolve_docx
+    for n in ("paper1995.docx.docx", "1995+Cover+Letter.docx", "eski.doc"):
+        (tmp_path / n).write_bytes(b"x")
+    assert resolve_docx(str(tmp_path / "paper1995.docx")) == (str(tmp_path / "paper1995.docx.docx"), None)
+    assert resolve_docx(str(tmp_path / "1995+Cover+Letterdocx"))[0] == str(tmp_path / "1995+Cover+Letter.docx")
+    real, err = resolve_docx(str(tmp_path / "eski.docx"))
+    assert real is None and "Farklı Kaydet" in err and '"paper1995.docx.docx"' in err

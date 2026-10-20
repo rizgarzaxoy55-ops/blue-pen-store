@@ -175,3 +175,37 @@ def test_bidi_inline_and_rtl_detection():
     assert s == r"the word \rtl{زانکۆ} means university" and conv.BIDI["used"]
     assert conv.is_rtl_text("ئەم توێژینەوەیە باس لە 2024")
     assert not conv.is_rtl_text("Mostly English text with one word زانکۆ")
+
+
+# ---------------------------------------------------------------- dışa aktarma
+def test_bibtex_authors():
+    assert conv.bibtex_authors("Safi, M. E., & Abbas, E. I.") == "Safi, M. E. and Abbas, E. I."
+    assert conv.bibtex_authors("Ali, Wissam Hassan.") == "Ali, Wissam Hassan"
+    assert conv.bibtex_authors("A. Author, B. Author, and C. Author") == "A. Author and B. Author and C. Author"
+    assert conv.bibtex_authors("Indrabayu, Hasanuddin, & Nurtanio, I.") == "Indrabayu, Hasanuddin and Nurtanio, I."
+
+
+def test_parse_reference_apa_journal_and_proceedings():
+    r = conv.parse_reference("Balasubramanian, M., & Ramalingam, V. (2009). Real time face recognition. "
+                             "Expert Systems with Applications, 36(3, Part 2), 6879–6888. "
+                             "https://doi.org/https://doi.org/10.1016/j.eswa.2008.08.001")
+    assert (r["journal"], r["volume"], r["number"], r["pages"], r["year"]) == \
+        ("Expert Systems with Applications", "36", "3, Part 2", "6879--6888", "2009")
+    assert r["doi"] == "10.1016/j.eswa.2008.08.001" and r["title"] == "Real time face recognition"
+    p = conv.parse_reference("Ali, W. (2020). FPGA system. 2020 International Conference on Computer "
+                             "Science (CSASE), 132–137. https://doi.org/10.1109/CSASE48920.2020.9142095")
+    assert p["pages"] == "132--137" and "volume" not in p
+
+
+def test_parse_reference_ieee():
+    r = conv.parse_reference('[3] C. Author, "Third paper," Journal C, vol. 3, pp. 21–30, 2022. doi: 10.1000/ccc')
+    assert (r["title"], r["journal"], r["volume"], r["pages"], r["year"], r["doi"]) == \
+        ("Third paper", "Journal C", "3", "21--30", "2022", "10.1000/ccc")
+
+
+def test_parse_date_and_title_case():
+    assert conv.parse_date("12 May 2026") == (2026, 5, 12)
+    assert conv.parse_date("2026-05-12") == (2026, 5, 12)
+    assert conv.parse_date("XX") is None
+    assert conv.title_case_caps("MOUTH DETECTION BASED ON MODIFIED VIOLA-JONES ALGORITHM") == \
+        "Mouth Detection Based on Modified Viola-Jones Algorithm"

@@ -3,6 +3,7 @@
 from lxml import etree
 
 from conftest import conv
+from sjuoz import report
 
 MNS = ('xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" '
        'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"')
@@ -143,10 +144,10 @@ def test_linker_numeric_and_xrefs():
 
 # ---------------------------------------------------------------- rapor
 def test_lost_text_detection_and_hyphenation():
-    words = conv._norm_words("The Viola-Jones algo-\nrithm detects mouths in real time with high speed.")
+    words = report._norm_words("The Viola-Jones algo-\nrithm detects mouths in real time with high speed.")
     assert "violajones" in words and "algorithm" in words
-    src = conv._shingles(conv._norm_words("a b c d e f g h i j"))
-    out = conv._shingles(conv._norm_words("x a b c d e f g h i j y"))
+    src = report._shingles(report._norm_words("a b c d e f g h i j"))
+    out = report._shingles(report._norm_words("x a b c d e f g h i j y"))
     assert src <= out
 
 

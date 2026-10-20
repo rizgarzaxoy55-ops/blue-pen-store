@@ -1,0 +1,654 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.3 20210610//EN" "https://jats.nlm.nih.gov/publishing/1.3/JATS-journalpublishing1-3.dtd">
+<article xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML" article-type="research-article" dtd-version="1.3" xml:lang="en">
+  <front>
+    <journal-meta>
+      <journal-id journal-id-type="publisher-id">SJUOZ</journal-id>
+      <journal-title-group>
+        <journal-title>Science Journal of University of Zakho</journal-title>
+        <abbrev-journal-title>SJUOZ</abbrev-journal-title>
+      </journal-title-group>
+      <issn pub-type="ppub">2663-628X</issn>
+      <issn pub-type="epub">2663-6298</issn>
+      <publisher>
+        <publisher-name>University of Zakho</publisher-name>
+      </publisher>
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="doi">10.25271/sjuoz.2026.14.4.1993</article-id>
+      <article-id pub-id-type="publisher-id">1993</article-id>
+      <title-group>
+        <article-title>Performance Enhancement for Mouth Detection Time Based on Modified Viola-Jones Algorithm</article-title>
+      </title-group>
+      <contrib-group>
+        <contrib contrib-type="author" corresp="yes">
+          <contrib-id contrib-id-type="orcid" authenticated="false">https://orcid.org/0000-0003-4267-1702</contrib-id>
+          <name>
+            <surname>Safi</surname>
+            <given-names>Mohammed E.</given-names>
+          </name>
+          <xref ref-type="aff" rid="aff1">1</xref>
+          <xref ref-type="corresp" rid="cor1">*</xref>
+        </contrib>
+        <contrib contrib-type="author">
+          <contrib-id contrib-id-type="orcid" authenticated="false">https://orcid.org/0000-0002-5087-4713</contrib-id>
+          <name>
+            <surname>Abbas</surname>
+            <given-names>Eyad I.</given-names>
+          </name>
+          <xref ref-type="aff" rid="aff1">1</xref>
+        </contrib>
+        <contrib contrib-type="author">
+          <contrib-id contrib-id-type="orcid" authenticated="false">https://orcid.org/0000-0002-6982-4994</contrib-id>
+          <name>
+            <surname>Ali</surname>
+            <given-names>Alaa H.</given-names>
+          </name>
+          <xref ref-type="aff" rid="aff2">2</xref>
+        </contrib>
+      </contrib-group>
+      <aff id="aff1">
+        <label>1</label>
+        <institution>College of Electrical Engineering, University of Technology- Iraq, Baghdad, Iraq</institution>
+      </aff>
+      <aff id="aff2">
+        <label>2</label>
+        <institution>Department of Medical Instrumentation Techniques Engineering, Al-Mustaqbal University, 51001, Babylon, Iraq</institution>
+      </aff>
+      <author-notes>
+        <corresp id="cor1">* Corresponding author: <email>mohammed.e.safi@uotechnology.edu.iq</email></corresp>
+      </author-notes>
+      <pub-date publication-format="electronic" date-type="pub">
+        <day>15</day>
+        <month>10</month>
+        <year>2026</year>
+      </pub-date>
+      <volume>14</volume>
+      <issue>4</issue>
+      <fpage>571</fpage>
+      <lpage>576</lpage>
+      <history>
+        <date date-type="received">
+          <day>12</day>
+          <month>05</month>
+          <year>2026</year>
+        </date>
+        <date date-type="accepted">
+          <day>01</day>
+          <month>08</month>
+          <year>2026</year>
+        </date>
+      </history>
+      <permissions>
+        <copyright-year>2026</copyright-year>
+        <license xlink:href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+          <license-p>This is an open access article under a CC BY-NC-SA 4.0 license</license-p>
+        </license>
+      </permissions>
+      <self-uri xlink:href="https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/1993"/>
+      <abstract>
+        <p>Mouth detection is an important issue in visual speech recognition. The de facto algorithm used to achieve this is the Viola-Jones algorithm. Nevertheless, time enhancement for the auto-detection of this algorithm is required. Therefore, the goal of this research is to propose a modified approach based on the Viola-Jones algorithm to enhance the detection time. The main contribution of the proposed algorithm is limiting the auto-valuing for the threshold of the Viola-Jones algorithm and enhancing the time by configuring the maximum step for the adaptive threshold value. The UOTletters database was used in the experiments of this research with 30 speakers pronouncing English letters with overall frames of 28164. The experiment results have shown that the average detection time for the proposed method was 0.585 sec, compared with the baseline method's 2.097 sec. As a result, the proposed approach enhanced the mouth detection time with respect to the baseline algorithm (358.46%). Consequently, the proposed algorithm is a good solution for real-time visual speech recognition regarding the detection time enhancement.</p>
+      </abstract>
+      <kwd-group kwd-group-type="author">
+        <kwd>Mouth detection</kwd>
+        <kwd>Viola-Jones algorithm</kwd>
+        <kwd>adaptive threshold value</kwd>
+      </kwd-group>
+    </article-meta>
+  </front>
+  <body>
+    <sec>
+      <title>INTRODUCTION</title>
+      <p>Machine learning is witnessing a rise in many applications in communications, enabling smarter resource allocation, enhanced signal processing, and more adaptive algorithms (Radhi et al., 2022). Speech recognition nowadays has become one of the most common features in many applications and devices (Mohammed E. Safi &amp; Abbas, 2016). Nevertheless, the challenge of enhancing accuracy in audio speech recognition is required (Mohammed Ehsan Safi &amp; Abbas, 2022). As a result, visual speech recognition was adopted to assist audio speech recognition. Visual speech recognition, basically in common algorithms, consists of three parts: Mouth detection, lips isolation, and finally classification (Mohammed Ehsan Safi &amp; Abbas, 2023). Mouth detection is a machine-learning process that is used to detect the human mouth and separate it from its surroundings (Kaur &amp; Sharma, 2017). Many approaches are used in this field, as shown in research (Balasubramanian et al., 2009; Nguyen et al., 2006; Ryu &amp; Oh, 2001), but the Viola-Jones algorithm became a de facto algorithm (Wisam H Ali et al., 2020; Ibrahim &amp; Mulvaney, 2015; Viola &amp; Jones, 2001). The Viola-Jones algorithm (VJA) is a machine-learning algorithm for detecting and analyzing Human face parts from images with high speed and accuracy (Maghraby et al., 2014). VJA in color images is converted to grayscale. Therefore, in Haar-like features, it's important to specify the threshold for it to configure edges. The thresholds in some pieces of research are static thresholds, such as (Wisam H Ali et al., 2020; Setu &amp; Rahman, 2016). In research (Joshi et al., 2021), the optimal threshold for mouth detection was studied. The experiment results of this study have shown that the maximum accuracy at the threshold value of 150, by accuracy of 73.07% and 92.30%, respectively. The database was selected at 5ft and 8ft distance respectively. In practical and real-time videos, not all frames have the same threshold due to differences in environments like illumination and skin color. As a result, auto-configuring to the optimal threshold was proposed by (Indrabayu et al., 2019). They suggested a modification for VJA by using a zero value as the initial for the threshold parameter. The auto-valuing threshold 938 face frames for 20 videos yields 5.665 sec. in mouth detection feature time with an accuracy of 99.49%. In this paper, a modification Viola-Jones algorithm using an adaptive threshold for optimized algorithms (Indrabayu et al., 2019) and (Joshi et al., 2021), respectively, was proposed. The drawbacks of the previous works based on a fixed threshold value are problems related to moving objects and varying light and distance. The drawback of the baseline auto-valuing threshold is that it is time-consuming because the criteria determination is based on practical observation only and is not supported by analytical calculations.</p>
+      <p>The main contribution of the proposed algorithm is limiting the auto-valuing of the threshold of the Viola-Jones algorithm and reducing the time by configuring the maximum step for the adaptive threshold value. The selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation. Moreover, the direction of the adaptive threshold value step (increment or decrement) was determined based on experimental results and analytical determination. The experiment results were performed on the UOTletters database (Wisam H Ali et al., 2020), which consists of 30 speakers pronouncing English letters with overall frames of 28164.</p>
+      <table-wrap id="tab1">
+        <label>Table 1</label>
+        <caption>
+          <p>Related works' drawbacks.</p>
+        </caption>
+        <table>
+          <tr>
+            <th>Reference</th>
+            <th>Algorithm</th>
+            <th>Threshold</th>
+            <th>Drawback</th>
+          </tr>
+          <tr>
+            <td>(Wisam H Ali et al., 2020; Ibrahim &amp; Mulvaney, 2015; Viola &amp; Jones, 2001)</td>
+            <td>Standard Viola &amp; Jones algorithm</td>
+            <td>Static, based on distance and light contrast</td>
+            <td>Misses detection with varying light and distance</td>
+          </tr>
+          <tr>
+            <td>(Joshi et al., 2021)</td>
+            <td>Standard Viola &amp; Jones algorithm with a fixed threshold based on distance</td>
+            <td>The threshold value is 150 at 5 ft and 8 ft distances, respectively</td>
+            <td>Miss detection with varying light and distance more than 8 ft distances and less 5 ft.</td>
+          </tr>
+          <tr>
+            <td>(Indrabayu et al., 2019)</td>
+            <td>Modified Viola &amp; Jones algorithm</td>
+            <td>Auto-valuing for Threshold starting from 1 to unlimited value</td>
+            <td>Cost of time and cause of error if no object detection.</td>
+          </tr>
+          <tr>
+            <td>(Joshi et al., 2021)</td>
+            <td>Modified Viola &amp; Jones algorithm</td>
+            <td>Auto-valuing for Threshold starting from 1 to unlimited value maximum values of 150 at 3 ft to 8 ft of distance</td>
+            <td>Cost of time.</td>
+          </tr>
+          <tr>
+            <td>The proposed algorithm</td>
+            <td>The proposed Modified Viola &amp; Jones algorithm</td>
+            <td>Auto Valuing for Threshold starting from 150 to 1 at 3 ft to 8 ft of distance</td>
+            <td>Starting value for distance more than 8 ft. (Future works)</td>
+          </tr>
+        </table>
+      </table-wrap>
+    </sec>
+    <sec>
+      <title>Viola-Jones Algorithm</title>
+      <p>VJA has many features, like dealing with different skin colors, the ability to detect even with eyeglasses, and the ability to recognize many faces in one image (Zhang &amp; Zhang, 2010). The algorithm is based on rectangular-shaped features called Haar-Like features (Papageorgiou et al., 1998). This feature distinguishes the boundaries of the faces from their surroundings in the frame. This technique is effective even for different face images with different ranges. The algorithm with features is faster than the algorithm that works on a pixel operation. As a result, employing characteristics of pictures is used more than pixel-based ones (Wissam Hassan Ali, 2016). Figure 1 illustrates most shapes of rectangle features, which consist of a white pixel area and a black pixel area (Indrabayu et al., 2019). The concept of using Haar-like features is to follow the boundaries of objects by subtracting the white area from the black area:</p>
+      <disp-formula id="eq1">
+        <tex-math>\[V = \sum P_{(\mathit{white}\ \mathit{region})} - \sum P_{(\mathit{black}\ \mathit{region})}\]</tex-math>
+      </disp-formula>
+      <p>Where: P is the value of the pixel, and V is the feature value.</p>
+      <fig id="fig1">
+        <label>Figure 1</label>
+        <caption>
+          <p>Different shapes of Haar-like features.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure1.png"/>
+      </fig>
+      <p>To minimize the complexity of the mathematical operations, the Viola-Jones algorithm converts the input image into grayscale and into a new mathematical form called the integral image to minimize the calculation time. The integral image is determined by the sum of the upper rectangle for the current pixel (Kherchaoui &amp; Houacine, 2010):</p>
+      <disp-formula id="eq2">
+        <tex-math>\[\mathit{In}_{\left( i,j \right)}=\sum\limits_{\bar{i}=1,\bar{j}=1}^{i-1,j-1} \mathit{Image}(\bar{i},\bar{j})\]</tex-math>
+      </disp-formula>
+      <p>Where: In is the integral image, Image is the input image, and (i,j) is the spatial pixel at the x and y coordinates, respectively.</p>
+      <p>The integral image is determined by taking the spatial value of the bottom-left pixel of the feature window and subtracting the remaining unwanted region of the integral image to obtain the contrast of the Haar-like features, which leads to decreased detection time. For example, as shown in Figure 2, two areas of Haar’s feature window represent the cases of calculation for areas in the integral image (Berbar et al., 2006).</p>
+      <fig id="fig2">
+        <label>Figure 2</label>
+        <caption>
+          <p>Integral image example.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure2.png"/>
+      </fig>
+      <p>The two cases are the region with an edge surrounding it and the region with an unwanted area boundary. The edge surrounding the Area illustrated in Area 1 of Figure 2 can be calculated as given below:</p>
+      <disp-formula id="eq3">
+        <tex-math>\[v_{1}=B-A\]</tex-math>
+      </disp-formula>
+      <p>The Area with unwanted Areas surrounding it, illustrated in Area 2 of Figure 2, can be calculated as given below:</p>
+      <disp-formula id="eq4">
+        <tex-math>\[v_{2}=D-\left( B+C \right)+A\]</tex-math>
+      </disp-formula>
+      <p>It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in Figure 2, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of Equation 1.</p>
+      <p>VJA has another concept to reduce the massive number of features; eg., a 24*24 window gives 160,000 features. Viola and Jones proposed two techniques to overcome this problem: using a cascade filter and AdaBoost training, as shown in Figure 3. Some of the obtained features are not useful for face detection. Therefore, a cascade filter was utilized to crumble the detection operation of faces into substages like eyes, nose bridge, and mouth region. In addition, to build a strong classifier, the subsequent weak classifier corrected the error in the previous classifier by AdaBoost training (Setu &amp; Rahman, 2016).</p>
+      <fig id="fig3">
+        <label>Figure 3</label>
+        <caption>
+          <p>Viola and Jones algorithm.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure3.png"/>
+      </fig>
+      <p>The final results of detection for the images that have multi-candidate detection are surrounded by merging the bounding boxes around the targets. The configuration step of the threshold governs the grouping of the collocated detection boxes. The selection of the optimal merged bounding box threshold would correctly overcome error type 1 (false positive) and time delay or error type 2 (miss detection). The effect of the minimum value of the threshold which led to a false positive illustrated in Figure 4. Nevertheless, error type 2 could occur due to an increase in the threshold (Joshi et al., 2021). Consequently, that parameter is a tunable value in the function (vision.CascadeObjectDetector) in MATLAB (MathWorks, n.d.).</p>
+      <fig id="fig4">
+        <label>Figure 4</label>
+        <caption>
+          <p>(a). Detection when Threshold=1 (b). Detection when Threshold = 10 (c). Detection when Threshold =80 (d). Detection when Threshold =90.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure4.jpeg"/>
+      </fig>
+    </sec>
+    <sec>
+      <title>Proposed Mouth Detection Algorithm</title>
+      <p>The proposed algorithm is inspired by the adaptive value of the algorithm proposed in (Indrabayu et al., 2019). Yet, the selection of the auto-valuing of the optimal threshold is the opposite way. Moreover, the proposed algorithm adopts a technique to maximize the search step.</p>
+      <p>Figure 5 shows the proposed algorithm procedure; the starting point for the threshold is 150 instead of one initial value in the study (Indrabayu et al., 2019), due to our observation in Section 4 that most values of the optimal threshold are in the upper limit. Moreover, the selection of the upper limit of the optimal threshold (150) is based on observations in the study (Joshi et al., 2021) and our practical experiments for the maximum value that the threshold values reached. In addition, another contribution of the proposed algorithm is to select the search step, which is set to 5. Consequently, the adaptive threshold value (TH) is decreased by (5) until reaching the ROI or reaching the last value (1):</p>
+      <disp-formula id="eq5">
+        <tex-math>\[\mathit{TH}_{t}= \mathit{TH}_{t-1}-5\]</tex-math>
+      </disp-formula>
+      <p>Equation 5 is determined based on analytic and experimental results in Section 4.</p>
+      <fig id="fig5">
+        <label>Figure 5</label>
+        <caption>
+          <p>The proposed adaptive algorithm of the optimal threshold for mouth detection.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure5.png"/>
+      </fig>
+    </sec>
+    <sec>
+      <title>Experimental Results</title>
+      <p>Figure 6 shows sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database. In this section, many experiments were done to ensure that the analytical results satisfy the practical results. Moreover, make an overall evaluation of the proposed algorithm with respect to the baseline algorithm for the thirty speakers pronouncing English letters, with overall frames 28164. Equation 5 is determined from the curve fitting for the threshold based on the detection results, in addition to the distribution of the detection results. As we can see in Figure 7, the sample values of the threshold for the letter A for thirty speakers are most of the values located in the upper area for the proposed range (1 to 150). Consequently, we proposed starting at 150 and then decreasing the threshold value to adopt the optimal value instead of the increment approach in the baseline algorithm. Moreover, the selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation:</p>
+      <disp-formula id="eq6">
+        <tex-math>\[\mathit{TH}_{t}= {a\ \mathit{TH}}_{t-1}+b\]</tex-math>
+      </disp-formula>
+      <p>Where THt is the predicted value of the threshold, and THt-1 is the previous value of it.</p>
+      <p>Practically, the two coefficients, a and b, are limited to integer values due to the threshold criteria, in addition to the detection ratio.</p>
+      <fig id="fig6">
+        <label>Figure 6</label>
+        <caption>
+          <p>Sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure6.png"/>
+      </fig>
+      <p>As shown in Figure 8, using the analytic polynomial curve fitting between TH<sub>t</sub> and TH<sub>t-1</sub>, the value of the (a) coefficient was determined (0.909). Yet, the (a) value must be an integer value due to the threshold criteria; therefore, it is approximated to (1). While the (b) value is analytically (10.4), and in the same manner, its value is approximated to (10) due to the threshold criteria. The reason for applying the analytic step is to calculate the maximum searching step (represented by the b coefficient) for the threshold value and specify the framework for the practical experiment to select the final value of the optimal searching step.</p>
+      <fig id="fig7">
+        <label>Figure 7</label>
+        <caption>
+          <p>Sample values of the threshold for the letter A for thirty speakers.</p>
+        </caption>
+        <graphic xlink:href="figures/Figure7.png"/>
+      </fig>
+      <p>For the second criterion (detection ratio), a practical experiment for accuracy versus values of the searching step was applied to examine the b coefficient values (1 to 10). As shown in Figure 9, the maximum searching step with the highest accuracy is (5).</p>
+      <fig id="fig8">
+        <label>Figure 8</label>
+        <caption>
+          <p>The curve fitting for THt (Tm1) versus THt-1 (Tm2).</p>
+        </caption>
+        <graphic xlink:href="figures/Figure8.png"/>
+      </fig>
+      <fig id="fig9">
+        <label>Figure 9</label>
+        <caption>
+          <p>Accuracy versus (b coefficient).</p>
+        </caption>
+        <graphic xlink:href="figures/Figure9.png"/>
+      </fig>
+      <p>The final experiment evaluation based on accuracy and time delay with respect to the baseline algorithm (Indrabayu et al., 2019) was illustrated in Table 1. The experiment results show that the baseline algorithm has an accuracy of 99.567% with an average detection time (TD) of 2.097 s. Nevertheless, the proposed algorithm has the same accuracy of 99.567% with an average detection time (TD) of 0.585 sec.). Consequently, the proposed algorithm has sped up the calculation process by 3.5846 times that of the baseline algorithm.</p>
+      <p>The drawback of this study is that the experimental results are limited to a maximum distance of 8 ft from the camera; therefore, the maximum limit (150) may change at greater distances depending on the application and real-time implementation.</p>
+      <table-wrap id="tab2">
+        <label>Table 2</label>
+        <caption>
+          <p>Evaluation of the proposed and baseline methods.</p>
+        </caption>
+        <table>
+          <tr>
+            <th>No. of speakers</th>
+            <th>No. of frames</th>
+            <th>Detected</th>
+            <th>Accuracy (%)</th>
+            <th>Average thresholds</th>
+            <th>average T<sub>D</sub> (Sec.) (Indrabayu et al., 2019)</th>
+            <th>The proposed method's average T<sub>D</sub>  (Sec.)</th>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td>1019</td>
+            <td>1019</td>
+            <td>100</td>
+            <td>144</td>
+            <td>4.126</td>
+            <td>0.1748</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>985</td>
+            <td>985</td>
+            <td>100</td>
+            <td>137</td>
+            <td>0.068</td>
+            <td>0.9864</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>1057</td>
+            <td>1057</td>
+            <td>100</td>
+            <td>40</td>
+            <td>3.97</td>
+            <td>0.206</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>1161</td>
+            <td>1160</td>
+            <td>99.9</td>
+            <td>130</td>
+            <td>3.94</td>
+            <td>0.212</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>962</td>
+            <td>953</td>
+            <td>99.1</td>
+            <td>45</td>
+            <td>0.15</td>
+            <td>1.03</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>786</td>
+            <td>786</td>
+            <td>100</td>
+            <td>142</td>
+            <td>4.33</td>
+            <td>0.134</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>992</td>
+            <td>992</td>
+            <td>100</td>
+            <td>135</td>
+            <td>2.77</td>
+            <td>0.446</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td>785</td>
+            <td>785</td>
+            <td>100</td>
+            <td>66</td>
+            <td>0.665</td>
+            <td>0.867</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td>803</td>
+            <td>803</td>
+            <td>100</td>
+            <td>120</td>
+            <td>2.87</td>
+            <td>0.426</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>896</td>
+            <td>896</td>
+            <td>100</td>
+            <td>129</td>
+            <td>3.34</td>
+            <td>0.332</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td>898</td>
+            <td>898</td>
+            <td>100</td>
+            <td>140</td>
+            <td>3.86</td>
+            <td>0.228</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td>819</td>
+            <td>819</td>
+            <td>100</td>
+            <td>144</td>
+            <td>3.835</td>
+            <td>0.233</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td>841</td>
+            <td>841</td>
+            <td>100</td>
+            <td>126</td>
+            <td>1.91</td>
+            <td>0.618</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td>794</td>
+            <td>794</td>
+            <td>100</td>
+            <td>91</td>
+            <td>1.55</td>
+            <td>0.69</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td>788</td>
+            <td>788</td>
+            <td>100</td>
+            <td>77</td>
+            <td>1.025</td>
+            <td>0.795</td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td>771</td>
+            <td>771</td>
+            <td>100</td>
+            <td>90</td>
+            <td>1.03</td>
+            <td>0.794</td>
+          </tr>
+          <tr>
+            <td>17</td>
+            <td>889</td>
+            <td>889</td>
+            <td>100</td>
+            <td>91</td>
+            <td>0.18</td>
+            <td>1.001</td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td>945</td>
+            <td>945</td>
+            <td>100</td>
+            <td>135</td>
+            <td>3.515</td>
+            <td>0.297</td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td>992</td>
+            <td>992</td>
+            <td>100</td>
+            <td>113</td>
+            <td>2.5515</td>
+            <td>0.489</td>
+          </tr>
+          <tr>
+            <td>20</td>
+            <td>957</td>
+            <td>957</td>
+            <td>100</td>
+            <td>105</td>
+            <td>1.575</td>
+            <td>0.685</td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td>867</td>
+            <td>867</td>
+            <td>100</td>
+            <td>129</td>
+            <td>2.13</td>
+            <td>0.574</td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td>908</td>
+            <td>908</td>
+            <td>100</td>
+            <td>75</td>
+            <td>0.29</td>
+            <td>0.942</td>
+          </tr>
+          <tr>
+            <td>23</td>
+            <td>932</td>
+            <td>932</td>
+            <td>100</td>
+            <td>134</td>
+            <td>0.56</td>
+            <td>0.888</td>
+          </tr>
+          <tr>
+            <td>24</td>
+            <td>965</td>
+            <td>965</td>
+            <td>100</td>
+            <td>107</td>
+            <td>2.155</td>
+            <td>0.569</td>
+          </tr>
+          <tr>
+            <td>25</td>
+            <td>973</td>
+            <td>973</td>
+            <td>100</td>
+            <td>138</td>
+            <td>2.205</td>
+            <td>0.559</td>
+          </tr>
+          <tr>
+            <td>26</td>
+            <td>1018</td>
+            <td>1018</td>
+            <td>100</td>
+            <td>145</td>
+            <td>3.025</td>
+            <td>0.395</td>
+          </tr>
+          <tr>
+            <td>27</td>
+            <td>1010</td>
+            <td>1010</td>
+            <td>100</td>
+            <td>121</td>
+            <td>0.58</td>
+            <td>0.539</td>
+          </tr>
+          <tr>
+            <td>28</td>
+            <td>1223</td>
+            <td>1150</td>
+            <td>94</td>
+            <td>85</td>
+            <td>0.58</td>
+            <td>0.884</td>
+          </tr>
+          <tr>
+            <td>29</td>
+            <td>1045</td>
+            <td>1045</td>
+            <td>100</td>
+            <td>145</td>
+            <td>0.12</td>
+            <td>1.024</td>
+          </tr>
+          <tr>
+            <td>30</td>
+            <td>870</td>
+            <td>870</td>
+            <td>100</td>
+            <td>144</td>
+            <td>4.015</td>
+            <td>0.197</td>
+          </tr>
+          <tr>
+            <td>Overall</td>
+            <td>28164</td>
+            <td>28008</td>
+            <td>99.567</td>
+            <td>114</td>
+            <td>2.097</td>
+            <td>0.585</td>
+          </tr>
+        </table>
+      </table-wrap>
+    </sec>
+    <sec>
+      <title>Conclusions</title>
+      <p>The mouth detection time is an important issue in visual speech recognition. In this paper, a modification of VJA using an adaptive threshold was proposed. The experimental results have shown that our algorithm enhanced the mouth detection time with the baseline algorithm reduced to more than 3.5 times approximately. Consequently, the proposed algorithm gives a good solution for real-time visual speech recognition regarding the detection time enhancement. The drawback of this paper is that the experimental results are limited to a maximum distance of 8 ft from the camera; therefore, the maximum limit (150) may change at greater distances depending on the application and real-time implementation. Moreover, the limitation of the present study is an important direction for future validation using more diverse datasets.</p>
+    </sec>
+  </body>
+  <back>
+    <ack>
+      <title>ACKNOWLEDGEMENTS</title>
+      <p><bold>“The authors sincerely thank the original investigators,</bold> <bold>Wisam H Ali, R. Saeed, and H. Al-</bold><bold>Muifraje</bold><bold>, for their foundational work and for making the dataset from their published study </bold>(Wisam H Ali et al., 2020)<bold>  available for this retrospective analysis.”</bold></p>
+    </ack>
+    <sec>
+      <title>Ethical Statement</title>
+      <p><bold>"The original data collection was conducted by the primary investigators </bold>(Wisam H Ali et al., 2020)<bold> </bold><bold>with the official approval of their institutional university authorities at that time. Informed consent was explicitly obtained from all human volunteers by the original research team. For the present study, a secondary analysis was performed using this existing dataset, which was provided in a fully anonymized and de-identified format to protect participant confidentiality."</bold></p>
+    </sec>
+    <sec>
+      <title>Author Contributions</title>
+      <p>“Study concept and design: Mohammed E. Safi 1, Eyad I., Alaa H. Ali.”</p>
+      <p>“Analysis and interpretation of data: Mohammed E. Safi, Eyad I. Abbas, “</p>
+      <p>“Drafting of the manuscript: Mohammed E. Safi, Eyad I. Abbas, Alaa H. Ali”.</p>
+      <p>“Critical revision of the manuscript for important intellectual content: Mohammed E. Safi, Eyad I. Abbas”</p>
+      <p>“Statistical analysis: Mohammed E. Safi, Eyad I. Abbas, Alaa H. Ali.”</p>
+      <p>“Administrative, technical, and material support: Mohammed E. Safi, Eyad I. Abbas, Alaa H. Ali.”</p>
+      <p>“Study supervision: Mohammed E. Safi, Eyad I. Abbas, Alaa H. Ali.”</p>
+    </sec>
+    <sec>
+      <title>Conflict of Interest</title>
+      <p>“The authors declare that they have no conflicts of interest related to the publication or funding of this manuscript.”</p>
+    </sec>
+    <sec>
+      <title>Funding</title>
+      <p>“The authors declare that no financial support, grants, or funding were received from any public, commercial, or non-profit organizations for the research, authorship, or publication of this article.”</p>
+    </sec>
+    <ref-list>
+      <title>References</title>
+      <ref id="ref1">
+        <mixed-citation>Ali, Wisam H, R. Saeed, T., &amp; H. Al-Muifraje, M. (2020). FPGA Implementation of Visual Speech Recognition System based on NVGRAM-WNN. 2020 International Conference on Computer Science and Software Engineering (CSASE), 132–137. https://doi.org/<pub-id pub-id-type="doi">10.1109/CSASE48920.2020.9142095</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref2">
+        <mixed-citation>Ali, Wissam Hassan. (2016). Pattern Recognition System for Human Utterance (Issue June). University of Technology-Iraq.</mixed-citation>
+      </ref>
+      <ref id="ref3">
+        <mixed-citation>Balasubramanian, M., Palanivel, S., &amp; Ramalingam, V. (2009). Real time face and mouth recognition using radial basis function neural networks. Expert Systems with Applications, 36(3, Part 2), 6879–6888. https://doi.org/https://doi.org/<pub-id pub-id-type="doi">10.1016/j.eswa.2008.08.001</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref4">
+        <mixed-citation>Berbar, M. A., Kelash, H. M., &amp; Kandeel, A. A. (2006). Faces and Facial Features Detection in Color Images. Geometric Modeling and Imaging--New Trends (GMAI’06), 209–214. https://doi.org/<pub-id pub-id-type="doi">10.1109/GMAI.2006.18</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref5">
+        <mixed-citation>Ibrahim, M. Z., &amp; Mulvaney, D. J. (2015). Geometrical-based lip-reading using template probabilistic multi-dimension dynamic time warping. JOURNAL OF VISUAL COMMUNICATION AND IMAGE REPRESENTATION, 30, 219–233. https://doi.org/<pub-id pub-id-type="doi">10.1016/j.jvcir.2015.04.013</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref6">
+        <mixed-citation>Indrabayu, Hasanuddin, &amp; Nurtanio, I. (2019). An Approach in Auto Valuing for Optimal Threshold of Viola Jones. Symposium of Emerging Nuclear Technology and Engineering Novelty. https://doi.org/<pub-id pub-id-type="doi">10.1088/1742-6596/1198/9/092003</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref7">
+        <mixed-citation>Joshi, A., Chavan, V., &amp; Kaveri, P. (2021). Semantic Gap Reduction From Mouth Feature Threshold Value Using Viola Jones Algorithm. ICCRDA 2020. https://doi.org/<pub-id pub-id-type="doi">10.1088/1757-899X/1022/1/012065</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref8">
+        <mixed-citation>Kaur, J., &amp; Sharma, A. (2017). Performance Analysis of Face Detection by using Viola-Jones algorithm. International Journal of Computational Intelligence Research, 13(5), 707–717.</mixed-citation>
+      </ref>
+      <ref id="ref9">
+        <mixed-citation>Kherchaoui, S., &amp; Houacine, A. (2010). Face detection based on a model of the skin color with constraints and template matching. 2010 International Conference on Machine and Web Intelligence, 469–472. https://doi.org/<pub-id pub-id-type="doi">10.1109/ICMWI.2010.5648043</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref10">
+        <mixed-citation>Maghraby, A. El, Abdalla, M., &amp; El, M. Y. (2014). Detect and Analyze Face Parts Information using Viola- Jones and Geometric Approaches. International Journal of Computer Applications, 101(3), 23–28. https://doi.org/<pub-id pub-id-type="doi">10.5120/17667-8494</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref11">
+        <mixed-citation>MathWorks. (n.d.). vision.CascadeObjectDetector (Detect objects using the Viola-Jones algorithm). Retrieved December 27, 2022, from https://www.mathworks.com/help/vision/ref/vision.cascadeobjectdetector-system-object.html</mixed-citation>
+      </ref>
+      <ref id="ref12">
+        <mixed-citation>Nguyen, D., Halupka, D., Member, S., Aarabi, P., Sheikholeslami, A., &amp; Member, S. (2006). Real-Time Face Detection and Lip Feature Extraction Using Field-Programmable Gate Arrays. IEEE TRANSACTIONS ON SYSTEMS, MAN, AND CYBERNETICS, 36(4), 902–912. https://doi.org/<pub-id pub-id-type="doi">10.1109/TSMCB.2005.862728</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref13">
+        <mixed-citation>Papageorgiou, C. P., Oren, M., &amp; Poggio, T. (1998). A general framework for object detection. Sixth International Conference on Computer Vision (IEEE Cat. No.98CH36271), 555–562. https://doi.org/<pub-id pub-id-type="doi">10.1109/ICCV.1998.710772</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref14">
+        <mixed-citation>Radhi, A. A., Akkar, H. A. R., &amp; Abdullah, H. N. (2022). Skewness and access kurtosis as denoised mixed features-based K-Medoids for cooperative spectrum sensing. Physical Communication, 54, 101831. https://doi.org/https://doi.org/<pub-id pub-id-type="doi">10.1016/j.phycom.2022.101831</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref15">
+        <mixed-citation>Ryu, Y.-S., &amp; Oh, S.-Y. (2001). Automatic extraction of eye and mouth fields from a face image using eigenfeatures and multilayer perceptrons. Pattern Recognition, 34(12), 2459–2466. https://doi.org/https://doi.org/<pub-id pub-id-type="doi">10.1016/S0031-3203(00)00173-4</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref16">
+        <mixed-citation>Safi, Mohammed E., &amp; Abbas, E. I. (2016). Microcontroller - Controlled security door based on speech recognition. In Al-Sadiq International Conference on Multidisciplinary in IT and Communication Techniques Science and Applications, AIC-MITCSA 2016 (pp. 48–53). https://doi.org/<pub-id pub-id-type="doi">10.1109/AIC-MITCSA.2016.7759909</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref17">
+        <mixed-citation>Safi, Mohammed Ehsan, &amp; Abbas, E. I. (2022). Isolated word recognition based on PNCC with different classifiers in a noisy environment. Applied Acoustics, 195, 108848. https://doi.org/https://doi.org/<pub-id pub-id-type="doi">10.1016/j.apacoust.2022.108848</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref18">
+        <mixed-citation>Safi, Mohammed Ehsan, &amp; Abbas, E. I. (2023). Lip Segmentation for Visual Speech Recognition Based on the Convolution Process. 2023 International Conference on Engineering Applied and Nano Sciences (ICEANS), 102–106. https://doi.org/<pub-id pub-id-type="doi">10.1109/ICEANS58413.2023.10630463</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref19">
+        <mixed-citation>Setu, T. A., &amp; Rahman, M. (2016). Human Face Detection and Segmentation of Facial Feature Region. Global Journal of Computer Science and Technology: G Interdisciplinary, 16(1).</mixed-citation>
+      </ref>
+      <ref id="ref20">
+        <mixed-citation>Viola, P., &amp; Jones, M. (2001). Rapid Object Detection using a Boosted Cascade of Simple Features. Proceedings of the 2001 IEEE Computer Society Conference on Computer Vision and Pattern Recognition. https://doi.org/https://doi.org/<pub-id pub-id-type="doi">10.1109/CVPR.2001.990517</pub-id></mixed-citation>
+      </ref>
+      <ref id="ref21">
+        <mixed-citation>Zhang, C., &amp; Zhang, Z. (2010). A Survey of Recent Advances in Face Detection. Microsoft Research, 1(MSR-TR-2010-66). https://www.microsoft.com/en-us/research/publication/a-survey-of-recent-advances-in-face-detection/</mixed-citation>
+      </ref>
+    </ref-list>
+  </back>
+</article>

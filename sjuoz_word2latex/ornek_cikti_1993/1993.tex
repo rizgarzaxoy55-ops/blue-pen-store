@@ -11,9 +11,11 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{xltabular}
+\usepackage{pdflscape}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{qrcode}
@@ -37,6 +39,7 @@
 \renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
 \captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
 \captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
 \definecolor{sjuozblue}{HTML}{C1D1EB}
 \definecolor{colorabs}{HTML}{E2EAF4}
 
@@ -132,7 +135,7 @@
 \large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
 \rule{\textwidth}{1.5pt} \\
 \begin{minipage}[t]{0.175\textwidth}
-  \vspace{1cm} Received \\ XX \\[0.5cm] Accepted \\ XX \\[0.5cm] Published \\ XX \\[0.25cm]
+  \vspace{1cm} Received \\ 12 May 2026 \\[0.5cm] Accepted \\ 1 Aug 2026 \\[0.5cm] Published \\ 15 Oct 2026 \\[0.25cm]
 \end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
   \large{Mouth detection is an important issue in visual speech recognition. The de facto algorithm used to achieve this is the Viola-Jones algorithm. Nevertheless, time enhancement for the auto-detection of this algorithm is required. Therefore, the goal of this research is to propose a modified approach based on the Viola-Jones algorithm to enhance the detection time. The main contribution of the proposed algorithm is limiting the auto-valuing for the threshold of the Viola-Jones algorithm and enhancing the time by configuring the maximum step for the adaptive threshold value. The UOTletters database was used in the experiments of this research with 30 speakers pronouncing English letters with overall frames of 28164. The experiment results have shown that the average detection time for the proposed method was 0.585 sec, compared with the baseline method's 2.097 sec. As a result, the proposed approach enhanced the mouth detection time with respect to the baseline algorithm (358.46\%). Consequently, the proposed algorithm is a good solution for real-time visual speech recognition regarding the detection time enhancement.
   \\[2pt]
@@ -151,13 +154,13 @@ The main contribution of the proposed algorithm is limiting the auto-valuing of 
 
 \end{multicols}
 \noindent
-\begin{minipage}{\textwidth}
+\begin{minipage}{\linewidth}
 \centering
 \hypertarget{tab:1}{}
 \captionof{table}{Related works' drawbacks.}
 \vspace{-6pt}
 \small
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
 \textbf{Reference} & \textbf{Algorithm} & \textbf{Threshold} & \textbf{Drawback} \\ \midrule
 (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}; \hyperlink{ref:5}{Ibrahim \& Mulvaney, 2015}; \hyperlink{ref:20}{Viola \& Jones, 2001}) & Standard Viola \& Jones algorithm & Static, based on distance and light contrast & Misses detection with varying light and distance \\ \addlinespace[0.3em]
@@ -303,13 +306,13 @@ The drawback of this study is that the experimental results are limited to a max
 
 \end{multicols}
 \noindent
-\begin{minipage}{\textwidth}
+\begin{minipage}{\linewidth}
 \centering
 \hypertarget{tab:2}{}
 \captionof{table}{Evaluation of the proposed and baseline methods.}
 \vspace{-6pt}
 \footnotesize
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
 \toprule
 \textbf{No. of speakers} & \textbf{No. of frames} & \textbf{Detected} & \textbf{Accuracy (\%)} & \textbf{Average thresholds} & \textbf{average T\textsubscript{D} (Sec.) (\hyperlink{ref:6}{Indrabayu \textit{et al.}, 2019})} & \textbf{The proposed method's average T\textsubscript{D} (Sec.)} \\ \midrule
 1 & 1019 & 1019 & 100 & 144 & 4.126 & 0.1748 \\ \addlinespace[0.3em]

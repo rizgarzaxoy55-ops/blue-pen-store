@@ -1,90 +1,119 @@
 # SJUOZ Word → LaTeX Dönüştürücü
 
-`sjuoz_word2latex.py`, makale (manuscript) Word dosyasını ve kapak mektubu (cover letter)
-Word dosyasını okuyup **Science Journal of University of Zakho** şablonunda tek bir
-XeLaTeX dosyası üretir.
+Makale (manuscript) ve kapak mektubu (cover letter) Word dosyalarını
+**Science Journal of University of Zakho (SJUOZ)** şablonunda XeLaTeX'e çevirir. Tek seferde:
 
-## Kurulum
+* SJUOZ biçiminde `.tex` ve **PDF** (ilk sayfa logosu, QR kodlu bilgi kutusu, iki sütun, başlık/altlık),
+* Word'deki **bütün resimler ve grafikler** (`figures/`), Overleaf'e yüklenebilir **zip**,
+* editör için **kontrol raporu** (eksik resim/tablo, kaybolan metin, atıf sorunları, LaTeX hataları),
+* **Crossref XML** (DOI kaydı, resmi şemayla doğrulanmış), **JATS XML** (indeksleme), **BibTeX**.
 
+Bütün bir sayı da tek komutla işlenir; sayfa numaraları makaleden makaleye zincirlenir.
+
+---
+
+## 1. Kurulum ve çalıştırma
+
+### a) Windows: hazır program (Python gerekmez)
+GitHub → **Actions** → *SJUOZ Word2LaTeX testleri* → son çalışma → **SJUOZ-Word2LaTeX-Windows**
+dosyasını indirin. İçinde iki program vardır:
+
+* `SJUOZ-Word2LaTeX.exe` — pencere arayüzü (çift tıklayın),
+* `sjuoz-word2latex.exe` — komut satırı.
+
+PDF'in otomatik derlenmesi için bilgisayarda **MiKTeX** (veya TeX Live) kurulu olmalıdır;
+yoksa üretilen zip'i Overleaf'e yükleyin.
+
+### b) Python paketi olarak
 ```bash
-pip install lxml          # zorunlu
-pip install Pillow        # önerilir (TIFF/GIF/BMP resimleri, kenar kırpma)
-pip install matplotlib    # önerilir (Word grafiklerini resme çevirmek için)
+pip install ".[tam]"          # lxml + Pillow + matplotlib + pypdf
+sjuoz-gui                     # pencere arayüzü
+sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --first-page 571
 ```
 
-EMF/WMF/SVG resimleri için bilgisayarda LibreOffice, Inkscape veya ImageMagick'ten biri
-kurulu olmalıdır. PDF'in otomatik derlenmesi için XeLaTeX (MiKTeX / TeX Live) gerekir.
+### c) Kurmadan, eskisi gibi
+```bash
+pip install lxml Pillow matplotlib
+python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
+```
 
-## Kullanım
+İsteğe bağlı araçlar: EMF/WMF/SVG resimleri için LibreOffice, Inkscape veya ImageMagick;
+Arapça/Kürtçe metin için Amiri veya Noto Naskh Arabic yazı tipi (Windows'ta Times New Roman yeterli).
+
+## 2. Pencere arayüzü
+
+![arayüz](docs/arayuz.png)
+
+* **Tek makale** sekmesi: makale ve (isteğe bağlı) kapak mektubunu seçin. Makale no dosya
+  adından, çıktı klasörü makalenin yanından otomatik doldurulur.
+* **Bütün sayı** sekmesi: sayı klasörünü seçin (bkz. bölüm 5).
+* Cilt, sayı, ay, ilk sayfa, tarihler ve Crossref e-postası girilir; bir sonraki açılışta hatırlanır.
+* **Dönüştür** → işlem günlüğü renkli akar (uyarılar turuncu, hatalar kırmızı). Bitince
+  **Raporu aç / PDF'i aç / Klasörü aç** düğmeleri etkinleşir.
+
+## 3. Komut satırı
 
 ```bash
-python sjuoz_word2latex.py makale.docx kapak_mektubu.docx \
+sjuoz-word2latex makale.docx kapak_mektubu.docx \
     --volume 14 --issue 4 --year 2026 --month October --first-page 571 \
-    --received "12 May 2026" --accepted "1 Aug 2026" --published "15 Oct 2026"
+    --received "12 May 2026" --accepted "1 Aug 2026" --published "15 Oct 2026" \
+    --depositor-email editor@uoz.edu.krd
 ```
 
-Tek komut her şeyi yapar:
-
-```
-1993/
-├── 1993.tex          ← resimleri figures/… yoluyla çağırır
-├── 1993.pdf          ← xelatex kuruluysa otomatik derlenir (iki kez)
-├── SJUOZ.png, orcid.png
-└── figures/          ← Word'deki TÜM resimler ve grafikler
-    ├── Figure1.png
-    ├── Figure2.png   (Word grafiği → PNG)
-    └── …
-1993_latex.zip        ← yukarıdakilerin hepsi tek zip'te (Overleaf'e doğrudan yüklenebilir)
-```
-
-* Word'e eklenmiş resimler (PNG, JPG, TIFF, GIF, BMP, EMF, WMF, SVG…) çıkarılır ve gerekirse PNG'ye çevrilir.
-* Word grafikleri (sütun, çubuk, çizgi, alan, pasta, dağılım) verisinden yeniden çizilir.
-* Gruplanmış resimler, metin kutusundaki resimler ve tablo hücresindeki resimler de alınır.
-* Aynı resim iki kez eklenmişse bir kez kaydedilir.
-* 34 satırdan uzun tablolar sayfalara bölünür; başlık satırı her sayfada tekrarlanır.
-
-İki dosyanın sırası önemli değil; kapak mektubu içeriğine göre otomatik tanınır.
-Kapak mektubu verilmezse ORCID bilgileri olmadan çalışır.
+İki dosyanın sırası önemli değil; kapak mektubu içeriğinden tanınır.
 
 | Seçenek | Açıklama |
 |---|---|
-| `--article-id` | Makale no (DOI ve QR kod). Verilmezse dosya adındaki sayı alınır. |
+| `--article-id` | Makale no (DOI, QR kod, dosya adları). Verilmezse dosya adındaki sayı. |
 | `--volume`, `--issue`, `--year`, `--month` | Cilt, sayı, yıl, ay. |
-| `--first-page`, `--last-page` | Sayfa aralığı. `--last-page` verilmezse LaTeX otomatik hesaplar. |
-| `--received/--accepted/--published` | Tarihler (varsayılan `XX`). |
+| `--first-page`, `--last-page` | Sayfa aralığı. `--last-page` verilmezse LaTeX hesaplar. |
+| `--received`, `--accepted`, `--published` | Tarihler (ör. `12 May 2026`; varsayılan `XX`). |
 | `--article-type` | `Original Article` (varsayılan), `Review Article` … |
-| `--keep-heading-case` | Ana bölüm başlıklarını BÜYÜK harfe çevirme. |
-| `--keep-title-case` | Makale başlığını BÜYÜK harfe çevirme. |
-| `--main-font`, `--header-font` | Varsayılan: Times New Roman / Garamond. Bilgisayarda yoksa benzer yazı tipi otomatik seçilir. |
-| `--assets` | `SJUOZ.png` ve `orcid.png` klasörü (verilmezse makalenin, programın ve çalışma klasöründe aranır). `orcid.png` yoksa ORCID simgesi çizilir. |
-| `--no-compile` | PDF derleme (varsayılan: xelatex varsa derlenir). |
-| `--no-zip` | Zip üretme (varsayılan: zip üretilir). |
-| `--wide-figs` | İki sütunu kaplayacak şekiller: `3,5` veya `all`. |
-| `--no-links` | Atıf/şekil/tablo/denklem bağlantılarını ekleme. |
+| `--depositor-name`, `--depositor-email` | Crossref gönderen bilgisi. |
+| `--wide-figs 3,5` / `all` | İki sütunu kaplayacak şekiller. |
+| `--landscape-tables 2,3` | Yatay sayfaya konacak tablolar (Word'de yatay bölümdekiler ve 10+ sütunlular zaten yatay). |
+| `--keep-heading-case`, `--keep-title-case` | Başlıkları BÜYÜK harfe çevirme. |
+| `--main-font`, `--header-font` | Varsayılan Times New Roman / Garamond; yoksa benzeri seçilir. |
+| `--assets KLASÖR` | Başka bir `SJUOZ.png` / `orcid.png` kullan. |
+| `--no-compile`, `--no-zip`, `--no-export`, `--no-report`, `--no-links` | İlgili adımı atla. |
+| `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
+| `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
 
-Dosya adı verilmeden çalıştırılırsa (`python sjuoz_word2latex.py`) dosya seçme penceresi açılır.
+## 4. Ne üretir?
 
-## Logolar
+```
+1993/
+├── 1993.tex                  ← SJUOZ şablonu; resimleri figures/… yoluyla çağırır
+├── 1993.pdf                  ← xelatex iki kez çalıştırılır
+├── figures/                  ← Word'deki bütün resimler ve grafikler (Figure1.png, Figure6a.png …)
+├── SJUOZ.png, orcid.png
+├── 1993_kontrol_raporu.html  ← editör için kontrol raporu
+├── 1993_crossref.xml         ← DOI kaydı (Crossref 5.3.1, şemayla doğrulanmış)
+├── 1993_jats.xml             ← JATS 1.3: ön bilgiler, gövde, şekiller, tablolar, denklemler, kaynaklar
+├── 1993_kaynaklar.bib        ← kaynakça BibTeX alanlarına ayrılmış
+└── 1993_atif.bib             ← bu makaleye atıf için BibTeX
+1993_latex.zip                ← .tex + figures/ + logolar + PDF (Overleaf'e doğrudan yüklenir)
+```
 
-`SJUOZ.png` (sağ üst köşedeki dergi logosu) ve `orcid.png` bu klasörde hazırdır; program
-bunları kendiliğinden çıktı klasörüne kopyalar. Bu dosyalar örnek PDF'ten çıkarıldığı için
-düşük çözünürlüklüdür (143×72 piksel); elinizde daha yüksek çözünürlüklü orijinali varsa
-aynı adla bu klasöre koyun.
+### Word'den neler aktarılır?
 
-## Nereden ne alınıyor?
+* **Ön bilgiler:** başlık, yazarlar ve üst simge numaraları, affiliasyonlar (aynı olanlar
+  birleştirilir), sorumlu yazar, özet, anahtar kelimeler; **kapak mektubundan** ORCID, e-posta, telefon.
+* **Gövde:** numaralı bölümler/alt bölümler, kalın/italik/alt-üst simge, listeler, dipnotlar,
+  bağlantılar, son bölümler (Acknowledgements, Ethical Statement, Author Contributions …), kaynakça.
+* **Denklemler:** Word denklemleri (OMML) LaTeX'e çevrilir; `SEQ` alan kodlu, `)1(` ya da `(1)`
+  biçimindeki numaralar tanınır.
+* **Şekiller:** PNG/JPG/TIFF/GIF/BMP/EMF/WMF/SVG (gerekirse PNG'ye çevrilir), **Word grafikleri**
+  (veriden yeniden çizilir), gruplanmış/metin kutusundaki resimler, **alt şekiller (a)(b)(c)**
+  (kenarlıksız tabloyla dizilmiş etiketli resimler, aynı paragraftaki ya da ardışık paragraflardaki resimler).
+* **Tablolar:** birleştirilmiş hücreler, iki satırlı başlıklar, hücre içi resimler; **34 satırdan uzun
+  tablolar sayfalara bölünür** (başlık her sayfada tekrarlanır); Word'de **yatay bölümdeki** tablo ve
+  şekiller ile 10+ sütunlu tablolar **yatay sayfaya** konur.
+* **Sağdan sola metin:** Kürtçe (Sorani) ve Arapça kelime ve paragraflar doğru yön ve yazı tipiyle.
+* **Bağlantılar:** (Yazar *et al.*, 2020), Yazar (2019), [3] gibi atıflar kaynakçaya; "Figure 2",
+  "Table 1", "Equation 5" ilgili yere tıklanabilir bağlantı olur.
 
-* **Makaleden:** başlık, yazarlar ve üst simge numaraları, affiliasyonlar (aynı olanlar
-  birleştirilir ve numaralar yeniden düzenlenir), sorumlu yazar e-posta/telefon, özet,
-  anahtar kelimeler, numaralı bölümler/alt bölümler, paragraflar (kalın, italik, alt/üst simge,
-  bağlantılar), denklemler, tablolar, şekiller ve başlıkları, son bölümler
-  (Acknowledgements, Ethical Statement, Author Contributions, Conflict of Interest, Funding)
-  ve kaynakça.
-* **Kapak mektubundan:** her yazarın ORCID, e-posta, telefon ve affiliasyon bilgisi
-  (yazarlar ada göre eşleştirilir; makale ile çelişen bilgi varsa uyarı verilir).
-
-## Bütün sayıyı tek seferde işlemek
-
-Her makale bir alt klasöre konur (klasör adı makale numarasıdır):
+## 5. Bütün sayıyı tek seferde işlemek
 
 ```
 sayi_14_4/
@@ -95,7 +124,7 @@ sayi_14_4/
 ```
 
 ```bash
-python sjuoz_word2latex.py --sayi sayi_14_4
+sjuoz-word2latex --sayi sayi_14_4 --depositor-email editor@uoz.edu.krd
 ```
 
 `sayi.json` (verilmezse klasörler ada göre sıralanır, değerler komut satırından alınır):
@@ -111,132 +140,107 @@ python sjuoz_word2latex.py --sayi sayi_14_4
 }
 ```
 
-Makaleler bu sırayla derlenir ve **sayfa numaraları zincirlenir** (bir makale 576'da bitiyorsa
-sonraki 577'den başlar). `sayi_14_4/_cikti/` içinde şunlar oluşur:
+Makaleler bu sırayla derlenir ve sayfa numaraları zincirlenir. `sayi_14_4/_cikti/` içinde:
+her makalenin klasörü, zip'i ve raporu; `sayi_raporu.html` (bütün makalelerin durumu tek sayfada),
+`icindekiler.csv` (Excel'de açılır), `sayi_tam.pdf` (bütün sayı) ve **`sayi_crossref.xml`**
+(bütün sayının DOI kaydı tek dosyada).
 
-* her makalenin klasörü, zip'i ve kontrol raporu
-* `sayi_raporu.html` — bütün makalelerin sayfa aralıkları, durumları ve bakılacak noktaları tek sayfada
-* `icindekiler.csv` — makale no, başlık, yazarlar, sayfalar, DOI (Excel'de açılır; OJS/Crossref girişi için)
-* `sayi_tam.pdf` — bütün sayı tek PDF'te (`pip install pypdf` veya `pdfunite` gerekir)
+## 6. Kontrol raporu
 
-Sayfa zinciri için XeLaTeX gerekir; yoksa her makale `ilk_sayfa`'dan başlar.
-
-## Kontrol raporu
-
-Her dönüşümden sonra `<makale no>_kontrol_raporu.html` üretilir ve özeti ekrana yazılır.
-Genel durum **TAMAM**, **KONTROL** (bakılması gereken şeyler var) veya **HATA** olur.
-Rapor, Word dosyasının kendisinden yapılan sayımları LaTeX/PDF çıktısıyla karşılaştırır:
+Her dönüşümde `<makale no>_kontrol_raporu.html` üretilir; genel durum **TAMAM**, **KONTROL**
+veya **HATA** olur. Rapor, Word dosyasının kendisinden yapılan sayımları çıktıyla karşılaştırır:
 
 | Kontrol | Ne yapar |
 |---|---|
-| Resimler / tablolar / denklemler | Word'deki sayı ile LaTeX'teki sayı aynı mı; metinde "Figure 9"a atıf var ama 8 şekil mi var? |
-| Başlıksız şekil | Başlığı (caption) bulunamayan şekiller |
-| Metin bütünlüğü | Word'deki **her paragraf ve her tablo hücresi** PDF'te (PDF yoksa .tex'te) var mı? Kaybolan metin HATA verir. |
-| Atıflar | Kaynakçada bulunamayan atıflar, metinde atıf yapılmamış kaynaklar |
+| Resim / tablo / denklem sayıları | Word'deki ile LaTeX'teki aynı mı; "Figure 9"a atıf var ama 8 şekil mi var? |
+| Metin bütünlüğü | Word'deki **her paragraf ve her tablo hücresi** PDF'te var mı? Kaybolan metin HATA. |
+| Atıflar | Kaynakçada bulunamayan atıflar, atıf yapılmamış kaynaklar |
 | Ön bilgiler | Özet, anahtar kelime, yazar, ORCID, sorumlu yazar e-postası |
-| Derleme | LaTeX hataları, bulunamayan dosyalar, yazı tipinde olmayan (PDF'te görünmeyen) karakterler, sütundan taşan satırlar (.tex satır numarasıyla), sayfadan taşan içerik |
+| Derleme | LaTeX hataları, bulunamayan dosyalar, PDF'te görünmeyen karakterler, taşan satır/içerik |
+| Crossref | XML resmi şemaya uyuyor mu; DOI kaydı için eksik bilgi (e-posta, yayın tarihi, son sayfa) |
 | Uyarılar | Makale ile kapak mektubu arasındaki farklar vb. |
 
-`--strict` verilirse raporda HATA olduğunda program 2 çıkış koduyla biter (toplu işlemler için).
+## 7. Proje yapısı
 
-## Testler
+```
+sjuoz_word2latex/
+├── sjuoz/                 ← paket
+│   ├── cli.py             komut satırı giriş noktası
+│   ├── gui.py             pencere arayüzü
+│   ├── pipeline.py        dönüştürme akışı ve seçenekler
+│   ├── issue.py           bütün sayıyı işleme
+│   ├── docx.py            Word okuyucu (paragraf, tablo, bölüm, dipnot)
+│   ├── omml.py            Word denklemleri → LaTeX
+│   ├── parse.py           kapak mektubu ve makale yapısı
+│   ├── render.py          biçimli metin → LaTeX, atıf bağlantıları
+│   ├── figures.py         resimler, alt şekiller, Word grafikleri
+│   ├── writer.py          gövdeyi LaTeX'e yazma
+│   ├── template.py        SJUOZ şablonu
+│   ├── export.py          Crossref, JATS, BibTeX
+│   ├── report.py          kontrol raporu
+│   ├── common.py          ortak yardımcılar
+│   └── data/              SJUOZ.png, orcid.png, Crossref şemaları
+├── sjuoz_word2latex.py    eski kullanım için giriş noktası
+├── packaging/             Windows .exe derleme betikleri (PyInstaller)
+├── tests/                 test seti (bölüm 8)
+├── ornek_cikti_1993/      1993 makalesi için örnek çıktı
+└── pyproject.toml
+```
+
+Dergi bilgileri (ISSN, DOI öneki, yayıncı, lisans) `sjuoz/export.py` içindeki `JOURNAL`
+sözlüğündedir. `SJUOZ.png` örnek PDF'ten çıkarıldığı için düşük çözünürlüklüdür (143×72);
+orijinali varsa `sjuoz/data/SJUOZ.png` yerine koyun.
+
+## 8. Testler
 
 ```bash
-pip install lxml Pillow matplotlib pytest
-python -m pytest tests -v                  # bütün testler (xelatex yoksa derleme testleri atlanır)
+pip install ".[test]"
+python -m pytest tests -v                  # xelatex yoksa derleme testleri atlanır
 python -m pytest tests --update-golden     # bilerek yapılan değişiklikten sonra beklenen çıktıları güncelle
 ```
 
-Test seti (`tests/fixtures/`):
-
-| Makale | Neyi sınar |
+| Test makalesi | Neyi sınar |
 |---|---|
-| `1993` | Gerçek SJUOZ makalesi + kapak mektubu: yazar-yıl atıfları, SEQ alan kodlu denklemler, birleştirilecek affiliasyonlar, ORCID |
-| `sentetik_temel` | Heading stilleri, madde/numaralı listeler, satır içi ve ayrı denklem, tablo, şekil, özel karakterler (`_ & %`), kapak mektubu yok |
-| `sentetik_grafik` | Word sütun grafiği (chart) ve EMF resim |
-| `sentetik_uzun_tablo` | 80 satırlık tablo: sayfalara bölünmeli, başlık her sayfada tekrarlanmalı, satır kaybolmamalı |
-| `sentetik_numerik` | IEEE tarzı `[n]` atıflar, "Review Article", üst simgesiz yazar satırı, tek affiliasyon, satır içi "Abstract:", "Index Terms—", dipnot, birleştirilmiş başlık hücreli tablo |
+| `1993` | Gerçek SJUOZ makalesi + kapak mektubu: yazar-yıl atıfları, SEQ alanlı denklemler, birleştirilecek affiliasyonlar, ORCID |
+| `sentetik_temel` | Heading stilleri, listeler, satır içi/ayrı denklem, tablo, şekil, özel karakterler, kapak mektubu yok |
+| `sentetik_grafik` | Word sütun grafiği ve EMF resim |
+| `sentetik_numerik` | IEEE tarzı `[n]` atıflar, üst simgesiz yazar satırı, satır içi "Abstract:", "Index Terms—", dipnot, birleştirilmiş başlıklı tablo |
+| `sentetik_uzun_tablo` | 80 satırlık tablo: sayfalara bölünmeli, satır kaybolmamalı |
+| `sentetik_alt_sekil` | Alt şekiller: düzen tablosu, aynı paragrafta ve ardışık paragraflarda resimler |
+| `sentetik_yatay` | Word'deki yatay bölüm ve 12 sütunlu tablo |
+| `sentetik_rtl` | Kürtçe (Sorani) ve Arapça paragraf ve kelimeler |
 
-Her makale için üç şey denetlenir:
+Her makale için: üretilen `.tex` saklanmış doğru çıktıyla (`tests/golden/`) birebir
+karşılaştırılır; yazar/ORCID/şekil/tablo/denklem/kaynak sayıları; PDF hatasız derlenmeli ve hiçbir
+şey taşmamalı; Crossref XML şemaya uymalı; JATS sayıları makaleyle tutarlı olmalı. Ayrıca raporun
+gerçek bir kaybı yakaladığı (çıktıdan bilerek paragraf, resim ve tablo satırı silinir), sayı modunun
+sayfa zinciri ve birim testleri vardır. Yapay test makaleleri `tests/fixtures/make_synthetic.py`
+ile yeniden üretilebilir.
 
-1. **Golden karşılaştırma:** üretilen `.tex`, daha önce kontrol edilip `tests/golden/` içine
-   saklanmış çıktıyla birebir karşılaştırılır. Kodda yapılan bir değişiklik başka bir makaleyi
-   bozarsa test farkı satır satır gösterir.
-2. **Sayımlar:** `case.json`'daki beklenen yazar, ORCID, affiliasyon, şekil, tablo, denklem,
-   kaynak ve bağlantı sayıları.
-3. **Derleme:** PDF hatasız derlenmeli, sayfa sayısı beklendiği gibi olmalı, raporda HATA
-   olmamalı ve hiçbir şey sayfadan taşmamalı.
+GitHub'da her push'ta: kurulum, kod denetimi (pyflakes), bütün testler, örnek PDF ve raporlar,
+ayrıca Windows `.exe` derlenip bir makaleyle denenir.
 
-Ayrıca sayı testleri (sıra ve sayfa zinciri), birim testleri (denklem çevirici, yazar ayrıştırma, atıf eşleştirme, log analizi) ve
-raporun gerçekten kaybı yakaladığını gösteren bir test (çıktıdan bir paragraf ve bir resim
-bilerek silinir) vardır.
+**Test setine yeni makale eklemek:** `tests/fixtures/<ad>/` klasörüne `.docx` dosyalarını ve
+`case.json`'u koyun (diğerlerini örnek alın), PDF'i üretip gözle kontrol edin, sonra
+`python -m pytest tests --update-golden`. Dergiye gelen sorunlu her makale test setine
+eklenirse, aynı sorun bir daha sessizce geri gelemez.
 
-GitHub'da her push'ta `.github/workflows/sjuoz-word2latex.yml` bütün testleri çalıştırır ve
-test makalelerinin PDF'lerini ve kontrol raporlarını indirilebilir dosya olarak ekler.
+## 9. Windows programını elle derlemek
 
-### Test setine yeni makale eklemek
+```powershell
+pip install pyinstaller lxml Pillow matplotlib pypdf
+powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1   # dist\ altında iki .exe
+```
 
-1. `tests/fixtures/<ad>/` klasörü açın; makale ve (varsa) kapak mektubu `.docx` dosyalarını koyun.
-2. Aynı klasöre `case.json` yazın (diğerlerini örnek alın): komut satırı seçenekleri ve beklenen sayılar.
-3. `python sjuoz_word2latex.py tests/fixtures/<ad>/*.docx ...` ile PDF'i üretin ve **gözle kontrol edin**.
-4. Çıktı doğruysa `python -m pytest tests --update-golden` ile beklenen `.tex`'i kaydedin.
+## 10. Önceki sürümlere göre düzeltilenler
 
-Dergiye gelen sorunlu her makale test setine eklenirse, aynı sorun bir daha sessizce geri gelemez.
+Eski `docx2sjuoz.py` ve elle hazırlanmış `.tex` ile karşılaştırıldığında: özet "ABASTRACT"
+yazım hatasına rağmen bulunuyor; denklemlere `SEQ Equation \* ARABIC` sızmıyor ve (1)–(6)
+numaralı; `ī` doğru (`\bar{i}`), "white region" boşluklu; aynı affiliasyonlar birleşiyor; ORCID'ler
+kapak mektubundan geliyor; kapak mektubu ayrı sayfa olarak basılmıyor; Şekil 6 iki kez basılmıyor;
+bütün şekil başlıkları bulunuyor; bölümler Word'deki gibi 1–5 numaralı, REFERENCES numarasız;
+çift DOI'ler temizleniyor; e-posta bağlantısı çalışıyor; 21 kaynağın hepsine atıf bağlantısı var;
+ilk sayfadaki bilgi kutusu her durumda doğru yerde.
 
-## Bağlantılar
-
-Metindeki atıflar — (Yazar *et al.*, 2020), (A & B, 2016), Yazar (2019), [3] gibi — kaynakçadaki
-kayda, "Figure 2 / Table 1 / Equation 5" ifadeleri ilgili şekil/tablo/denkleme tıklanabilir
-bağlantı olur. Kaynakçada bulunamayan atıflar ve metinde hiç atıf yapılmamış kaynaklar
-uyarı olarak yazılır.
-
-## Eski `docx2sjuoz.py` koduna göre düzeltilen hatalar
-
-1993 makalesi ve kapak mektubuyla iki kod da çalıştırıldı. Eski kodda görülen hatalar ve
-yeni koddaki durumu:
-
-| Eski kodda | Yeni kodda |
-|---|---|
-| "ABASTRACT" yazım hatası yüzünden özet bulunamıyor, uyarı veriyor | Özet bulunuyor (`Abstract`, `ABASTRACT`, `Abstract:` …) |
-| Denklemlerde `SEQ Equation \* ARABIC` yazısı çıkıyor, denklem numarası yok | Alan kodları atlanıyor, denklemler (1)–(6) numaralı |
-| Denklem (1) metin içinde `)1(` olarak bozuk kalıyor | Numaralı ayrı denklem |
-| `ī` (üst çizgi) yerine `î` çıkıyor | `\bar{i}` |
-| "white region" → "whiteregion" | Boşluk korunuyor |
-| Aynı iki affiliasyon ayrı ayrı yazılıyor (1, 2, 3) | Birleştiriliyor (1, 1, 2) |
-| ORCID eklenmiyor (kapak mektubu kullanılmıyor) | ORCID'ler kapak mektubundan ekleniyor |
-| Kapak mektubu "Click or tap here to enter text." yazılarıyla ayrı sayfalar olarak basılıyor (9 sayfa) | Kapak mektubu sadece bilgi kaynağı; makale 6 sayfa |
-| Şekil 6 resmi iki kez basılıyor | Bir kez |
-| Şekil 7 ve 8 başlıkları bulunamıyor, Şekil 7 başlığı düz metin oluyor | Bütün başlıklar doğru şekilde |
-| Sadece "Introduction" ve "Experimental Results" numaralı bölüm, diğerleri numarasız alt bölüm | Word'deki numaralandırma: 1–5 |
-| Telefon "(Tel: …))" çift parantez | Düzgün |
-| 21 kaynaktan 6'sına atıf bağlantısı kurulamıyor ("Mohammed E. Safi & Abbas", "Wisam H Ali et al.") | 21 / 21 bağlantı |
-| `\enlargethispage` kısa özetlerde ilk sayfa düzenini bozabiliyor | İlk sayfa metin alanı güvenli şekilde kısaltılıyor |
-
-Eski koddaki iyi özellikler (atıf bağlantıları, PDF derleme, zip, dosya seçme penceresi,
-geniş şekiller) yeni koda da eklendi.
-
-## Önceki `.tex` dosyasına göre düzeltilen hatalar
-
-* Denklemlerdeki `SEQ Equation \* ARABIC` alan kodları artık LaTeX'e sızmıyor; Word'deki
-  denklem numaraları `equation` ortamıyla doğru numaralanıyor (`)1(` gibi ters numaralar dahil).
-* Denklem (1) satır içi bozuk metin yerine düzgün bir denklem olarak çıkıyor.
-* Bütün bölümler `1.` diye numaralanmıyor; Word'deki numaralandırmaya göre 1, 2, 3 … ve
-  alt bölümler 1.1 … şeklinde.
-* `REFERENCES` başlığı numarasız.
-* `https://doi.org/https://doi.org/…` gibi çift DOI'ler temizleniyor, DOI'ler `DOI:` bağlantısı oluyor.
-* E-posta bağlantısı `mailto:` ile çalışıyor.
-* Aynı affiliasyonlar birleştiriliyor (1 ve 2 aynıysa tek affiliasyon).
-* Yazar katkıları tek paragrafta, adlar kısaltılmış (M. E. Safi …) ve fazladan tırnak/numara yok.
-* Tablolar sayfa genişliğine sığıyor (`tabularx`), uzun başlıklar satıra bölünüyor.
-* Tekrarlanan paketler kaldırıldı; ilk sayfadaki dergi bilgi kutusu, metin ne kadar uzun
-  olursa olsun ilk sayfanın altında yer alıyor ve elle `\pagebreak`/`\newgeometry` gerekmiyor.
-* Word'deki grup/metin kutusu içindeki resimler iki kez çıkarılmıyor.
-
-## Dikkat
-
-Dönüştürücü uyarıları ekrana yazar (ör. makale ve kapak mektubundaki e-postalar farklı).
-Derlemeden önce bunlara bakın. Word dosyasındaki içerik hataları (ör. metinde yanlış tablo
-numarasına atıf) olduğu gibi aktarılır.
-
-`ornek_cikti_1993/` klasöründe 1993 numaralı makale için üretilmiş örnek `.tex`, şekiller ve
-PDF bulunur (PDF, Times New Roman yerine Liberation Serif yazı tipiyle derlendi).
+`ornek_cikti_1993/` klasöründe 1993 makalesi için üretilmiş örnek çıktı bulunur (PDF bu ortamda
+Times New Roman yerine Liberation Serif ile derlendi).

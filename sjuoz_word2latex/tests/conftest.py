@@ -18,7 +18,7 @@ FIXTURES = os.path.join(HERE, "fixtures")
 GOLDEN = os.path.join(HERE, "golden")
 
 sys.path.insert(0, ROOT)
-import sjuoz_word2latex as conv  # noqa: E402
+import sjuoz as conv  # noqa: E402
 
 
 def pytest_addoption(parser):

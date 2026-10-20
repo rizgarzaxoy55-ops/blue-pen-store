@@ -5,7 +5,7 @@ import re
 import pytest
 from lxml import etree
 
-from conftest import CASES, conv, run_case
+from conftest import CASES, conv
 
 JATS_DATES = ["--received", "12 May 2026", "--accepted", "1 Aug 2026", "--published", "15 Oct 2026",
               "--depositor-email", "editor@uoz.edu.krd"]

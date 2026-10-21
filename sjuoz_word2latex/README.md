@@ -26,7 +26,7 @@ yoksa üretilen zip'i Overleaf'e yükleyin.
 
 ### b) Python paketi olarak
 ```bash
-pip install ".[tam]"          # lxml + Pillow + matplotlib + pypdf
+pip install ".[tam]"          # lxml + Pillow + matplotlib + pypdf + pdf2docx
 sjuoz-gui                     # pencere arayüzü
 sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --first-page 571
 ```
@@ -34,6 +34,7 @@ sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --
 ### c) Kurmadan, eskisi gibi
 ```bash
 pip install lxml Pillow matplotlib
+pip install pdf2docx           # yalnız PDF girişi için
 python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
 ```
 
@@ -91,6 +92,28 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 | `--link-color RENK` | Şekil/tablo/denklem/atıf bağlantılarının rengi (`black` varsayılan; `blue`, `red`, `blue!70!black` …). |
 | `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
 | `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
+
+### PDF'ten dönüştürme (son çare)
+
+Yazarın Word dosyası yoksa makale ve kapak mektubu **PDF olarak da verilebilir** (komut satırında,
+pencere arayüzünde ve sayı klasöründe; aynı adda Word dosyası varsa o kullanılır):
+
+```bash
+python sjuoz_word2latex.py makale.pdf kapak.pdf --volume 14 --issue 4 --month October
+```
+
+PDF önce Word'e çevrilir (pdf2docx), sonra toparlanır: satır ve sayfa sonunda bölünen paragraflar
+birleştirilir, PDF'teki satır konumlarına ve yazı boyutlarına bakılarak başlık, yazar ve kurum satırları
+ayrılır, bölüm başlıklarının düzeyi bulunur, birbirine yapışmış kaynakça girdileri ayrılır.
+Sınırları:
+
+* PDF'te paragraf ve denklem bilgisi yoktur: **denklemler LaTeX denklemi olmaz**, PDF'te metin değil
+  çizim olan denklemler hiç gelmez.
+* **Çizgisiz (kenarlıksız) tablolar** tablo olarak tanınmaz; başlığı metin olarak kalır ve rapor uyarır.
+* Kalın/italik ve alt/üst simgeler kaybolabilir.
+* **İki sütunlu, dizilmiş dergi PDF'leri** güvenilir dönüşmez; program bunu fark edip uyarır.
+
+Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaştırarak kontrol edin.
 
 ## 4. Ne üretir?
 
@@ -229,6 +252,7 @@ python -m pytest tests --update-golden     # bilerek yapılan değişiklikten so
 | `sentetik_alt_sekil` | Alt şekiller: düzen tablosu, aynı paragrafta ve ardışık paragraflarda resimler |
 | `sentetik_yatay` | Word'deki yatay bölüm ve 12 sütunlu tablo |
 | `sentetik_rtl` | Kürtçe (Sorani) ve Arapça paragraf ve kelimeler |
+| `sentetik_pdf/sentetik_pdf.pdf` | PDF girişi (`tests/test_pdfinput.py`): `sentetik_temel`'in PDF'i |
 | `sentetik_serbest` | `1.INTRODUCTION` / `6-REFERENCES` başlıkları, `Fig (1):`, `Figure 2-A/2-B`, ilk satırdaki tablo başlığı, yazar simgeleri, `Van Hai et al.`, alt çizgili DOI, mg g⁻¹ |
 
 Her makale için: üretilen `.tex` saklanmış doğru çıktıyla (`tests/golden/`) birebir

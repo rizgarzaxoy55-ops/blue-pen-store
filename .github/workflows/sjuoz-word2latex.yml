@@ -67,7 +67,7 @@ jobs:
           python-version: "3.12"
 
       - name: Paketler
-        run: pip install pyinstaller lxml Pillow matplotlib pypdf
+        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx
 
       - name: .exe üret
         working-directory: sjuoz_word2latex
@@ -88,6 +88,11 @@ jobs:
           if (-not (Select-String -Path duman/2001_kontrol_raporu.html -Pattern "Crossref 5.3.1")) {
             throw "Crossref şeması .exe içinde bulunamadı"
           }
+          # PDF girişi (pdf2docx + PyMuPDF .exe içinde çalışıyor mu?)
+          ./dist/sjuoz-word2latex.exe tests/fixtures/sentetik_pdf/sentetik_pdf.pdf -o duman_pdf `
+            --article-id 2011 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe PDF'te hata verdi" }
+          if (-not (Select-String -Path duman_pdf/2011.tex -Pattern "Ali Hassan")) { throw "PDF'ten yazar okunamadı" }
 
       - uses: actions/upload-artifact@v5
         with:

@@ -96,7 +96,8 @@ def main(argv=None):
             root = tk.Tk()
             root.withdraw()
             opts.docx = list(filedialog.askopenfilenames(
-                title="Makale ve kapak mektubu (.docx) seçin", filetypes=[("Word", "*.docx")]))
+                title="Makale ve kapak mektubu (.docx / .pdf) seçin",
+                filetypes=[("Word veya PDF", "*.docx *.pdf"), ("Word", "*.docx"), ("PDF", "*.pdf")]))
         except Exception:  # noqa
             pass
         if not opts.docx:

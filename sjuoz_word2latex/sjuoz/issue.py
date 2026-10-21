@@ -39,10 +39,13 @@ def issue_articles(folder, cfg):
     arts = []
     for it in items:
         sub = os.path.join(folder, it["klasor"])
-        docs = sorted(os.path.join(sub, f) for f in os.listdir(sub)
-                      if f.lower().endswith(".docx") and not f.startswith("~$")) if os.path.isdir(sub) else []
+        names = sorted(f for f in os.listdir(sub) if not f.startswith("~$")) if os.path.isdir(sub) else []
+        stems = {os.path.splitext(f)[0].lower() for f in names if f.lower().endswith(".docx")}
+        # Word dosyası olmayanlar için PDF de kabul edilir (Word'ü varsa o kullanılır)
+        docs = [os.path.join(sub, f) for f in names if f.lower().endswith(".docx")
+                or (f.lower().endswith(".pdf") and os.path.splitext(f)[0].lower() not in stems)]
         if not docs:
-            warn("Sayı: '%s' klasöründe .docx yok, atlandı." % it["klasor"])
+            warn("Sayı: '%s' klasöründe .docx / .pdf yok, atlandı." % it["klasor"])
             continue
         aid = it.get("makale_no") or (re.findall(r"\d{3,}", it["klasor"]) or [it["klasor"]])[0]
         arts.append(dict(it, docs=docs, article_id=str(aid)))

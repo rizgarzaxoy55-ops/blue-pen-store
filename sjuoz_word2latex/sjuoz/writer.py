@@ -38,7 +38,9 @@ class Writer:
         self.pending_imgs = []      # [[rid,...], ...]
         self.pending_landscape = False
         self.pending_fig_caption = None
+        self.pending_fig_para = None
         self.pending_tab_caption = None
+        self.pending_tab_para = None
         self.in_multicol = False
         self.in_landscape = False
         self.list_env = None
@@ -431,6 +433,30 @@ class Writer:
             cap += "."
         return cap
 
+    def flush_orphan_figure_caption(self):
+        """Resmin üstüne yazılmış sanılan başlıktan sonra resim değil metin geldi: başlık sonraki bir
+        resme yapışıp bütün şekil numaralarını kaydırmasın (ör. PDF'te tabloya dönüşmüş resim)."""
+        if self.pending_fig_caption is None:
+            return
+        p = self.pending_fig_para
+        warn("Şekil başlığından önce/sonra resim bulunamadı, başlık metin olarak bırakıldı: %s" % p.text().strip()[:80])
+        self.pending_fig_caption = self.pending_fig_para = None
+        self.open_cols()
+        self.emit(r"\noindent\textbf{%s}" % render_tokens(p.tokens))
+        self.emit()
+
+    def flush_orphan_table_caption(self):
+        """Başlıktan sonra tablo gelmedi (ör. PDF'te çizgisiz tablo düz metne dönüştü): başlık
+        sonraki bir tabloya yanlışlıkla bağlanmasın, metin olarak yazılsın."""
+        if self.pending_tab_caption is None:
+            return
+        p = self.pending_tab_para
+        warn("Tablo başlığından sonra tablo bulunamadı, başlık metin olarak bırakıldı: %s" % p.text().strip()[:80])
+        self.pending_tab_caption = self.pending_tab_para = None
+        self.open_cols()
+        self.emit(r"\noindent\textbf{%s}" % render_tokens(p.tokens))
+        self.emit()
+
     def caption_in_first_row(self, tbl):
         """Başlık tablonun içinde, bütün sütunları kaplayan ilk satırda olabilir ("Table (1): …").
         Bulunursa o satır tablodan çıkarılır ve başlık olarak döner."""
@@ -525,11 +551,17 @@ class Writer:
                     self.pending_imgs = []
                     self.pending_landscape = False
                 else:
-                    self.pending_fig_caption = cap
+                    self.flush_orphan_figure_caption()
+                    self.pending_fig_caption = cap  # başlık resmin üstünde olabilir
+                    self.pending_fig_para = p
                 continue
             if kind == "table":
+                self.flush_orphan_table_caption()
                 self.pending_tab_caption = self.cap_of(p)
+                self.pending_tab_para = p
                 continue
+            self.flush_orphan_table_caption()
+            self.flush_orphan_figure_caption()
 
             # Denklemler
             if p.maths:
@@ -579,8 +611,8 @@ class Writer:
             self.emit(s)
             self.emit()
         self.flush_images()
-        if self.pending_fig_caption:
-            warn("Resmi olmayan şekil başlığı: %s" % self.pending_fig_caption)
+        self.flush_orphan_table_caption()
+        self.flush_orphan_figure_caption()
         self.close_list()
 
     def handle_heading(self, p, txt):

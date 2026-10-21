@@ -9,6 +9,7 @@ import zipfile
 
 
 from .common import (BIDI, DATA_DIR, NO_WINDOW, warn, WARNINGS)
+from .pdfinput import ensure_docx
 from .docx import Docx, Para
 from .render import Linker
 from .parse import parse_article, parse_cover_letter
@@ -138,6 +139,7 @@ def convert(opts):
         opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
             {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
 
+    opts.docx = [ensure_docx(p) for p in opts.docx]  # PDF verildiyse Word'e çevrilir
     manuscript, cover = classify(opts.docx)
     if manuscript is None:
         return None

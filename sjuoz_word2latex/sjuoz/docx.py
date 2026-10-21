@@ -9,6 +9,7 @@ from lxml import etree
 from .common import (C_NS, M, MC, NS, R, W, on_off, wval)
 from .omml import OMML
 from .render import render_tokens
+from .texinput import restore_math
 
 # --------------------------------------------------------------------------
 # DOCX okuyucu
@@ -183,10 +184,10 @@ class Para:
                     self._walk(content, fmt)
             elif tag == M + "oMathPara":
                 for o in c.findall(M + "oMath"):
-                    latex, num = self._omml.convert(o)
+                    latex, num = restore_math(self.doc.path, *self._omml.convert(o))
                     self.tokens.append(("m", latex, True, num))
             elif tag == M + "oMath":
-                latex, num = self._omml.convert(c)
+                latex, num = restore_math(self.doc.path, *self._omml.convert(c))
                 self.tokens.append(("m", latex, False, num))
             elif tag == MC + "AlternateContent":
                 ch = c.find(MC + "Choice")

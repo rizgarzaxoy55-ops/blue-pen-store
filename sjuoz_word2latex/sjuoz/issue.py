@@ -11,6 +11,7 @@ from .template import MONTHS
 from .export import crossref_xml, validate_crossref
 from .report import (REPORT_CHECK, REPORT_ERROR, REPORT_OK, tex_escape_html)
 from .pipeline import build_parser, convert
+from .texinput import is_tex_input
 
 # --------------------------------------------------------------------------
 # Sayı: bir sayının bütün makalelerini tek seferde işleme
@@ -44,8 +45,14 @@ def issue_articles(folder, cfg):
         # Word dosyası olmayanlar için PDF de kabul edilir (Word'ü varsa o kullanılır)
         docs = [os.path.join(sub, f) for f in names if f.lower().endswith(".docx")
                 or (f.lower().endswith(".pdf") and os.path.splitext(f)[0].lower() not in stems)]
+        if not any(d.lower().endswith(".docx") for d in docs):
+            # Word yoksa LaTeX kaynağı (.tex ya da .zip) PDF'ten önce gelir
+            tex = [os.path.join(sub, f) for f in names if f.lower().endswith((".tex", ".zip"))
+                   and is_tex_input(os.path.join(sub, f))]
+            if tex:
+                docs = tex[:1] + [d for d in docs if not d.lower().endswith(".pdf")]
         if not docs:
-            warn("Sayı: '%s' klasöründe .docx / .pdf yok, atlandı." % it["klasor"])
+            warn("Sayı: '%s' klasöründe .docx / .tex / .pdf yok, atlandı." % it["klasor"])
             continue
         aid = it.get("makale_no") or (re.findall(r"\d{3,}", it["klasor"]) or [it["klasor"]])[0]
         arts.append(dict(it, docs=docs, article_id=str(aid)))

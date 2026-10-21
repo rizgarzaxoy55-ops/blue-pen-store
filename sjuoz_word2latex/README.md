@@ -35,6 +35,7 @@ sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --
 ```bash
 pip install lxml Pillow matplotlib
 pip install pdf2docx "pymupdf<2"   # yalnız PDF girişi için
+pip install pypandoc_binary        # yalnız LaTeX girişi için
 python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
 ```
 
@@ -93,6 +94,28 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 | `--link-color RENK` | Şekil/tablo/denklem/atıf bağlantılarının rengi (`black` varsayılan; `blue`, `red`, `blue!70!black` …). |
 | `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
 | `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
+
+### LaTeX kaynağından dönüştürme
+
+Yazar makaleyi LaTeX'te yazdıysa **.tex dosyası ya da .tex, .bib ve resimleri içeren .zip** verilebilir
+(iç içe zip de olur; zip'teki PDF yok sayılır). Matematik makaleleri için en iyi yol budur:
+**yazarın denklemleri birebir korunur.**
+
+```bash
+python sjuoz_word2latex.py gonderim.zip --volume 14 --issue 4 --month October --first-page 571
+```
+
+* Başlık, yazarlar ve kurumlar okunur (`authblk` `\author[1]{…}` / `\affil[1]{…}` ve `\author{A \and B}`).
+* Hakem turlarının renkli işaretleri (`\rev{…}`, `\textcolor{red}{…}`) temizlenir; yazarın kendi
+  `\newcommand` makroları açılır.
+* Denklem, tablo, şekil ve bölüm numaraları verilir; `\ref`, `\eqref`, `\autoref` atıfları numaraya ve
+  tıklanabilir bağlantıya çevrilir. Çok satırlı numaralı `align`'ın her satırı kendi numarasını alır.
+* Kaynakça `.bib` dosyasından **APA 7** biçiminde yazılır (natbib `\citep`/`\citet`/`\citeauthor`);
+  `.bib` yoksa `.bbl` / `thebibliography` girdileri kullanılır.
+* PDF/EPS şekiller PNG'ye çevrilir.
+
+Gerekli: `pip install pypandoc_binary` (pandoc'u içinde getirir; Windows programında hazırdır).
+APA stili (`sjuoz/data/apa.csl`) Citation Style Language projesindendir (CC BY-SA 3.0).
 
 ### PDF'ten dönüştürme (son çare)
 
@@ -258,6 +281,7 @@ python -m pytest tests --update-golden     # bilerek yapılan değişiklikten so
 | `sentetik_yatay` | Word'deki yatay bölüm ve 12 sütunlu tablo |
 | `sentetik_rtl` | Kürtçe (Sorani) ve Arapça paragraf ve kelimeler |
 | `sentetik_pdf/sentetik_pdf.pdf` | PDF girişi (`tests/test_pdfinput.py`): `sentetik_temel`'in PDF'i |
+| `sentetik_latex` | LaTeX girişi (`main.tex` + `refs.bib`): authblk, makrolar, numaralı/çok satırlı denklemler, `\eqref`/`\ref`, natbib + APA |
 | `sentetik_matematik` | İki sütunda uzun denklemler: satırlara bölünen toplamlar ve eşitlik zincirleri, bölünemeyen kesir ve matris, ‖x‖, cases; derleme testi taşma olmadığını doğrular |
 | `sentetik_serbest` | `1.INTRODUCTION` / `6-REFERENCES` başlıkları, `Fig (1):`, `Figure 2-A/2-B`, ilk satırdaki tablo başlığı, yazar simgeleri, `Van Hai et al.`, alt çizgili DOI, mg g⁻¹ |
 

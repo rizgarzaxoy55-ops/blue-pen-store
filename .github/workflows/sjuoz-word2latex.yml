@@ -68,7 +68,7 @@ jobs:
 
       - name: Paketler
         # PyMuPDF 2.x yapay zekâ düzen modülü (onnxruntime) getiriyor: .exe'yi bozuyor ve büyütüyor
-        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2"
+        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2" pypandoc_binary
 
       - name: .exe üret
         working-directory: sjuoz_word2latex
@@ -94,6 +94,14 @@ jobs:
             --article-id 2011 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
           if ($LASTEXITCODE -ne 0) { throw "exe PDF'te hata verdi" }
           if (-not (Select-String -Path duman_pdf/2011.tex -Pattern "Ali Hassan")) { throw "PDF'ten yazar okunamadı" }
+          # LaTeX girişi (pandoc .exe içinde, APA stili veri olarak)
+          ./dist/sjuoz-word2latex.exe tests/fixtures/sentetik_latex/main.tex -o duman_tex `
+            --article-id 2013 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe LaTeX'te hata verdi" }
+          if (-not (Select-String -Path duman_tex/2013.tex -SimpleMatch -Pattern "\text{with } \sigma")) {
+            throw "LaTeX denklemi korunmadı"
+          }
+          if (-not (Select-String -Path duman_tex/2013.tex -Pattern "Van Hai")) { throw "LaTeX kaynakçası okunamadı" }
 
       - uses: actions/upload-artifact@v5
         with:

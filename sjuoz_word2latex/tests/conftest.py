@@ -32,7 +32,10 @@ def load_cases():
         with open(path, encoding="utf-8") as f:
             case = json.load(f)
         case["name"] = os.path.basename(os.path.dirname(path))
-        case["docx"] = sorted(glob.glob(os.path.join(os.path.dirname(path), "*.docx")))
+        folder = os.path.dirname(path)
+        # "input": Word dışı giriş (ör. LaTeX kaynağı main.tex); yoksa klasördeki .docx'ler
+        case["docx"] = [os.path.join(folder, case["input"])] if case.get("input") else \
+            sorted(glob.glob(os.path.join(folder, "*.docx")))
         cases.append(case)
     return cases
 
@@ -40,8 +43,21 @@ def load_cases():
 CASES = load_cases()
 
 
+def has_pandoc():
+    import shutil
+    if shutil.which("pandoc"):
+        return True
+    try:
+        import pypandoc
+        return bool(pypandoc.get_pandoc_path())
+    except Exception:  # noqa
+        return False
+
+
 def run_case(case, outdir, compile_pdf=False):
     """Bir test makalesini dönüştürür; convert() sonucunu döndürür."""
+    if any(p.endswith(".tex") for p in case["docx"]) and not has_pandoc():
+        pytest.skip("LaTeX girişi için pandoc yok (pip install pypandoc_binary)")
     args = list(case["docx"]) + list(case["args"]) + ["-o", str(outdir), "--no-zip"]
     if not compile_pdf:
         args.append("--no-compile")

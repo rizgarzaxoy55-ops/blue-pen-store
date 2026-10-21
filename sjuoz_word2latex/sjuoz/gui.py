@@ -132,7 +132,7 @@ class App:
         self.tabs.add(one, text="Tek makale")
         self.vars["manuscript"] = tk.StringVar()
         self.vars["cover"] = tk.StringVar()
-        self._file_row(one, 0, "Makale (.docx / .pdf)", "manuscript", self.pick_manuscript)
+        self._file_row(one, 0, "Makale (.docx / .pdf / .tex)", "manuscript", self.pick_manuscript)
         self._file_row(one, 1, "Kapak mektubu (.docx / .pdf)", "cover",
                        lambda: self.pick_file("cover", "Kapak mektubu"))
         ttk.Label(one, text="Kapak mektubu isteğe bağlıdır; ORCID ve e-postalar oradan alınır.",
@@ -221,7 +221,8 @@ class App:
 
     def pick_file(self, key, title):
         from tkinter import filedialog
-        path = filedialog.askopenfilename(title=title, filetypes=[("Word veya PDF", "*.docx *.pdf"), ("Word", "*.docx"), ("PDF", "*.pdf")])
+        path = filedialog.askopenfilename(title=title, filetypes=[("Word, PDF, LaTeX", "*.docx *.pdf *.tex *.zip"), ("Word", "*.docx"), ("PDF", "*.pdf"),
+                                                     ("LaTeX (.tex / .zip)", "*.tex *.zip")])
         if path:
             self.vars[key].set(path)
         return path

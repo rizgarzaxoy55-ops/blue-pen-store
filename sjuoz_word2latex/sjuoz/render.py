@@ -58,6 +58,8 @@ class Linker:
             return None
         words = parts[0].split()
         keys = {norm_key(parts[0]), norm_key(words[-1]), norm_key(words[0])}
+        # kurum yazar: "Food and Agriculture Organization" "and" ile bölünmemeli
+        keys.add(norm_key(re.sub(r",?\s*et\s*al\.?", "", auth)))
         year = year.replace(" ", "")
         cands = [r for r in self.refs if r["first"] in keys and r["year"] == year]
         if not cands:

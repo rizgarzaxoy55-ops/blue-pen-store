@@ -44,7 +44,10 @@ jobs:
         run: |
           for d in tests/fixtures/*/; do
             name=$(basename "$d")
-            python sjuoz_word2latex.py "$d"*.docx -o "../ci_cikti/$name" \
+            [ -f "$d/case.json" ] || continue
+            # case.json'da "input" varsa (ör. LaTeX main.tex) o, yoksa klasördeki .docx'ler
+            inputs=$(python -c "import json,glob; c=json.load(open('$d/case.json')); print(' '.join(['$d'+c['input']] if c.get('input') else sorted(glob.glob('$d*.docx'))))")
+            python sjuoz_word2latex.py $inputs -o "../ci_cikti/$name" \
               $(python -c "import json,sys; print(' '.join(json.load(open('$d/case.json'))['args']))") || true
           done
 

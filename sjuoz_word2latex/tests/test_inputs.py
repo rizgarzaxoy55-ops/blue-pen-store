@@ -65,6 +65,8 @@ def test_doc_is_converted(tmp_path):
     shutil.copy(COV, tmp_path / "kapak.docx")
     subprocess.run([inputs.soffice_path(), "--headless", "--convert-to", "doc", "--outdir", str(tmp_path),
                     str(tmp_path / "kapak.docx")], capture_output=True, timeout=180)
+    if not (tmp_path / "kapak.doc").exists():
+        pytest.skip("LibreOffice Writer yok (yalnız Draw kurulu): .doc örneği üretilemedi")
     out = inputs.expand_inputs([str(tmp_path / "kapak.doc")], str(tmp_path / "w"))
     assert out[0].endswith("kapak.docx") and os.path.getsize(out[0]) > 0
 

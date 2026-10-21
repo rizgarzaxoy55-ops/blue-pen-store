@@ -34,7 +34,7 @@ sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --
 ### c) Kurmadan, eskisi gibi
 ```bash
 pip install lxml Pillow matplotlib
-pip install pdf2docx           # yalnız PDF girişi için
+pip install pdf2docx "pymupdf<2"   # yalnız PDF girişi için
 python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
 ```
 
@@ -84,6 +84,7 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 | `--article-type` | `Original Article` (varsayılan), `Review Article` … |
 | `--depositor-name`, `--depositor-email` | Crossref gönderen bilgisi. |
 | `--wide-figs 3,5` / `all` | İki sütunu kaplayacak şekiller. |
+| `--wide-eqs 5,7` | İki sütunu kaplayacak (çok uzun, bölünemeyen) numaralı denklemler. |
 | `--landscape-tables 2,3` | Yatay sayfaya konacak tablolar (Word'de yatay bölümdekiler ve 10+ sütunlular zaten yatay). |
 | `--keep-heading-case`, `--keep-title-case` | Başlıkları BÜYÜK harfe çevirme. |
 | `--main-font`, `--header-font` | Varsayılan Times New Roman / Garamond; yoksa benzeri seçilir. |
@@ -139,7 +140,11 @@ Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaş
   bağlantılar, son bölümler (Acknowledgements, Ethical Statement, Author Contributions …), kaynakça.
   Elle numaralanmış başlıklar boşluksuz da olsa tanınır: `1.INTRODUCTION`, `2.1 Data`, `6-REFERENCES`.
 * **Denklemler:** Word denklemleri (OMML) LaTeX'e çevrilir; `SEQ` alan kodlu, `)1(` ya da `(1)`
-  biçimindeki numaralar tanınır.
+  biçimindeki numaralar tanınır. **Hiçbir denklem sütundan taşmaz:** sütuna sığmayan denklem derleme
+  sırasında önce `=` / `+` / `−` işaretlerinden 2, sonra 3 satıra bölünür (ilişki işaretine hizalı);
+  bölünemiyorsa (ör. tek büyük kesir, geniş matris) sütun genişliğine küçültülür. %80'in altına
+  küçültülen denklemleri kontrol raporu bildirir; bunlar `--wide-eqs 5,7` ile iki sütunu kaplayacak
+  biçimde konabilir.
 * **Şekiller:** PNG/JPG/TIFF/GIF/BMP/EMF/WMF/SVG (gerekirse PNG'ye çevrilir), **Word grafikleri**
   (veriden yeniden çizilir), gruplanmış/metin kutusundaki resimler, **alt şekiller (a)(b)(c)**
   (kenarlıksız tabloyla dizilmiş etiketli resimler, aynı paragraftaki ya da ardışık paragraflardaki resimler).
@@ -253,6 +258,7 @@ python -m pytest tests --update-golden     # bilerek yapılan değişiklikten so
 | `sentetik_yatay` | Word'deki yatay bölüm ve 12 sütunlu tablo |
 | `sentetik_rtl` | Kürtçe (Sorani) ve Arapça paragraf ve kelimeler |
 | `sentetik_pdf/sentetik_pdf.pdf` | PDF girişi (`tests/test_pdfinput.py`): `sentetik_temel`'in PDF'i |
+| `sentetik_matematik` | İki sütunda uzun denklemler: satırlara bölünen toplamlar ve eşitlik zincirleri, bölünemeyen kesir ve matris, ‖x‖, cases; derleme testi taşma olmadığını doğrular |
 | `sentetik_serbest` | `1.INTRODUCTION` / `6-REFERENCES` başlıkları, `Fig (1):`, `Figure 2-A/2-B`, ilk satırdaki tablo başlığı, yazar simgeleri, `Van Hai et al.`, alt çizgili DOI, mg g⁻¹ |
 
 Her makale için: üretilen `.tex` saklanmış doğru çıktıyla (`tests/golden/`) birebir

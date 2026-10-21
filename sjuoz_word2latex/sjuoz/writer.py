@@ -9,6 +9,7 @@ from .common import (BIDI, is_rtl_text, tex_escape, warn)
 from .docx import Para, Table
 from .render import render_tokens, strip_eq_number_text
 from .parse import (BACK_MATTER, CAPTION_RE, SUBFIG_RE, clean_heading, manual_number_level)
+from .eqbreak import fit
 from .figures import (clean_sub_label, convert_external, layout_table_images, placeholder_png,
                       render_chart)
 from .template import FIGDIR, LANDSCAPE_COLS, LONG_TABLE_ROWS
@@ -375,8 +376,12 @@ class Writer:
 
     # ---- denklemler
     def emit_equation(self, latex, number):
-        self.open_cols()
         self.close_list()
+        wide = bool(number) and str(self.eq_count + 1) in getattr(self.opts, "wide_eqs", set())
+        if wide:  # iki sütunu kaplayan denklem; sonraki paragraf sütunları yeniden açar
+            self.close_cols()
+        else:
+            self.open_cols()
         self.eq_display += 1
         if number:
             self.eq_count += 1
@@ -385,11 +390,11 @@ class Writer:
                 warn("Denklem numarası sırası farklı: beklenen %d, Word'de (%s)." % (self.eq_count, number))
             self.emit(r"\hypertarget{eq:%d}{}" % self.eq_count)
             self.emit(r"\begin{equation}")
-            self.emit("  " + latex + tag)
+            self.emit("  " + fit(latex) + tag)
             self.emit(r"\end{equation}")
         else:
             self.emit(r"\begin{equation*}")
-            self.emit("  " + latex)
+            self.emit("  " + fit(latex))
             self.emit(r"\end{equation*}")
 
     # ---- caption

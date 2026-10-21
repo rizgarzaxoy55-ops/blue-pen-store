@@ -1,0 +1,216 @@
+%!TEX TS-program = xelatex
+% Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
+\documentclass[9pt]{extarticle}
+\usepackage{multicol}
+\usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{qrcode}
+\usepackage{xurl}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+
+\titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+\newcommand{\titlesize}{\fontsize{12}{10}}
+\renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
+\renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
+\renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
+\definecolor{sjuozblue}{HTML}{C1D1EB}
+\definecolor{colorabs}{HTML}{E2EAF4}
+
+% Yazı tipleri: Times New Roman / Garamond yoksa benzerleri kullanılır
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{%
+  \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}{%
+    \IfFontExistsTF{Liberation Serif}{\setmainfont{Liberation Serif}}{}}}
+\IfFontExistsTF{Garamond}{\newfontfamily{\garamond}{Garamond}}{%
+  \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
+
+\newcommand{\sjuozdoi}{https://doi.org/10.25271/sjuoz.2026.14.4.2012}
+% İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
+\newcommand{\firstfooterbottom}{0.4in}
+\newcommand{\firstpagereserve}{1.4in}
+% Sadece ilk sayfada metin alanını kısalt; ilk sayfa basıldıktan sonra eski haline döndür
+\makeatletter
+\newlength{\sjuozfulltextheight}
+\AtBeginDocument{%
+  \setlength{\sjuozfulltextheight}{\textheight}%
+  \global\advance\textheight by -\firstpagereserve
+  \global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight
+  \AddToHookNext{shipout/after}{\global\textheight\sjuozfulltextheight}}
+\makeatother
+
+% Başlık ve altlık (header/footer)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\large \textit{Omer \& Ali}}
+\rhead{\small{\garamond{\textbf{SJUOZ|VOL14|OCT 2026|P1-\pageref*{LastPage}}}}}
+\lfoot{\raisebox{8pt}{\textit{DOI:}\href{\sjuozdoi}{\textit{\small{\sjuozdoi}}}}}
+\cfoot{\raisebox{8pt}{\thepage}}
+
+\fancypagestyle{firstpage}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \rhead{\IfFileExists{SJUOZ.png}{\includegraphics[width=1.04in]{SJUOZ.png}}{\textbf{SJUOZ}}}
+  \lhead{\colorbox{sjuozblue}{%
+      \begin{minipage}[b]{0.83\textwidth}
+        \vspace{0.15cm}
+        \hspace{-3pt}\ \normalsize \noindent \garamond{Science Journal of University of Zakho}\\
+        \normalsize \textit{\garamond{DOI: \sjuozdoi}}
+        \vspace{0.2cm}
+      \end{minipage}}}
+}
+
+% İlk sayfanın altındaki bilgi kutusu (sayfaya mutlak konumla yerleştirilir)
+\newcommand{\sjuozfirstfooter}{%
+  \begin{minipage}[b]{\textwidth}
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \begin{minipage}[t]{0.2\textwidth}\hspace{1pt} \small Access this article online \\
+        \vspace{0.1cm}
+        {\hypersetup{urlcolor=black}\qrcode[height=2.6162cm]{https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/2012}}
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}
+        \small DOI:\href{\sjuozdoi}{\sjuozdoi} \\ \\[0.5cm]
+        Printed ISSN 2663-628X; \\
+        Electronic ISSN 2663-6298
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}\small \textbf{Science Journal of University of Zakho} \\
+        \textbf{Vol. 14, No. 04, pp. 1-\pageref*{LastPage}, October-2026} \\[0.5cm]
+        This is an open access article under a CC BY-NC-SA 4.0 license \\
+        (\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{https://creativecommons.org/licenses/by-nc-sa/4.0/})
+      \end{minipage} \\[0.15cm]
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \centering \normalsize \thepage
+  \end{minipage}}
+
+% ORCID simgesi: orcid.png varsa o, yoksa çizilmiş yeşil "iD" simgesi
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{\IfFileExists{orcid.png}{\includegraphics[width=9pt]{orcid.png}}{%
+  \tikz[baseline=-0.7ex]{\fill[orcidgreen] (0,0) circle (4.5pt);
+  \node[text=white, font=\fontsize{4.5pt}{4.5pt}\selectfont\bfseries, inner sep=0pt] at (0,0) {iD};}}}
+\newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
+
+\begin{document}
+\setcounter{page}{1}
+\thispagestyle{firstpage}
+\AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
+
+\noindent \large \textbf{Original Article} \\[-5pt]
+\begin{center} \titlesize \textbf{ON THE CONVERGENCE OF A CLASS OF ITERATIVE METHODS} \end{center}
+\begin{center} \large \textbf{Dilan Omer \textsuperscript{*} and Karwan Ali}
+\end{center}
+\noindent
+\large Department of Mathematics, Faculty of Science, University of Zakho, Duhok, Iraq.\\
+
+\begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:dilan.omer@uoz.edu.krd}{dilan.omer@uoz.edu.krd}
+\end{center}
+\rule{\textwidth}{1.5pt}
+\begin{minipage}[t]{0.175\textwidth}
+  \hspace{0cm} \vspace{0cm}
+\end{minipage} \begin{minipage}[t]{0.8\textwidth}
+\large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
+\rule{\textwidth}{1.5pt} \\
+\begin{minipage}[t]{0.175\textwidth}
+  \vspace{1cm} Received \\ XX \\[0.5cm] Accepted \\ XX \\[0.5cm] Published \\ XX \\[0.25cm]
+\end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
+  \large{We study long displayed equations in a two-column layout. Every equation must stay inside its column: long sums are broken at plus and minus signs, chains at the equals sign, and unbreakable expressions are scaled down.
+  \\[2pt]
+  \normalsize \textbf{Keywords:} iterative methods; convergence; equations.
+  }
+\end{minipage}}
+\\[-10pt]
+
+\normalsize
+\noindent \rule{\textwidth}{0.75pt}
+\begin{multicols}{2}
+\section{INTRODUCTION}
+The error of the method satisfies the bound in \hyperlink{eq:1}{Equation 1}, and the full expansion is given in \hyperlink{eq:2}{Equation 2}.
+
+\hypertarget{eq:1}{}
+\begin{equation}
+  \sjuozfitone{\left\| x_{k+1}-x^{*} \right\|\leq\left\| x_{k}-x^{*} \right\|}
+\end{equation}
+\hypertarget{eq:2}{}
+\begin{equation}
+  \sjuozfit{F\left( x \right)=a_{0}+a_{1}x+a_{2}x^{2}+a_{3}x^{3}+a_{4}x^{4}+a_{5}x^{5}+a_{6}x^{6}+a_{7}x^{7}+a_{8}x^{8}+a_{9}x^{9}+a_{10}x^{10}+a_{11}x^{11}}{\begin{aligned}F\left( x \right) &=a_{0}+a_{1}x+a_{2}x^{2}+a_{3}x^{3}+a_{4}x^{4}+a_{5}x^{5} \\ &\quad +a_{6}x^{6}+a_{7}x^{7}+a_{8}x^{8}+a_{9}x^{9}+a_{10}x^{10}+a_{11}x^{11}\end{aligned}}{\begin{aligned}F\left( x \right) &=a_{0}+a_{1}x+a_{2}x^{2}+a_{3}x^{3} \\ &\quad +a_{4}x^{4}+a_{5}x^{5}+a_{6}x^{6}+a_{7}x^{7} \\ &\quad +a_{8}x^{8}+a_{9}x^{9}+a_{10}x^{10}+a_{11}x^{11}\end{aligned}}
+\end{equation}
+The loss combines several terms:
+
+\hypertarget{eq:3}{}
+\begin{equation}
+  \sjuozfit{L\left( \theta\right)=\frac{1}{N}\sum\limits_{i=1}^{N} {\left( y_{i}-{\hat{y}}_{i} \right)}^{2}+\lambda_{1}\sum\limits_{j=1}^{p} \left| \theta_{j} \right|+\lambda_{2}\sum\limits_{j=1}^{p} \theta_{j}^{2}-\gamma\log\left( 1+e^{-\theta^{T}x} \right)}{\begin{aligned}L\left( \theta\right) &=\frac{1}{N}\sum\limits_{i=1}^{N} {\left( y_{i}-{\hat{y}}_{i} \right)}^{2} \\ &\quad +\lambda_{1}\sum\limits_{j=1}^{p} \left| \theta_{j} \right|+\lambda_{2}\sum\limits_{j=1}^{p} \theta_{j}^{2}-\gamma\log\left( 1+e^{-\theta^{T}x} \right)\end{aligned}}{\begin{aligned}L\left( \theta\right) &=\frac{1}{N}\sum\limits_{i=1}^{N} {\left( y_{i}-{\hat{y}}_{i} \right)}^{2} \\ &\quad +\lambda_{1}\sum\limits_{j=1}^{p} \left| \theta_{j} \right| \\ &\quad +\lambda_{2}\sum\limits_{j=1}^{p} \theta_{j}^{2}-\gamma\log\left( 1+e^{-\theta^{T}x} \right)\end{aligned}}
+\end{equation}
+A chain of equalities:
+
+\hypertarget{eq:4}{}
+\begin{equation}
+  \sjuozfit{\int_{0}^{1} \left( 3x^{2}+2x+1 \right)\mathit{dx}={\left[ x^{3}+x^{2}+x \right]}_{0}^{1}=\left( 1+1+1 \right)-\left( 0+0+0 \right)=3}{\begin{aligned}\int_{0}^{1} \left( 3x^{2}+2x+1 \right)\mathit{dx} &={\left[ x^{3}+x^{2}+x \right]}_{0}^{1} \\ &=\left( 1+1+1 \right)-\left( 0+0+0 \right)=3\end{aligned}}{\begin{aligned}\int_{0}^{1} \left( 3x^{2}+2x+1 \right)\mathit{dx} &={\left[ x^{3}+x^{2}+x \right]}_{0}^{1} \\ &=\left( 1+1+1 \right)-\left( 0+0+0 \right)=3\end{aligned}}
+\end{equation}
+An expression that cannot be broken:
+
+\hypertarget{eq:5}{}
+\begin{equation}
+  \sjuozfitone{P=\frac{\alpha_{1}\beta_{1}\gamma_{1}+\alpha_{2}\beta_{2}\gamma_{2}+\alpha_{3}\beta_{3}\gamma_{3}+\alpha_{4}\beta_{4}\gamma_{4}+\alpha_{5}\beta_{5}\gamma_{5}}{\delta_{1}\epsilon_{1}+\delta_{2}\epsilon_{2}+\delta_{3}\epsilon_{3}+\delta_{4}\epsilon_{4}}}
+\end{equation}
+A matrix and cases:
+
+\hypertarget{eq:6}{}
+\begin{equation}
+  \sjuozfitone{A=\left( \begin{matrix}a_{11} & a_{12} & a_{13} & a_{14} & a_{15} & a_{16} & a_{17} & a_{18} \\ a_{21} & a_{22} & a_{23} & a_{24} & a_{25} & a_{26} & a_{27} & a_{28}\end{matrix} \right)}
+\end{equation}
+\hypertarget{eq:7}{}
+\begin{equation}
+  \sjuozfitone{f\left( x \right)=\left\{ \begin{matrix}x^{2}+2x+1, & x\geq0 \\ -x, & x<0\end{matrix} \right.}
+\end{equation}
+Inline mathematics such as $a_{0}+a_{1}x+a_{2}x^{2}+a_{3}x^{3}+a_{4}x^{4}+a_{5}x^{5}+a_{6}x^{6}$ stays in the text line.
+
+\section{CONCLUSIONS}
+All equations stay inside the column (\hyperlink{ref:1}{Smith, 2020}).
+
+\section*{REFERENCES}
+\begin{list}{}{
+    \setlength{\leftmargin}{1.5em}
+    \setlength{\itemindent}{-1.5em}
+    \setlength{\parsep}{0pt}
+    \setlength{\itemsep}{6pt}
+}
+\item \hypertarget{ref:1}{}Smith, J. (2020). Long equations in narrow columns. \textit{Journal of Typesetting}, 1(1), 1–10.
+
+\end{list}
+\end{multicols}
+
+\end{document}

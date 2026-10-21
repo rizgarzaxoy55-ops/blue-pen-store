@@ -197,6 +197,61 @@ Van Hai, V., Nhung, H. L. T. K., & Silhavy, P. (2022). Toward improving effort e
 """
 
 
+MATEMATIK = r"""
+**ON THE CONVERGENCE OF A CLASS OF ITERATIVE METHODS**
+
+**Dilan Omer^1,\*^ and Karwan Ali^1^**
+
+^1^Department of Mathematics, Faculty of Science, University of Zakho, Duhok, Iraq.
+
+\* Corresponding author. E-mail: dilan.omer@uoz.edu.krd
+
+**Abstract**
+
+We study long displayed equations in a two-column layout. Every equation must stay inside its
+column: long sums are broken at plus and minus signs, chains at the equals sign, and unbreakable
+expressions are scaled down.
+
+**Keywords:** iterative methods; convergence; equations.
+
+# Introduction
+
+The error of the method satisfies the bound in Equation 1, and the full expansion is given in Equation 2.
+
+$$\left\| x_{k+1} - x^{*} \right\| \le \left\| x_{k} - x^{*} \right\| \qquad (1)$$
+
+$$F(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4 + a_5 x^5 + a_6 x^6 + a_7 x^7 + a_8 x^8 + a_9 x^9 + a_{10} x^{10} + a_{11} x^{11} \qquad (2)$$
+
+The loss combines several terms:
+
+$$L(\theta) = \frac{1}{N}\sum_{i=1}^{N} \left( y_i - \hat{y}_i \right)^2 + \lambda_1 \sum_{j=1}^{p} \left| \theta_j \right| + \lambda_2 \sum_{j=1}^{p} \theta_j^2 - \gamma \log \left( 1 + e^{-\theta^{T} x} \right) \qquad (3)$$
+
+A chain of equalities:
+
+$$\int_0^1 \left( 3x^2 + 2x + 1 \right) dx = \left[ x^3 + x^2 + x \right]_0^1 = \left( 1 + 1 + 1 \right) - \left( 0 + 0 + 0 \right) = 3 \qquad (4)$$
+
+An expression that cannot be broken:
+
+$$P = \frac{\alpha_1 \beta_1 \gamma_1 + \alpha_2 \beta_2 \gamma_2 + \alpha_3 \beta_3 \gamma_3 + \alpha_4 \beta_4 \gamma_4 + \alpha_5 \beta_5 \gamma_5}{\delta_1 \epsilon_1 + \delta_2 \epsilon_2 + \delta_3 \epsilon_3 + \delta_4 \epsilon_4} \qquad (5)$$
+
+A matrix and cases:
+
+$$A = \begin{pmatrix} a_{11} & a_{12} & a_{13} & a_{14} & a_{15} & a_{16} & a_{17} & a_{18} \\ a_{21} & a_{22} & a_{23} & a_{24} & a_{25} & a_{26} & a_{27} & a_{28} \end{pmatrix} \qquad (6)$$
+
+$$f(x) = \begin{cases} x^2 + 2x + 1, & x \ge 0 \\ -x, & x < 0 \end{cases} \qquad (7)$$
+
+Inline mathematics such as $a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4 + a_5 x^5 + a_6 x^6$ stays in the text line.
+
+# Conclusions
+
+All equations stay inside the column (Smith, 2020).
+
+# References
+
+Smith, J. (2020). Long equations in narrow columns. *Journal of Typesetting*, 1(1), 1–10.
+"""
+
+
 def uzun_tablo_md():
     rows = "\n".join("| S%02d | %d | %.3f | %.1f |" % (i, 700 + 13 * i, 0.1 + i / 97.0, 90 + (i % 10) / 2.0)
                      for i in range(1, 81))
@@ -523,6 +578,8 @@ def main(only=None):
         os.makedirs(os.path.join(HERE, "sentetik_alt_sekil"), exist_ok=True)
         pandoc(ALT_SEKIL, os.path.join(HERE, "sentetik_alt_sekil", "sentetik_alt_sekil.docx"), tmp,
                make_pictures(tmp))
+        os.makedirs(os.path.join(HERE, "sentetik_matematik"), exist_ok=True)
+        pandoc(MATEMATIK, os.path.join(HERE, "sentetik_matematik", "sentetik_matematik.docx"), tmp)
         os.makedirs(os.path.join(HERE, "sentetik_serbest"), exist_ok=True)
         pandoc(SERBEST, os.path.join(HERE, "sentetik_serbest", "sentetik_serbest.docx"), tmp, make_pictures(tmp))
         os.makedirs(os.path.join(HERE, "sentetik_rtl"), exist_ok=True)

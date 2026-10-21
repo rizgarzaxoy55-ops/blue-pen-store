@@ -67,7 +67,8 @@ jobs:
           python-version: "3.12"
 
       - name: Paketler
-        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx
+        # PyMuPDF 2.x yapay zekâ düzen modülü (onnxruntime) getiriyor: .exe'yi bozuyor ve büyütüyor
+        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2"
 
       - name: .exe üret
         working-directory: sjuoz_word2latex

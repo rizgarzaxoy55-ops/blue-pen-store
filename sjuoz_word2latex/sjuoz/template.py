@@ -17,6 +17,17 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{tabularx}

@@ -68,6 +68,7 @@ def build_parser():
     ap.add_argument("--assets", default=None, help="SJUOZ.png ve orcid.png'nin bulunduğu klasör")
     ap.add_argument("--tex-name", default=None, help="çıktı .tex dosya adı (varsayılan: <makale no>.tex)")
     ap.add_argument("--wide-figs", default="", help="iki sütunu kaplayacak şekiller: '3,5' veya 'all'")
+    ap.add_argument("--wide-eqs", default="", help="iki sütunu kaplayacak (çok uzun, bölünemeyen) denklemler: '5,7'")
     ap.add_argument("--landscape-tables", default="",
                     help="yatay sayfaya konacak tablolar, ör. '2,3' (Word'de yatay bölümdekiler ve "
                          "%d+ sütunlu tablolar zaten yatay konur)" % LANDSCAPE_COLS)
@@ -135,6 +136,8 @@ def convert(opts):
     today = datetime.date.today()
     if isinstance(getattr(opts, "landscape_tables", ""), str):
         opts.landscape_tables = {x.strip() for x in opts.landscape_tables.split(",") if x.strip()}
+    if isinstance(getattr(opts, "wide_eqs", ""), str):
+        opts.wide_eqs = {x.strip() for x in opts.wide_eqs.split(",") if x.strip()}
     if isinstance(opts.wide_figs, str):
         opts.wide_figs = {"all"} if opts.wide_figs.strip() == "all" else \
             {x.strip() for x in opts.wide_figs.split(",") if x.strip()}

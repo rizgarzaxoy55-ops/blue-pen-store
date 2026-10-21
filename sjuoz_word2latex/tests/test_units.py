@@ -268,3 +268,28 @@ def test_inline_math_does_not_look_lost():
     out = report._letters("Where y is the final prediction from the model.")
     assert report.found_ratio("Where  is the final prediction from the model.", out) < 0.7
     assert report.found_ratio_segments(segs, out) == 1.0
+
+
+# ---------------------------------------------------------------- uzun denklemler
+def test_equation_break_points_respect_groups():
+    from sjuoz.eqbreak import break_points
+    e = r"f\left( a+b \right)=\frac{x+y}{2}+c-d"
+    kinds = [(e[p:p + 1], k) for p, k in break_points(e)]
+    assert kinds == [("=", "rel"), ("+", "bin"), ("-", "bin")]  # parantez/kesir içindekiler hariç
+    assert break_points("-x=-y") == [(2, "rel")]  # tekli eksi bölme yeri değil
+
+
+def test_equation_candidates_align_on_relation():
+    from sjuoz.eqbreak import candidate, fit
+    two = candidate(r"F=a+b+c+d", 2)
+    assert two.startswith(r"\begin{aligned}F &=") and r"\\ &\quad +" in two
+    assert candidate(r"a=b+c=d-e", 2) == r"\begin{aligned}a &=b+c \\ &=d-e\end{aligned}"
+    assert fit(r"P=\frac{a+b}{c}") == r"\sjuozfitone{P=\frac{a+b}{c}}"  # bölünemez: yalnız küçültme
+    assert fit(r"F=a+b").startswith(r"\sjuozfit{F=a+b}")
+
+
+def test_scaled_equations_in_log(tmp_path):
+    log = tmp_path / "a.log"
+    log.write_text("SJUOZ-EQ-SCALED: 5; 142.5pt; 613.4pt\nSJUOZ-EQ-SCALED: 6; 142.5pt; 150.0pt\n", encoding="utf-8")
+    res = conv.analyze_log(str(log), [])
+    assert [(n, round(r, 2)) for n, r in res["eq_scaled"]] == [("5", 0.23), ("6", 0.95)]

@@ -175,6 +175,9 @@ def analyze_log(log_path, tex_lines):
             res["overfull_h"].append({"pt": amount, "line": line, "tex": snippet[:160]})
     res["overfull_v"] = len(re.findall(r"Overfull \\vbox \(([\d.]+)pt too high\)", log))
     res["missing_chars"] = sorted(set(re.findall(r"Missing character: There is no (.+?) in font", log)))
+    # sütuna sığmayıp küçültülen denklemler: (numara, oran)
+    res["eq_scaled"] = [(num, float(a) / float(b)) for num, a, b in
+                        re.findall(r"SJUOZ-EQ-SCALED: ([^;\n]*); ([\d.]+)pt; ([\d.]+)pt", log) if float(b)]
     res["missing_files"] = sorted(set(re.findall(r"File `([^']+)' not found", log)))
     res["undefined_links"] = sorted(set(re.findall(r"name\{([^}]+)\} has been referenced but does not exist", log)))
     mt = re.search(r"Output written on .*?\((\d+) pages?", log)
@@ -312,6 +315,13 @@ def build_report(ctx):
             add(REPORT_CHECK, "Sütundan taşan satırlar",
                 "<br>".join("%.1fpt — .tex satır %d: <code>%s</code>" % (o["pt"], o["line"], tex_escape_html(o["tex"]))
                             for o in sorted(lg["overfull_h"], key=lambda o: -o["pt"])[:10]))
+        small = [(n, r) for n, r in lg.get("eq_scaled", []) if r < 0.8]
+        if small:
+            add(REPORT_CHECK, "Çok küçültülen denklemler",
+                "Sütuna sığması için küçültüldü (bölünecek yer yok): " +
+                ", ".join("denklem %s yakınında %%%d" % (n, round(r * 100)) for n, r in small) +
+                ". Okunurluğu kontrol edin; iki sütunu kaplaması için --wide-eqs %s verin "
+                "ya da Word'de denklemi satırlara bölün." % ",".join(n for n, _ in small))
         if lg["overfull_v"]:
             add(REPORT_CHECK, "Sayfadan taşan içerik", "%d yerde sayfa/sütun yüksekliği aşıldı." % lg["overfull_v"])
         if not (lg["errors"] or lg["missing_files"] or lg["missing_chars"]):

@@ -50,7 +50,7 @@ ACCENTS = {"\u0305": r"\bar", "\u00af": r"\bar", "\u0302": r"\hat", "^": r"\hat"
            "\u0301": r"\acute", "\u0300": r"\grave", "\u0306": r"\breve", "\u2192": r"\vec",
            "\u20e1": r"\overleftrightarrow", "\u0304": r"\bar"}
 DELIMS = {"(": "(", ")": ")", "[": "[", "]": "]", "{": r"\{", "}": r"\}", "|": "|",
-          "‖": r"\|", "⟨": r"\langle", "⟩": r"\rangle", "〈": r"\langle", "〉": r"\rangle",
+          "‖": r"\|", "∥": r"\|", "⟨": r"\langle", "⟩": r"\rangle", "〈": r"\langle", "〉": r"\rangle",
           "⌈": r"\lceil", "⌉": r"\rceil", "⌊": r"\lfloor", "⌋": r"\rfloor", "": "."}
 
 EQNUM_MARK = "\x01"  # Word'de denklemle numara arasındaki uzun boşluk
@@ -309,7 +309,13 @@ class OMML:
         sep_tex = DELIMS.get(sep, sep)
         parts = [self.seq(e) for e in el.findall(M + "e")]
         inner = (r" \middle%s " % sep_tex).join(parts) if len(parts) > 1 else "".join(parts)
-        return r"\left%s %s \right%s" % (DELIMS.get(beg, beg), inner, DELIMS.get(end, end))
+        # \left/\right yalnız bilinen ayraçları kabul eder; bilinmeyen karakter düz yazılır
+        lb, rb = DELIMS.get(beg), DELIMS.get(end)
+        if lb is None:
+            lb, inner = ".", beg + " " + inner
+        if rb is None:
+            rb, inner = ".", inner + " " + end
+        return r"\left%s %s \right%s" % (lb, inner, rb)
 
     def f_acc(self, el):
         chr_ = self.prop(el, "accPr", "chr", "\u0302")

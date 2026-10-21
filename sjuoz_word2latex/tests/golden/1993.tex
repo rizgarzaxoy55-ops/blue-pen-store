@@ -7,6 +7,17 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{tabularx}
@@ -179,7 +190,7 @@ VJA has many features, like dealing with different skin colors, the ability to d
 
 \hypertarget{eq:1}{}
 \begin{equation}
-  V = \sum P_{(\mathit{white}\ \mathit{region})} - \sum P_{(\mathit{black}\ \mathit{region})}
+  \sjuozfit{V = \sum P_{(\mathit{white}\ \mathit{region})} - \sum P_{(\mathit{black}\ \mathit{region})}}{\begin{aligned}V &= \sum P_{(\mathit{white}\ \mathit{region})} \\ &\quad - \sum P_{(\mathit{black}\ \mathit{region})}\end{aligned}}{\begin{aligned}V &= \sum P_{(\mathit{white}\ \mathit{region})} \\ &\quad - \sum P_{(\mathit{black}\ \mathit{region})}\end{aligned}}
 \end{equation}
 Where: P is the value of the pixel, and V is the feature value.
 
@@ -194,7 +205,7 @@ To minimize the complexity of the mathematical operations, the Viola-Jones algor
 
 \hypertarget{eq:2}{}
 \begin{equation}
-  \mathit{In}_{\left( i,j \right)}=\sum\limits_{\bar{i}=1,\bar{j}=1}^{i-1,j-1} \mathit{Image}(\bar{i},\bar{j})
+  \sjuozfitone{\mathit{In}_{\left( i,j \right)}=\sum\limits_{\bar{i}=1,\bar{j}=1}^{i-1,j-1} \mathit{Image}(\bar{i},\bar{j})}
 \end{equation}
 Where: In is the integral image, Image is the input image, and (i,j) is the spatial pixel at the x and y coordinates, respectively.
 
@@ -211,13 +222,13 @@ The two cases are the region with an edge surrounding it and the region with an 
 
 \hypertarget{eq:3}{}
 \begin{equation}
-  v_{1}=B-A
+  \sjuozfit{v_{1}=B-A}{\begin{aligned}v_{1} &=B \\ &\quad -A\end{aligned}}{\begin{aligned}v_{1} &=B \\ &\quad -A\end{aligned}}
 \end{equation}
 The Area with unwanted Areas surrounding it, illustrated in Area 2 of \hyperlink{fig:2}{Figure 2}, can be calculated as given below:
 
 \hypertarget{eq:4}{}
 \begin{equation}
-  v_{2}=D-\left( B+C \right)+A
+  \sjuozfit{v_{2}=D-\left( B+C \right)+A}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right)+A\end{aligned}}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right) \\ &\quad +A\end{aligned}}
 \end{equation}
 It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in \hyperlink{fig:2}{Figure 2}, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of \hyperlink{eq:1}{Equation 1}.
 
@@ -246,7 +257,7 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 
 \hypertarget{eq:5}{}
 \begin{equation}
-  \mathit{TH}_{t}= \mathit{TH}_{t-1}-5
+  \sjuozfit{\mathit{TH}_{t}= \mathit{TH}_{t-1}-5}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}
 \end{equation}
 \hyperlink{eq:5}{Equation 5} is determined based on analytic and experimental results in Section 4.
 
@@ -262,7 +273,7 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 
 \hypertarget{eq:6}{}
 \begin{equation}
-  \mathit{TH}_{t}= {a\ \mathit{TH}}_{t-1}+b
+  \sjuozfit{\mathit{TH}_{t}= {a\ \mathit{TH}}_{t-1}+b}{\begin{aligned}\mathit{TH}_{t} &= {a\ \mathit{TH}}_{t-1} \\ &\quad +b\end{aligned}}{\begin{aligned}\mathit{TH}_{t} &= {a\ \mathit{TH}}_{t-1} \\ &\quad +b\end{aligned}}
 \end{equation}
 Where THt is the predicted value of the threshold, and THt-1 is the previous value of it.
 

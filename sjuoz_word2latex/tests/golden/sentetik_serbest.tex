@@ -7,6 +7,17 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{tabularx}
@@ -160,7 +171,7 @@ Earlier work by \hyperlink{ref:2}{Van Hai \textit{et al.}~(2022)} and (\hyperlin
 The model output is computed as follows and compared with the observed values in every run.
 
 \begin{equation*}
-  y=\mathit{ax}+b
+  \sjuozfit{y=\mathit{ax}+b}{\begin{aligned}y &=\mathit{ax} \\ &\quad +b\end{aligned}}{\begin{aligned}y &=\mathit{ax} \\ &\quad +b\end{aligned}}
 \end{equation*}
 Where $y$ is the final prediction from the model, and $b$ denotes the constant bias of the fitted line.
 

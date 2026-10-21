@@ -43,17 +43,10 @@ NUMBERED_EQ_ENVS = ("equation", "align", "gather", "multline", "eqnarray", "flal
 
 
 def is_tex_input(path):
+    """.tex ya da (iç içe olabilir) içinde .tex bulunan .zip."""
+    from .inputs import zip_has_tex
     low = path.lower()
-    if low.endswith(".tex"):
-        return True
-    if low.endswith(".zip"):
-        try:
-            with zipfile.ZipFile(path) as z:
-                return any(n.lower().endswith(".tex") for n in z.namelist()) or \
-                    any(n.lower().endswith(".zip") for n in z.namelist())
-        except zipfile.BadZipFile:
-            return False
-    return False
+    return low.endswith(".tex") or (low.endswith(".zip") and zip_has_tex(path))
 
 
 # --------------------------------------------------------------------------
@@ -481,6 +474,17 @@ def natbib_cites(body, items):
 # --------------------------------------------------------------------------
 def pandoc_exe():
     """Önce pypandoc_binary'nin getirdiği pandoc (sürüm her yerde aynı), yoksa sistemdeki."""
+    import sys
+    name = "pandoc.exe" if os.name == "nt" else "pandoc"
+    dirs = [os.path.join(getattr(sys, "_MEIPASS", ""), "pypandoc", "files")]  # Windows programının içi
+    try:
+        import pypandoc
+        dirs.append(os.path.join(os.path.dirname(pypandoc.__file__), "files"))
+    except Exception:  # noqa
+        pass
+    for d in dirs:
+        if os.path.isfile(os.path.join(d, name)):
+            return os.path.join(d, name)
     try:
         import pypandoc
         exe = pypandoc.get_pandoc_path()

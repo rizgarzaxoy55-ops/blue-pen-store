@@ -95,6 +95,19 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 | `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
 | `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
 
+### Hangi dosyalar verilebilir?
+
+| Dosya | Nasıl okunur |
+|---|---|
+| `.docx` | Doğrudan (en iyi sonuç). |
+| `.doc`, `.odt`, `.rtf` | LibreOffice ile `.docx`'e çevrilir (LibreOffice kurulu olmalı). |
+| `.tex` | LaTeX kaynağı; denklemler birebir korunur (aşağıya bakın). |
+| `.zip` | İçinde `.tex` varsa LaTeX kaynağı; yoksa içindeki Word dosyaları (makale + kapak mektubu), onlar da yoksa PDF. İç içe zip de açılır; aynı adlı Word ve PDF varsa Word kullanılır. |
+| `.pdf` | Son çare (aşağıya bakın). |
+
+Yalnız dosya adı verilip dosya o klasörde yoksa alt klasörlerde, Masaüstü / İndirilenler / Belgeler'de
+(OneDrive dahil) ve oralardaki zip'lerin içinde de aranır.
+
 ### LaTeX kaynağından dönüştürme
 
 Yazar makaleyi LaTeX'te yazdıysa **.tex dosyası ya da .tex, .bib ve resimleri içeren .zip** verilebilir

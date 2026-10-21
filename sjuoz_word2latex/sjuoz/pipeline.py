@@ -9,6 +9,7 @@ import zipfile
 
 
 from .common import (BIDI, DATA_DIR, NO_WINDOW, warn, WARNINGS)
+from .inputs import expand_inputs
 from .pdfinput import ensure_docx
 from .texinput import is_tex_input, tex_to_docx
 from .docx import Docx, Para
@@ -144,6 +145,7 @@ def convert(opts):
             {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
 
     # PDF ya da LaTeX kaynağı (.tex / .zip) verildiyse önce Word'e çevrilir
+    opts.docx = expand_inputs(opts.docx)  # zip açılır, .doc/.odt/.rtf → .docx
     opts.docx = [tex_to_docx(p) if is_tex_input(p) else ensure_docx(p) for p in opts.docx]
     manuscript, cover = classify(opts.docx)
     if manuscript is None:

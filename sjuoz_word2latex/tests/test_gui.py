@@ -69,8 +69,10 @@ def test_resolve_docx_forgives_windows_typos(tmp_path):
         (tmp_path / n).write_bytes(b"x")
     assert resolve_docx(str(tmp_path / "paper1995.docx")) == (str(tmp_path / "paper1995.docx.docx"), None)
     assert resolve_docx(str(tmp_path / "1995+Cover+Letterdocx"))[0] == str(tmp_path / "1995+Cover+Letter.docx")
-    real, err = resolve_docx(str(tmp_path / "eski.docx"))
-    assert real is None and "Farklı Kaydet" in err and '"paper1995.docx.docx"' in err
+    # yalnız .doc varsa o kullanılır (dönüştürücü LibreOffice ile .docx'e çevirir)
+    assert resolve_docx(str(tmp_path / "eski.docx"))[0] == str(tmp_path / "eski.doc")
+    real, err = resolve_docx(str(tmp_path / "yok.docx"))
+    assert real is None and '"paper1995.docx.docx"' in err
 
 
 def test_resolve_docx_looks_in_desktop(tmp_path, monkeypatch):

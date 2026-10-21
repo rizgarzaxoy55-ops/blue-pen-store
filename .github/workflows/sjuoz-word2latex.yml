@@ -102,6 +102,12 @@ jobs:
             throw "LaTeX denklemi korunmadı"
           }
           if (-not (Select-String -Path duman_tex/2013.tex -Pattern "Van Hai")) { throw "LaTeX kaynakçası okunamadı" }
+          # İçinde Word dosyası olan zip
+          Compress-Archive -Path tests/fixtures/sentetik_temel/sentetik_temel.docx -DestinationPath duman_word.zip
+          ./dist/sjuoz-word2latex.exe duman_word.zip -o duman_zip `
+            --article-id 2001 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe zip'te hata verdi" }
+          if (-not (Select-String -Path duman_zip/2001.tex -Pattern "Ali Hassan")) { throw "zip'teki Word okunamadı" }
 
       - uses: actions/upload-artifact@v5
         with:

@@ -46,13 +46,16 @@ def issue_articles(folder, cfg):
         docs = [os.path.join(sub, f) for f in names if f.lower().endswith(".docx")
                 or (f.lower().endswith(".pdf") and os.path.splitext(f)[0].lower() not in stems)]
         if not any(d.lower().endswith(".docx") for d in docs):
-            # Word yoksa LaTeX kaynağı (.tex ya da .zip) PDF'ten önce gelir
-            tex = [os.path.join(sub, f) for f in names if f.lower().endswith((".tex", ".zip"))
-                   and is_tex_input(os.path.join(sub, f))]
-            if tex:
-                docs = tex[:1] + [d for d in docs if not d.lower().endswith(".pdf")]
+            # .docx yoksa: LaTeX kaynağı (.tex ya da .tex içeren zip), eski Word (.doc/.odt/.rtf),
+            # içinde Word/PDF olan zip — hepsi PDF'ten önce gelir (convert() açar/çevirir)
+            tex = [os.path.join(sub, f) for f in names if f.lower().endswith(".tex")
+                   or (f.lower().endswith(".zip") and is_tex_input(os.path.join(sub, f)))]
+            other = [os.path.join(sub, f) for f in names if f.lower().endswith((".doc", ".odt", ".rtf", ".zip"))
+                     and os.path.join(sub, f) not in tex]
+            if tex or other:
+                docs = tex[:1] + other
         if not docs:
-            warn("Sayı: '%s' klasöründe .docx / .tex / .pdf yok, atlandı." % it["klasor"])
+            warn("Sayı: '%s' klasöründe .docx / .doc / .tex / .zip / .pdf yok, atlandı." % it["klasor"])
             continue
         aid = it.get("makale_no") or (re.findall(r"\d{3,}", it["klasor"]) or [it["klasor"]])[0]
         arts.append(dict(it, docs=docs, article_id=str(aid)))

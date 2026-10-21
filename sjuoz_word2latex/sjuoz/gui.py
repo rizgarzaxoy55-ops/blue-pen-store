@@ -132,8 +132,8 @@ class App:
         self.tabs.add(one, text="Tek makale")
         self.vars["manuscript"] = tk.StringVar()
         self.vars["cover"] = tk.StringVar()
-        self._file_row(one, 0, "Makale (.docx / .pdf / .tex)", "manuscript", self.pick_manuscript)
-        self._file_row(one, 1, "Kapak mektubu (.docx / .pdf)", "cover",
+        self._file_row(one, 0, "Makale (Word / PDF / LaTeX / zip)", "manuscript", self.pick_manuscript)
+        self._file_row(one, 1, "Kapak mektubu (Word / PDF)", "cover",
                        lambda: self.pick_file("cover", "Kapak mektubu"))
         ttk.Label(one, text="Kapak mektubu isteğe bağlıdır; ORCID ve e-postalar oradan alınır.",
                   foreground="#555").grid(row=2, column=1, columnspan=2, sticky="w")
@@ -221,8 +221,9 @@ class App:
 
     def pick_file(self, key, title):
         from tkinter import filedialog
-        path = filedialog.askopenfilename(title=title, filetypes=[("Word, PDF, LaTeX", "*.docx *.pdf *.tex *.zip"), ("Word", "*.docx"), ("PDF", "*.pdf"),
-                                                     ("LaTeX (.tex / .zip)", "*.tex *.zip")])
+        path = filedialog.askopenfilename(title=title, filetypes=[("Word, PDF, LaTeX, zip", "*.docx *.doc *.odt *.rtf *.pdf *.tex *.zip"),
+                                                     ("Word", "*.docx *.doc *.odt *.rtf"), ("PDF", "*.pdf"),
+                                                     ("LaTeX", "*.tex"), ("Zip", "*.zip")])
         if path:
             self.vars[key].set(path)
         return path

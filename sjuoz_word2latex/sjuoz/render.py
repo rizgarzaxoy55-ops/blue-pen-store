@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 
-from .common import (DOI_DUP_RE, URL_RE, href, render_plain, title_case_caps, url_escape)
+from .common import (DOI_DUP_RE, URL_RE, href, journal_case, render_plain, title_case_caps, url_escape)
 
 # --------------------------------------------------------------------------
 # Biçimli metni LaTeX'e çevirme
@@ -170,8 +170,52 @@ class Linker:
 LINKER = None
 
 
+# "Hanna (Hanna et al., 2021) reported" → "Hanna et al., (2021) reported" (dergi virgülü korur)
+DUP_NARRATIVE = re.compile(r"\b([A-Z][^\W\d_]+(?:[-’'][^\W\d_]+)?)\s+\(\s*\1(\s+et\s+al\.,?)?,?\s+(\d{4}[a-z]?)\s*\)")
+
+
+EQ_REF = re.compile(r"\b(Equations?|Eqs?\.)\s+(\d+)\b(?![)\d]|\.\d)")
+
+
+def narrative_citations(tokens):
+    """Yinelenen yazar adını anlatı atfına çevirir; biçimler (italik "et al.") karakter düzeyinde korunur."""
+    if not any(t[0] == "t" and "(" in t[1] for t in tokens):
+        return tokens
+    out, run = [], []
+
+    def flush():
+        if not run:
+            return
+        chars = [(c, t[2]) for t in run for c in t[1]]
+        text = "".join(c for c, _ in chars)
+        for mt in reversed(list(DUP_NARRATIVE.finditer(text))):
+            par = chars[text.index("(", mt.end(1))][1]
+            close = chars[mt.end() - 1]
+            new = (chars[mt.start(1):mt.end(1)] + (chars[mt.start(2):mt.end(2)] if mt.group(2) else [])
+                   + [(" ", par), ("(", par)] + chars[mt.start(3):mt.end(3)] + [close])
+            chars[mt.start():mt.end()] = new
+        for c, f in chars:
+            if out and out[-1][0] == "t" and out[-1][2] == f:
+                out[-1] = ("t", out[-1][1] + c, f)
+            else:
+                out.append(("t", c, f))
+        run.clear()
+    for t in tokens:
+        if t[0] == "t":
+            run.append(t)
+        else:
+            flush()
+            out.append(t)
+    flush()
+    return out
+
+
 def render_tokens(tokens, ref_mode=False, keep_newlines=False):
     """Paragraf token'larını LaTeX'e çevirir (kalın/italik/alt-üst simge/bağlantı/denklem)."""
+    if not ref_mode:
+        tokens = narrative_citations(tokens)
+        # dergide denklem atfı numarası ayraç içindedir: "Equation 2" → "Equation (2)"
+        tokens = [("t", EQ_REF.sub(r"\1 (\2)", t[1]), t[2]) if t[0] == "t" and "q" in t[1] else t for t in tokens]
     if LINKER is not None and not ref_mode:
         tokens = LINKER.apply(tokens)
     # aynı biçimdeki ardışık metinleri birleştir
@@ -182,9 +226,16 @@ def render_tokens(tokens, ref_mode=False, keep_newlines=False):
         else:
             merged.append(t)
     out = []
-    for t in merged:
+    for ti, t in enumerate(merged):
         if t[0] == "t":
             txt = t[1]
+            if ref_mode and t[2][1]:
+                after = "".join(x[1] for x in merged[ti + 1:ti + 3] if x[0] == "t")
+                mt = re.match(r"^(.*?)(,\s*\d.*)$", txt, re.S)
+                if mt and re.search(r"[A-Za-z]{3}", mt.group(1)):
+                    txt = journal_case(mt.group(1)) + mt.group(2)      # "Journal of x, 12(3)" tek italik parça
+                elif re.match(r"^\s*,\s*\d", after):
+                    txt = journal_case(txt)                           # dergi adı: ardından cilt numarası
             if not keep_newlines:
                 txt = txt.replace("\n", " ")
             txt = re.sub(r"[ \t\u00a0]{2,}", " ", txt) if not keep_newlines else txt

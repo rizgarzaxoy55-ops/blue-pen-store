@@ -5,7 +5,7 @@ import os
 import re
 
 
-from .common import (BIDI, is_rtl_text, tex_escape, warn)
+from .common import (BIDI, is_rtl_text, tex_escape, title_case, warn)
 from .docx import Para, Table
 from .render import render_tokens, strip_eq_number_text
 from .parse import (BACK_MATTER, CAPTION_RE, SUBFIG_RE, clean_heading, manual_number_level)
@@ -19,12 +19,18 @@ from .template import FIGDIR, LANDSCAPE_COLS, LONG_TABLE_ROWS
 # --------------------------------------------------------------------------
 
 
+PAREN_LABEL = re.compile(r"^\s*(Fig|Figure|Table)\.?\s*\(\s*\d+\s*\)", re.I)
+
 class Writer:
     def __init__(self, art, doc, outdir, opts):
         self.art = art
         self.doc = doc
         self.outdir = outdir
         self.opts = opts
+        # Yazar "Fig (1):" biçimini kullandıysa dergi başlıkları olduğu gibi bırakır (etiket korunur, sona
+        # nokta eklenmez); değilse "Figure 1:" / "Table 1:" yazar ve başlığı noktayla bitirir.
+        self.raw_captions = any(isinstance(b, Para) and PAREN_LABEL.match(b.text())
+                                and b.text().strip()[:1] in "Ff" for b in art.body)
         self.out = []
         self.fig_count = 0
         self.caption_sub = {}      # başlık -> parça harfi ("Figure 1-A" -> "A")
@@ -39,6 +45,7 @@ class Writer:
         self.pending_imgs = []      # [[rid,...], ...]
         self.pending_landscape = False
         self.pending_fig_caption = None
+        self.caption_label = {}     # başlık -> yazarın etiket sözcüğü ("Fig"), "Fig (2):" biçimi için
         self.pending_fig_para = None
         self.pending_tab_caption = None
         self.pending_tab_para = None
@@ -259,6 +266,7 @@ class Writer:
         if caption:
             self.fig_captioned += 1
             # alt şekilli kutuda tür zaten 'figure' olarak ayarlı: \caption kullanılır
+            self.label_setup(caption)
             self.emit((r"\caption{%s}" if len(files) > 1 else r"\captionof{figure}{%s}") % caption)
         elif len(files) > 1:
             self.emit(r"\addtocounter{figure}{1}")  # başlıksız alt şekilli şekil de numara alır
@@ -362,6 +370,7 @@ class Writer:
         self.emit(r"\centering")
         self.emit(r"\hypertarget{tab:%d}{}" % self.tab_count)
         if caption:
+            self.label_setup(caption, "table")
             self.emit(r"\captionof{table}{%s}" % caption)
         self.emit(r"\vspace{-6pt}")
         self.emit(size)
@@ -401,13 +410,24 @@ class Writer:
     def cap_of(self, p):
         """LaTeX başlığı döndürür; düz metnini (JATS/Crossref için) saklar."""
         latex = self.caption_text(p)
+        if not self.raw_captions and latex and latex[-1] not in ".?!":
+            latex += "."
         mt = CAPTION_RE.match(p.text().strip())
         sub = SUBFIG_RE.match(p.text().strip())
         plain = p.text().strip()[sub.end():] if sub else (mt.group(3) if mt else "")
         self.caption_plain[latex] = re.sub(r"\s+", " ", plain).strip(" .:") + "." if mt else ""
         if sub:
             self.caption_sub[latex] = sub.group(2).upper()
+        paren = PAREN_LABEL.match(p.text()) if self.raw_captions else None
+        if paren:
+            self.caption_label[latex] = paren.group(1).capitalize()   # yazarın "Fig (2):" etiketi dergide korunur
         return latex
+
+    def label_setup(self, caption, kind="figure"):
+        """Yazar "Fig (N):" biçimini kullandıysa başlık etiketini o biçime çevirir (minipage içinde, yerel)."""
+        name = self.caption_label.get(caption)
+        if name:
+            self.emit(r"\renewcommand{\%sname}{%s}\captionsetup{labelformat=sjuozparen}" % (kind, name))
 
     @staticmethod
     def caption_text(p):
@@ -434,8 +454,6 @@ class Writer:
             out.append(("t", s, (False, t[2][1] and not all(x[2][1] for x in toks if x[0] == "t"), t[2][2], t[2][3])))
         cap = render_tokens(out)
         cap = re.sub(r"^[:.\-–—\s]+", "", cap).strip()
-        if cap and cap[-1] not in ".?!":
-            cap += "."
         return cap
 
     def flush_orphan_figure_caption(self):
@@ -624,6 +642,7 @@ class Writer:
         level = p.heading_level()
         numbered = True
         clean = clean_heading(txt)
+        bold_para = level is None
         if level is None and not p.maths and len(txt) <= 150 and p.all_bold():
             if p.num_id:
                 level = p.ilvl + 1
@@ -639,9 +658,11 @@ class Writer:
             return False
         if BACK_MATTER.match(clean):
             level, numbered = 2, False
-            clean += ":"            # dergide son bölüm başlıkları iki noktayla biter ("Funding:")
+            clean = title_case(clean) + ":"   # dergide: "Ethical Statement:", "Funding:"
         elif level >= 2:
             numbered = False        # dergide alt başlıklar numarasızdır (yazarın "3.1." numarası atılır)
+            if bold_para and txt.rstrip().endswith(":"):
+                clean += ":"        # kalın paragraf başlığının iki noktası dergide korunur ("Nitrogen percentage (N%):")
         self.flush_images()
         self.close_list()
         self.open_cols()
@@ -674,11 +695,35 @@ class Writer:
         self.emit(r"    \setlength{\itemsep}{6pt}")
         self.emit(r"}")
         for k, p in enumerate(self.art.references):
-            s = r"\hypertarget{ref:%d}{}" % (k + 1) + render_tokens(p.tokens, ref_mode=True)
+            s = r"\hypertarget{ref:%d}{}" % (k + 1) + render_tokens(apa_authors(p.tokens), ref_mode=True)
             s = re.sub(r"^\s*\[?\d+[\].]\s+", "", s) if self.opts.strip_ref_numbers else s
             self.emit(r"\item " + s)
             self.emit()
         self.emit(r"\end{list}")
+
+
+def apa_authors(tokens):
+    """Kaynağın yazar kısmında (yıldan önce) APA boşlukları: "C.A. (1965) Title" → "C. A. (1965). Title"."""
+    text = "".join(t[1] for t in tokens if t[0] == "t")
+    mt = re.search(r"\((\d{4}[a-z]?|n\.d\.)\)", text)
+    if not mt or mt.start() > 400:
+        return tokens
+    out, pos = [], 0
+    for t in tokens:
+        if t[0] == "t" and pos <= mt.end():
+            s = t[1]
+            if pos <= mt.end() <= pos + len(s):
+                cut = mt.end() - pos
+                head = re.sub(r"\b([A-Z])\.(?=[A-Z]\.)", r"\1. ", s[:cut])
+                s = head + ("." if not re.match(r"\s*[.,:;]", text[mt.end():]) else "") + s[cut:]
+            elif pos < mt.start():
+                s = re.sub(r"\b([A-Z])\.(?=[A-Z]\.)", r"\1. ", s)
+            pos += len(t[1])
+            t = ("t", s, t[2])
+        elif t[0] == "t":
+            pos += len(t[1])
+        out.append(t)
+    return out
 
 
 def initials(name):

@@ -71,6 +71,9 @@ def parse_cover_letter(doc):
         elif current is not None:
             current[key] = val
     info["authors"] = [a for a in info["authors"] if a.get("name")]
+    info["no_conflict"] = bool(re.search(r"\bno (known )?(conflicts?|competing)( of)? interests?\b|"
+                                         r"\bnot? (any )?(conflicts?|competing)( of)? interests?\b",
+                                         " ".join(lines), re.I))
     if not info["title"]:
         # serbest mektup: … article titled "A Lightweight …"
         joined = " ".join(lines)
@@ -116,10 +119,26 @@ def name_key(name):
     return parts
 
 
+def iraq_phone(s):
+    """Irak cep numarası → dergideki biçim "+964-7504397651"; değilse None."""
+    d = re.sub(r"\D", "", s or "")
+    if d.startswith("00964"):
+        d = d[2:]
+    if d.startswith("964") and len(d) == 13 and d[3] == "7":
+        return "+964-" + d[3:]
+    if d.startswith("07") and len(d) == 11:
+        return "+964-" + d[1:]
+    return None
+
+
 def fuller_name(ms_name, cl_name):
     """Makalede baş harfle kısaltılmış ad ("Ban J. Khoshaba"), kapak mektubunda tam yazılmışsa
     ("Ban Jibrael Khoshaba") tam ad; değilse makaledeki ad."""
-    ms, cl = ms_name.split(), strip_titles(cl_name).split()
+    ms = ms_name.split()
+    cl = unicodedata.normalize("NFKC", strip_titles(cl_name)).split()   # "Asiriﬁ" → "Asirifi"
+    if len(ms) == len(cl) and name_key(ms_name) == name_key(" ".join(cl)) and all(w[:1].isalpha() for w in cl):
+        # aynı ad, yazım farkı (dergi kapak mektubundakini kullanır: "Hêro" → "Hero"); baş harfler büyük
+        return " ".join(w.capitalize() if w.isupper() and len(w) > 2 else w[0].upper() + w[1:] for w in cl)
     if len(ms) != len(cl) or not any(re.fullmatch(r"[A-Z]\.?", w) for w in ms):
         return ms_name
     out = []
@@ -196,6 +215,7 @@ class Article:
         self.affiliations = []     # list of str (sırayla)
         self.corr_email = None
         self.corr_tel = None
+        self.corr_tel_label = "Tel"   # yazarın "Tel.:" yazımı yabancı numaralarda korunur
         self.abstract = []         # LaTeX paragrafları
         self.abstract_plain = []   # düz metin (Crossref/JATS için)
         self.keywords = ""
@@ -297,6 +317,8 @@ def parse_front(blocks):
             tel = re.search(r"(?:tel|phone|mobile)\.?\s*:?\s*(\+?[\d][\d\s\-()]{6,}\d)", txt, re.I)
             if tel:
                 art.corr_tel = re.sub(r"\s+", " ", tel.group(1)).strip()
+                if re.search(r"tel\.\s*:", txt, re.I):
+                    art.corr_tel_label = "Tel."
             i += 1
             continue
         # affiliasyon: üst simge numara ile ya da rakamla başlıyorsa
@@ -426,6 +448,31 @@ def merge_affiliations(art):
     art.affiliations = new_list
 
 
+COI_HEAD = re.compile(r"^(conflicts? of interests?|competing interests?|declaration of competing interests?)\b",
+                      re.I)
+COI_TEXT = "The authors have no conflict of interest to declare concerning the publication of this paper."
+
+
+def add_conflict_statement(art):
+    """Makalede çıkar çatışması bölümü yoksa ve kapak mektubu "no conflict of interest" diyorsa dergi
+    bu bölümü ekler (Author Contributions'tan önce)."""
+    paras = [b for b in art.body if isinstance(b, Para)]
+    if not paras or any(COI_HEAD.match(clean_heading(p.text())) for p in paras if len(p.text()) < 80):
+        return
+    base = next((p for p in reversed(paras) if p.text().strip()), paras[-1])
+
+    def make(text, bold):
+        p = copy.copy(base)
+        p.tokens = [("t", text, (bold, False, None, None))]
+        p.style, p.style_id, p.num_id, p.ilvl, p.jc, p.outline, p.bidi = "Normal", None, None, 0, None, None, False
+        return p
+    pos = next((k for k, b in enumerate(art.body) if isinstance(b, Para) and len(b.text()) < 60
+                and re.match(r"^\s*author'?s?'?\s+contributions?|^\s*contributions? of", clean_heading(b.text()), re.I)),
+               len(art.body))
+    art.body[pos:pos] = [make("Conflict of Interest:", True), make(COI_TEXT, False)]
+    print("Bilgi: kapak mektubu çıkar çatışması olmadığını bildiriyor; 'Conflict of Interest' bölümü eklendi.")
+
+
 def apply_cover_letter(art, cl):
     if not cl:
         return
@@ -460,8 +507,14 @@ def apply_cover_letter(art, cl):
         elif art.corr_email and corr.get("email") and corr["email"].lower() != art.corr_email.lower():
             warn("Sorumlu yazar e-postası farklı: makale '%s', kapak mektubu '%s'. Makaledeki kullanıldı."
                  % (art.corr_email, corr["email"]))
-        if not art.corr_tel and corr.get("tel"):
+        # dergi Irak numaralarını kapak mektubundan alıp "+964-7…" biçiminde yazar (1988: makaledeki
+        # numara farklıydı); yabancı numaralar makaledeki gibi kalır
+        cl_tel = iraq_phone(corr.get("tel") or "")
+        if cl_tel:
+            art.corr_tel = cl_tel
+        elif not art.corr_tel and corr.get("tel") and re.search(r"\d{6}", re.sub(r"\D", "", corr["tel"])):
             art.corr_tel = corr["tel"]
+
     if cl.get("title") and art.title and "".join(name_key(cl["title"])) != "".join(name_key(art.title)):
         warn("Makale başlığı ile kapak mektubundaki başlık farklı.")
     if not art.title and cl.get("title"):
@@ -485,6 +538,10 @@ def parse_article(doc, cover=None):
         art.body = rest
     merge_affiliations(art)
     apply_cover_letter(art, cover)
+    if cover and cover.get("no_conflict"):
+        add_conflict_statement(art)
+    if art.corr_tel and iraq_phone(art.corr_tel):   # dergi biçimi: "(Tel: +964-7504397651)"
+        art.corr_tel, art.corr_tel_label = iraq_phone(art.corr_tel), "Tel"
     if art.authors and not any("*" in a["marks"] for a in art.authors) and art.corr_email:
         # yıldız konmamış: e-postası eşleşen yazar, yoksa ilk yazar sorumlu yazardır
         mail = art.corr_email.lower()

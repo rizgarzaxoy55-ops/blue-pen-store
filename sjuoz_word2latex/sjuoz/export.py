@@ -60,7 +60,7 @@ def find_doi(text):
 def parse_date(text):
     """'12 May 2026', '2026-05-12', '12/05/2026' -> (yıl, ay, gün) ya da None."""
     text = (text or "").strip()
-    if not text or text.upper() == "XX":
+    if not text or text.upper() in ("XX", "XXX"):
         return None
     for fmt in ("%d %B %Y", "%d %b %Y", "%B %d, %Y", "%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y", "%B %Y", "%b %Y"):
         try:

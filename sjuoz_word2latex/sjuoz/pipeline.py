@@ -55,12 +55,13 @@ def build_parser():
     ap.add_argument("--issue", type=int, help="sayı (varsayılan: ayın çeyreği)")
     ap.add_argument("--year", type=int, default=today.year)
     ap.add_argument("--month", default=None, help="ay adı, ör. October (varsayılan: bu ay)")
-    ap.add_argument("--first-page", type=int, default=1)
+    ap.add_argument("--first-page", type=int, default=None,
+                    help="ilk sayfa (verilmezse dergideki gibi 'pp. xxx-xxx' yazılır)")
     ap.add_argument("--last-page", type=int, default=None,
                     help="son sayfa (verilmezse LaTeX otomatik hesaplar)")
-    ap.add_argument("--received", default="XX")
-    ap.add_argument("--accepted", default="XX")
-    ap.add_argument("--published", default="XX")
+    ap.add_argument("--received", default="xxx")
+    ap.add_argument("--accepted", default="xxx")
+    ap.add_argument("--published", default="xxx")
     ap.add_argument("--article-type", default=None, help="ör. 'Original Article', 'Review Article'")
     ap.add_argument("--main-font", default="Times New Roman")
     ap.add_argument("--header-font", default="Garamond")
@@ -251,7 +252,7 @@ def convert(opts):
 
     # Dışa aktarma: Crossref (DOI kaydı), JATS (indeksleme), BibTeX
     pages = log_info["pages"] if log_info else None
-    last_page = opts.last_page or (opts.first_page + pages - 1 if pages else None)
+    last_page = opts.last_page or (opts.first_page + pages - 1 if pages and opts.first_page else None)
     meta = article_metadata(art, opts, opts.first_page, last_page)
     exports = {}
     crossref_check = None

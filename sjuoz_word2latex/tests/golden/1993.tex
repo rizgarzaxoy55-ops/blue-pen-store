@@ -49,6 +49,7 @@
 \renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
 \renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
 \renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\DeclareCaptionLabelFormat{sjuozparen}{#1 (#2)}
 \captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
 \captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
 \captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
@@ -147,7 +148,7 @@
 \large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
 \rule{\textwidth}{1.5pt} \\
 \begin{minipage}[t]{0.175\textwidth}
-  \vspace{1cm} Received \\ XX \\[0.5cm] Accepted \\ XX \\[0.5cm] Published \\ XX \\[0.25cm]
+  \vspace{1cm} Received \\ xxx \\[0.5cm] Accepted \\ xxx \\[0.5cm] Published \\ xxx \\[0.25cm]
 \end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
   \large{Mouth detection is an important issue in visual speech recognition. The de facto algorithm used to achieve this is the Viola-Jones algorithm. Nevertheless, time enhancement for the auto-detection of this algorithm is required. Therefore, the goal of this research is to propose a modified approach based on the Viola-Jones algorithm to enhance the detection time. The main contribution of the proposed algorithm is limiting the auto-valuing for the threshold of the Viola-Jones algorithm and enhancing the time by configuring the maximum step for the adaptive threshold value. The UOTletters database was used in the experiments of this research with 30 speakers pronouncing English letters with overall frames of 28164. The experiment results have shown that the average detection time for the proposed method was 0.585 sec, compared with the baseline method's 2.097 sec. As a result, the proposed approach enhanced the mouth detection time with respect to the baseline algorithm (358.46\%). Consequently, the proposed algorithm is a good solution for real-time visual speech recognition regarding the detection time enhancement.
   \\[2pt]
@@ -231,7 +232,7 @@ The Area with unwanted Areas surrounding it, illustrated in Area 2 of \hyperlink
 \begin{equation}
   \sjuozfit{v_{2}=D-\left( B+C \right)+A}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right)+A\end{aligned}}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right) \\ &\quad +A\end{aligned}}
 \end{equation}
-It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in \hyperlink{fig:2}{Figure 2}, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of \hyperlink{eq:1}{Equation 1}.
+It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in \hyperlink{fig:2}{Figure 2}, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of \hyperlink{eq:1}{Equation (1)}.
 
 VJA has another concept to reduce the massive number of features; eg., a 24*24 window gives 160,000 features. Viola and Jones proposed two techniques to overcome this problem: using a cascade filter and AdaBoost training, as shown in \hyperlink{fig:3}{Figure 3}. Some of the obtained features are not useful for face detection. Therefore, a cascade filter was utilized to crumble the detection operation of faces into substages like eyes, nose bridge, and mouth region. In addition, to build a strong classifier, the subsequent weak classifier corrected the error in the previous classifier by AdaBoost training (\hyperlink{ref:19}{Setu \& Rahman, 2016}).
 
@@ -260,7 +261,7 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 \begin{equation}
   \sjuozfit{\mathit{TH}_{t}= \mathit{TH}_{t-1}-5}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}
 \end{equation}
-\hyperlink{eq:5}{Equation 5} is determined based on analytic and experimental results in Section 4.
+\hyperlink{eq:5}{Equation (5)} is determined based on analytic and experimental results in Section 4.
 
 \noindent\begin{minipage}{\linewidth}
 \centering\hypertarget{fig:5}{}
@@ -270,7 +271,7 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 \par\vspace{6pt}
 
 \section{EXPERIMENTAL RESULTS}
-\hyperlink{fig:6}{Figure 6} shows sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database. In this section, many experiments were done to ensure that the analytical results satisfy the practical results. Moreover, make an overall evaluation of the proposed algorithm with respect to the baseline algorithm for the thirty speakers pronouncing English letters, with overall frames 28164. \hyperlink{eq:5}{Equation 5} is determined from the curve fitting for the threshold based on the detection results, in addition to the distribution of the detection results. As we can see in \hyperlink{fig:7}{Figure 7}, the sample values of the threshold for the letter A for thirty speakers are most of the values located in the upper area for the proposed range (1 to 150). Consequently, we proposed starting at 150 and then decreasing the threshold value to adopt the optimal value instead of the increment approach in the baseline algorithm. Moreover, the selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation:
+\hyperlink{fig:6}{Figure 6} shows sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database. In this section, many experiments were done to ensure that the analytical results satisfy the practical results. Moreover, make an overall evaluation of the proposed algorithm with respect to the baseline algorithm for the thirty speakers pronouncing English letters, with overall frames 28164. \hyperlink{eq:5}{Equation (5)} is determined from the curve fitting for the threshold based on the detection results, in addition to the distribution of the detection results. As we can see in \hyperlink{fig:7}{Figure 7}, the sample values of the threshold for the letter A for thirty speakers are most of the values located in the upper area for the proposed range (1 to 150). Consequently, we proposed starting at 150 and then decreasing the threshold value to adopt the optimal value instead of the increment approach in the baseline algorithm. Moreover, the selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation:
 
 \hypertarget{eq:6}{}
 \begin{equation}
@@ -367,7 +368,7 @@ Overall & 28164 & 28008 & 99.567 & 114 & 2.097 & 0.585 \\
 \section{CONCLUSIONS}
 The mouth detection time is an important issue in visual speech recognition. In this paper, a modification of VJA using an adaptive threshold was proposed. The experimental results have shown that our algorithm enhanced the mouth detection time with the baseline algorithm reduced to more than 3.5 times approximately. Consequently, the proposed algorithm gives a good solution for real-time visual speech recognition regarding the detection time enhancement. The drawback of this paper is that the experimental results are limited to a maximum distance of 8 ft from the camera; therefore, the maximum limit (150) may change at greater distances depending on the application and real-time implementation. Moreover, the limitation of the present study is an important direction for future validation using more diverse datasets.
 
-\subsection*{ACKNOWLEDGEMENTS:}
+\subsection*{Acknowledgements:}
 \textbf{“The authors sincerely thank the original investigators,} \textbf{Wisam H Ali, R. Saeed, and H. Al-Muifraje, for their foundational work and for making the dataset from their published study} (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}) \textbf{available for this retrospective analysis.”}
 
 \subsection*{Ethical Statement:}

@@ -24,10 +24,10 @@ FIELDS = [  # (anahtar, etiket, varsayılan)
     ("volume", "Cilt", ""),
     ("issue", "Sayı", ""),
     ("year", "Yıl", str(datetime.date.today().year)),
-    ("first_page", "İlk sayfa", "1"),
-    ("received", "Geliş tarihi", "XX"),
-    ("accepted", "Kabul tarihi", "XX"),
-    ("published", "Yayın tarihi", "XX"),
+    ("first_page", "İlk sayfa", ""),
+    ("received", "Geliş tarihi", "xxx"),
+    ("accepted", "Kabul tarihi", "xxx"),
+    ("published", "Yayın tarihi", "xxx"),
     ("depositor_email", "Crossref e-postası", ""),
 ]
 

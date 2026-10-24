@@ -6,7 +6,7 @@ import zipfile
 
 from lxml import etree
 
-from .common import (C_NS, M, MC, NS, R, W, on_off, wval)
+from .common import (C_NS, M, MC, NS, R, W, fix_text, on_off, wval)
 from .omml import OMML
 from .render import render_tokens
 from .texinput import restore_math
@@ -236,7 +236,7 @@ class Para:
                 if fl["link"]:
                     ff = f[:3] + (fl["link"],)
             if tag == W + "t":
-                self.tokens.append(("t", c.text or "", ff))
+                self.tokens.append(("t", fix_text(c.text or ""), ff))
             elif tag == W + "tab":
                 self.tokens.append(("t", " ", ff))
             elif tag in (W + "br", W + "cr"):

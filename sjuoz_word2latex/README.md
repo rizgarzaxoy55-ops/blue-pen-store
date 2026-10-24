@@ -204,6 +204,31 @@ Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaş
   gidilir). Bağlantılar dergi görünümü için varsayılan olarak siyahtır; görünür olmaları için
   `--link-color blue` (ya da arayüzde **Bağlantılar mavi**) kullanın.
 
+### Derginin editör kuralları
+
+Dergide yayımlanmış makalelerle (1916, 1955, 1981, 1988) karşılaştırılarak çıkarılan kurallar
+otomatik uygulanır:
+
+* İlk sayfa ve tarihler verilmezse dergideki gibi `pp. xxx-xxx` ve `xxx` yazılır.
+* Alt başlıklar numarasızdır; kalın paragraf başlığının iki noktası korunur, Word başlık biçemindekinin
+  atılır. Son bölüm başlıkları Başlık Biçiminde ve iki noktalıdır ("Ethical Statement:").
+* Yazar adları kapak mektubundaki tam ve yazımıyla ("Ban J. Khoshaba" → "Ban Jibrael Khoshaba");
+  tek kurumda da numara gösterilir. Irak numaraları kapak mektubundan alınır ve "+964-7…" yazılır.
+* Başlık ve anahtar kelimelerde italik tür adları korunur; TAMAMI BÜYÜK anahtar kelimeler Başlık
+  Biçimine çevrilir (kısaltmalar özetteki yazılışıyla: "SoH").
+* "Figure 1." → "Figure 1:" ve başlık noktayla biter; yazar "Fig (1):" kullandıysa başlıklar olduğu gibi kalır.
+* "Equation 2" → "Equation (2)"; "Hanna (Hanna et al., 2021)" → "Hanna et al., (2021)";
+  gövdede negatif sayılar eksi işaretiyle ("−0.76").
+* Kaynakçada sayfa aralıkları en dash, dergi adları Başlık Biçiminde ("IEEE Access"), yazar baş
+  harfleri boşluklu ("C. A.") ve yıldan sonra nokta.
+* Makalede çıkar çatışması bölümü yoksa ve kapak mektubu "no conflict of interest" diyorsa
+  "Conflict of Interest:" bölümü eklenir.
+* Word'deki bozuk karakterler düzeltilir: Yunan soru işareti (;), "c¸" → "ç", metne yazılmış LaTeX
+  aksanları ("Dom\'\inguez" → "Domínguez").
+
+Editörün elle yaptığı dil düzeltmeleri, kaynakların yeniden yazılması ve şekillerin tek/çift sütun
+kararı otomatik değildir (iki sütuna yayılacak şekiller `--wide-figs` ile seçilir).
+
 ## 5. Bütün sayıyı tek seferde işlemek
 
 ```

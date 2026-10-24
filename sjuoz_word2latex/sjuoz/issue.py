@@ -92,7 +92,7 @@ def convert_issue(folder, opts):
     month = cfg.get("ay", opts.month) or MONTHS[datetime.date.today().month - 1]
     volume = cfg.get("cilt", opts.volume)
     issue = cfg.get("sayi", opts.issue)
-    page = int(cfg.get("ilk_sayfa", opts.first_page))
+    page = int(cfg.get("ilk_sayfa", opts.first_page or 1))
     outroot = opts.outdir or os.path.join(folder, "_cikti")
     os.makedirs(outroot, exist_ok=True)
     can_chain = bool(shutil.which("xelatex")) and opts.compile

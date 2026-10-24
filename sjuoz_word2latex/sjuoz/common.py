@@ -2,6 +2,7 @@
 """Ortak yardımcılar: XML ad alanları, uyarılar, LaTeX kaçışı, bağlantılar, sağdan sola metin."""
 import os
 import re
+import unicodedata
 import sys
 
 
@@ -167,8 +168,10 @@ def render_plain(text, italic=False, ref_mode=False, link=False):
     out = []
     pos = 0
     pattern = re.compile(URL_RE.pattern + "|" + EMAIL_RE.pattern, re.I)
+    # dergi aralıkları yalnız kaynakçada en dash yapar; gövdede negatif sayı eksi işaretidir ("r = −0.76")
+    dash = en_dash_ranges if ref_mode else (lambda x: NEG_NUMBER.sub("−", x) if "-" in x else x)
     for mt in pattern.finditer(text):
-        out.append(_bidi(text[pos:mt.start()], italic))
+        out.append(_bidi(dash(text[pos:mt.start()]), italic))
         tok = mt.group(0)
         if "@" in tok and not tok.lower().startswith(("http", "www")):
             out.append(r"\href{mailto:%s}{%s}" % (tok, tex_escape(tok)))
@@ -184,8 +187,20 @@ def render_plain(text, italic=False, ref_mode=False, link=False):
                 out.append(r"\url{%s}" % url_escape(u))
             out.append(tex_escape(trail))
         pos = mt.end()
-    out.append(_bidi(text[pos:], italic))
+    out.append(_bidi(dash(text[pos:]), italic))
     return "".join(out)
+
+
+# Kaynakçada iki sayı arasındaki kısa çizgi bir aralıktır: "pp. 546-556" → en dash (dergideki gibi).
+# Tarih/ISSN/ISBN zincirleri ("2024-05-12", "2663-628X") ve telefonlar ("+964-750…") dokunulmaz.
+NUM_RANGE = re.compile(r"(?<![\w.,/+\-–])(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)(?![\w/\-–]|\.\d)")
+
+
+NEG_NUMBER = re.compile(r"(?<=[\s(=\[])-(?=\d)")
+
+
+def en_dash_ranges(s):
+    return NUM_RANGE.sub("\\1–\\2", s) if "-" in s else s
 
 
 def _etal(s, italic):
@@ -196,6 +211,56 @@ SMALL_WORDS = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "
                "on", "or", "the", "to", "with", "via", "vs", "per"}
 KEEP_UPPER = {"IEEE", "ACM", "IET", "SPIE", "IOP", "MDPI", "IJ", "AI", "IOT", "IT", "USA", "UK",
               "II", "III", "IV", "VI", "VII", "VIII", "IX", "XI", "XII", "PLOS", "BMC", "NASA"}
+
+
+_TEX_ACCENT = {"'": "\u0301", "’": "\u0301", "´": "\u0301", "`": "\u0300", '"': "\u0308", "~": "\u0303",
+               "^": "\u0302"}
+
+
+def fix_text(s):
+    """Word metnindeki bozuk karakterler: Yunan soru işareti (;), ayrı yazılmış çengel ("c¸" → "ç"),
+    metne yazılmış LaTeX aksanları ("Dom\\'\\inguez" → "Domínguez")."""
+    if not s or s.isascii() and "\\" not in s:
+        return s
+    s = re.sub(r"([cCsStT])\u00b8", lambda m: m.group(1) + "\u0327", s)
+    s = re.sub(r"\\([’'´`\"~^])\s*\{?\\?([A-Za-z])\}?", lambda m: m.group(2) + _TEX_ACCENT[m.group(1)], s)
+    return unicodedata.normalize("NFC", s)
+
+
+def title_case(s):
+    """Başlık Biçimi: TAMAMI BÜYÜK metin çevrilir; karışık metinde yalnız sözcük başları büyütülür
+    ("Ethical statement" → "Ethical Statement", "SoH" olduğu gibi kalır)."""
+    if s.upper() == s:
+        return title_case_caps(s)
+    out, first = [], True
+    for w in re.split(r"(\s+)", s):
+        if w.strip():
+            core = re.sub(r"[^A-Za-z]", "", w)
+            if first or core.lower() not in SMALL_WORDS:
+                w = "-".join(x[:1].upper() + x[1:] for x in w.split("-"))
+            first = False
+        out.append(w)
+    return "".join(out)
+
+
+def journal_case(s):
+    """Kaynakçadaki dergi adı Başlık Biçiminde (APA): "Journal of clinical laboratory analysis" →
+    "Journal of Clinical Laboratory Analysis", "Ieee Access" → "IEEE Access", "d’endocrinologie" →
+    "d’Endocrinologie". Sözcükteki diğer büyük harflere dokunulmaz."""
+    out, first = [], True
+    for w in re.split(r"(\s+)", s):
+        if w.strip():
+            core = re.sub(r"[^A-Za-z]", "", w)
+            if core.upper() in KEEP_UPPER:
+                w = w.replace(core, core.upper()) if core in w else w.upper()
+            elif not first and core.lower() in SMALL_WORDS:
+                pass
+            else:
+                w = re.sub(r"(^|[-’'(/])([a-zà-ÿ])", lambda m: m.group(1) + m.group(2).upper(), w)
+                w = re.sub(r"^([DdLl][’'])([A-Za-zà-ÿ])", lambda m: m.group(1).lower() + m.group(2).upper(), w)
+            first = False
+        out.append(w)
+    return "".join(out)
 
 
 def title_case_caps(s):

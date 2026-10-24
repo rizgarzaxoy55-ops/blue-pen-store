@@ -3,7 +3,7 @@
 
 import re
 
-from .common import (BIDI, render_plain, tex_escape, url_escape)
+from .common import (BIDI, render_plain, tex_escape, title_case_caps, url_escape)
 
 # --------------------------------------------------------------------------
 # Şablon
@@ -59,6 +59,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
 \renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
 \renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\DeclareCaptionLabelFormat{sjuozparen}{#1 (#2)}
 \captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
 \captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
 \captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
@@ -136,7 +137,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 \newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
 
 \begin{document}
-\setcounter{page}{<<FIRSTPAGE>>}
+\setcounter{page}{<<PAGESTART>>}
 \thispagestyle{firstpage}
 \AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
 
@@ -198,6 +199,19 @@ def link_color(name):
     return name if re.fullmatch(r"[A-Za-z]+(?:![0-9]{1,3}(?:![A-Za-z]+)?)*", name) else "black"
 
 
+def keywords_case(art):
+    """TAMAMI BÜYÜK HARF anahtar kelimeler dergide Başlık Biçimindedir; kısaltmalar özetteki yazılışını
+    alır: "STATE OF HEALTH (SOH)" → "State of Health (SoH)"."""
+    kw = art.keywords.strip()
+    if not kw or kw.upper() != kw or not re.search(r"[A-Z]{2}", kw):
+        return kw
+    forms = {}
+    for w in re.findall(r"[A-Za-z][A-Za-z0-9]*", " ".join(getattr(art, "abstract_plain", []))):
+        if re.search(r"[A-Z]", w[1:]):
+            forms.setdefault(w.lower(), w)
+    return re.sub(r"[A-Za-z][A-Za-z0-9]*", lambda m: forms.get(m.group(0).lower(), m.group(0)), title_case_caps(kw))
+
+
 def italic_tex(tokens, upper=False):
     """Düz metin; yalnız italik parçalar (ör. tür adları "Zinnia elegans") \\textit{} olarak ve
     büyük harfe çevrilmeden korunur. İçinde küçük harfli italik parça yoksa None."""
@@ -245,7 +259,7 @@ def build_tex(art, writer, opts):
     if art.corr_email:
         corr += r"\href{mailto:%s}{%s}" % (art.corr_email, tex_escape(art.corr_email))
     if art.corr_tel:
-        corr += r" (Tel: %s)" % tex_escape(art.corr_tel)
+        corr += r" (%s: %s)" % (getattr(art, "corr_tel_label", "Tel"), tex_escape(art.corr_tel))
 
     surnames = [au["name"].split()[-1] for au in art.authors if au["name"].split()]
     if len(surnames) >= 3:
@@ -256,12 +270,15 @@ def build_tex(art, writer, opts):
         runhead = tex_escape(surnames[0]) if surnames else ""
 
     abstract = r" \par ".join(art.abstract) or "~"
-    kw = italic_tex(getattr(art, "keyword_tokens", [])) or render_plain(art.keywords.strip())
+    kw = italic_tex(getattr(art, "keyword_tokens", [])) or render_plain(keywords_case(art))
     if kw and kw[-1] not in ".":
         kw += "."
 
     doi = "https://doi.org/10.25271/sjuoz.%s.%s.%s.%s" % (opts.year, opts.volume, opts.issue, opts.article_id)
-    last = str(opts.last_page) if opts.last_page else r"\pageref*{LastPage}"
+    if not opts.first_page:
+        last = "xxx"            # ilk sayfa bilinmiyorsa dergideki gibi "pp. xxx-xxx"
+    else:
+        last = str(opts.last_page) if opts.last_page else r"\pageref*{LastPage}"
     rep = {
         "MAINFONT": opts.main_font,
         "LINKCOLOR": link_color(getattr(opts, "link_color", None)),
@@ -273,7 +290,8 @@ def build_tex(art, writer, opts):
         "YEAR": str(opts.year),
         "MONTH": opts.month,
         "MON3": opts.month[:3].upper(),
-        "FIRSTPAGE": str(opts.first_page),
+        "FIRSTPAGE": str(opts.first_page) if opts.first_page else "xxx",
+        "PAGESTART": str(opts.first_page or 1),
         "LASTPAGE": last,
         "ARTICLEURL": "https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/%s" % opts.article_id,
         "ARTICLETYPE": tex_escape(opts.article_type or art.article_type),

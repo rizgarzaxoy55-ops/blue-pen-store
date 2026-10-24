@@ -400,3 +400,82 @@ def test_free_form_cover_letter_signature():
     assert [(a["name"], a["email"], a["corresponding"]) for a in info["authors"]] == [
         ("Kazheen Sileman Muhammad", "kazheen.sileman@auas.edu.krd", True),
         ("Araz Rajab Abrahim", "araz.abrahim@dpu.edu.krd", False)]
+
+
+# ---------------------------------------------------------------- derginin editör kuralları
+def test_journal_name_case_in_references():
+    from sjuoz.common import journal_case
+    assert journal_case("Journal of clinical laboratory analysis") == "Journal of Clinical Laboratory Analysis"
+    assert journal_case("Ieee Access") == "IEEE Access"
+    assert journal_case("Annales d’endocrinologie") == "Annales d’Endocrinologie"
+
+
+def test_reference_page_ranges_get_en_dash_body_does_not():
+    from sjuoz.common import en_dash_ranges, render_plain
+    assert en_dash_ranges("95(6), 546-556.") == "95(6), 546–556."
+    for keep in ("2024-05-12", "ISSN 2663-628X", "+964-7719698865", "COVID-19", "978-3-032-15398-2"):
+        assert en_dash_ranges(keep) == keep
+    assert "24-59" in render_plain("(24-59 years)")              # gövdede dergi kısa çizgiyi korur
+    assert "546–556" in render_plain("8(3), 546-556.", ref_mode=True)
+
+
+def test_all_caps_keywords_title_case_with_acronyms():
+    from sjuoz.template import keywords_case
+
+    class A:
+        keywords = "LITHIUM-ION BATTERIES, STATE OF HEALTH (SOH), INTERNAL RESISTANCE."
+        abstract_plain = ["the State of Health (SoH) and DC internal resistance (DCIR)"]
+    assert keywords_case(A()) == "Lithium-Ion Batteries, State of Health (SoH), Internal Resistance."
+
+
+def test_duplicated_author_becomes_narrative_citation():
+    from sjuoz.render import narrative_citations, EQ_REF
+    f, it = (False, False, None, None), (False, True, None, None)
+    out = narrative_citations([("t", "Hanna (Hanna ", f), ("t", "et al.,", it), ("t", " 2021) reported", f)])
+    assert "".join(t[1] for t in out) == "Hanna et al., (2021) reported"   # dergideki gibi
+    assert ("t", "et al.,", it) in out
+    assert EQ_REF.sub(r"\1 (\2)", "given in Equation 2 and Eq. 3.") == "given in Equation (2) and Eq. (3)."
+    assert EQ_REF.sub(r"\1 (\2)", "Equation (1) and Equation 2.5 m") == "Equation (1) and Equation 2.5 m"
+
+
+def test_apa_initials_and_year_period():
+    from sjuoz.writer import apa_authors
+    f = (False, False, None, None)
+    out = apa_authors([("t", "Philipps, P.J., & Strange, R.E. (1965) Methods A.B. 5(8), 209-344.", f)])
+    assert out[0][1] == "Philipps, P. J., & Strange, R. E. (1965). Methods A.B. 5(8), 209-344."
+
+
+def test_iraqi_phone_format_and_cover_letter_spelling():
+    from sjuoz.parse import iraq_phone, fuller_name
+    assert iraq_phone("+9647719698865") == "+964-7719698865"
+    assert iraq_phone("07510344636") == "+964-7510344636"
+    assert iraq_phone("+233 26 232 6483") is None
+    assert fuller_name("Hêro Farhad Salah", "Hero Farhad Salah") == "Hero Farhad Salah"
+    assert fuller_name("Felix Asirifi Asare", "Felix Asiriﬁ Asare") == "Felix Asirifi Asare"
+
+
+def test_broken_characters_from_word():
+    from sjuoz.common import fix_text, title_case
+    assert fix_text("Quintanilla-Dom\\’\\inguez") == "Quintanilla-Domínguez"
+    assert fix_text("Gonc¸alves") == "Gonçalves"
+    assert fix_text("a; b") == "a; b"
+    assert title_case("Ethical statement") == "Ethical Statement"
+    assert title_case("CONFLICT OF INTEREST") == "Conflict of Interest"
+
+
+def test_conflict_statement_from_cover_letter():
+    from sjuoz.parse import Article, add_conflict_statement
+    b = (True, False, None, None)
+    art = Article()
+    art.body = [_para([("t", "Funding:", b)]), _para([("t", "None.", (False, False, None, None))]),
+                _para([("t", "Author Contributions:", b)]), _para([("t", "All authors.", (False, False, None, None))])]
+    for p in art.body:
+        p.style_id = p.jc = p.outline = None
+        p.ilvl, p.bidi = 0, False
+    add_conflict_statement(art)
+    assert [p.text() for p in art.body][2:4] == ["Conflict of Interest:", COI]
+    add_conflict_statement(art)                 # ikinci kez eklenmez
+    assert len(art.body) == 6
+
+
+COI = "The authors have no conflict of interest to declare concerning the publication of this paper."

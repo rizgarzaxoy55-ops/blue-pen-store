@@ -100,6 +100,15 @@ def latex_source_for(pdf):
             zp = os.path.join(folder, n)
             if any(os.path.basename(m).lower() == stem + ".tex" for m in zip_names(zp)):
                 return zp
+    # PDF'in klasöründe yoksa: çalışılan klasör, Masaüstü, İndirilenler, Belgeler (alt klasörleriyle)
+    from .inputs import _nearby_dirs, _walk
+    for d in dict.fromkeys([os.getcwd(), folder] + _nearby_dirs(folder)):
+        for f in _walk(d, 3):
+            low = os.path.basename(f).lower()
+            if low == stem + ".tex":
+                return f
+            if low.endswith(".zip") and any(os.path.basename(m).lower() == stem + ".tex" for m in zip_names(f)):
+                return f
     return None
 
 
@@ -109,11 +118,12 @@ def prefer_latex_source(path):
         return path
     src = latex_source_for(path)
     if src:
-        print("Bilgi: %s LaTeX ile üretilmiş; yanındaki LaTeX kaynağı kullanılıyor: %s"
-              % (os.path.basename(path), os.path.basename(src)))
+        print("Bilgi: %s LaTeX ile üretilmiş; PDF yerine LaTeX kaynağı kullanılıyor: %s"
+              % (os.path.basename(path), os.path.abspath(src)))
         return src
-    warn("%s LaTeX ile üretilmiş bir PDF. PDF'ten denklemler, tablolar ve bölüm yapısı doğru çıkmaz: yazarın "
-         ".tex kaynağını (resimler ve .bib ile birlikte .zip) isteyip onu verin." % os.path.basename(path))
+    warn("%s LaTeX ile üretilmiş bir PDF ve aynı adlı .tex kaynağı (klasörde, Masaüstü/İndirilenler/Belgeler'de "
+         "ya da oradaki zip'lerde) bulunamadı. PDF'ten denklemler, tablolar ve yazar numaraları doğru çıkmaz: "
+         "yazarın .tex kaynağını (resimler ve .bib ile birlikte .zip) verin." % os.path.basename(path))
     return path
 
 

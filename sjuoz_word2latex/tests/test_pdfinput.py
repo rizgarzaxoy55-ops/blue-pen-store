@@ -137,14 +137,24 @@ def test_page_number_lines_are_removed():
     assert " ".join(left) == "A paragraph that is long enough. Next paragraph."
 
 
-def test_latex_pdf_prefers_source_next_to_it(tmp_path):
+def test_latex_pdf_prefers_source_next_to_it(tmp_path, monkeypatch):
     pytest.importorskip("pdf2docx")
     import shutil
     import zipfile
     latex_pdf = os.path.join(FIXTURES, "..", "..", "ornek_cikti_1993", "1993.pdf")
     assert pdfinput.is_latex_pdf(latex_pdf) and not pdfinput.is_latex_pdf(PDF)
     shutil.copy(latex_pdf, tmp_path / "makale.pdf")
+    monkeypatch.setenv("HOME", str(tmp_path / "ev"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "ev"))
+    monkeypatch.delenv("OneDrive", raising=False)
+    monkeypatch.chdir(tmp_path)
     assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(tmp_path / "makale.pdf")
+    # kaynak başka bir yerde (İndirilenler'in alt klasöründe) olsa da bulunur
+    (tmp_path / "ev" / "Downloads" / "gelen").mkdir(parents=True)
+    far = tmp_path / "ev" / "Downloads" / "gelen" / "makale.tex"
+    far.write_text("x")
+    assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(far)
+    far.unlink()
     with zipfile.ZipFile(tmp_path / "kaynak.zip", "w") as z:
         z.writestr("proje/makale.tex", r"\documentclass{article}\begin{document}x\end{document}")
     assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(tmp_path / "kaynak.zip")

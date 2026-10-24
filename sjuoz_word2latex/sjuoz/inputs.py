@@ -130,3 +130,35 @@ def expand_inputs(paths, workdir=None):
     if len(out) > 2:
         warn("%d dosya verildi; makale ve kapak mektubu dışındakiler yok sayılabilir." % len(out))
     return out
+
+
+def _nearby_dirs(folder):
+    """Dosyaların sık bulunduğu yerler: üst klasör, Masaüstü, İndirilenler, Belgeler (OneDrive dahil)."""
+    home = os.path.expanduser("~")
+    dirs = [os.path.dirname(os.path.abspath(folder))]
+    for base in (home, os.path.join(home, "OneDrive"), os.environ.get("OneDrive", "")):
+        if base:
+            dirs += [os.path.join(base, d) for d in ("Desktop", "Masaüstü", "Downloads", "Documents", "Belgeler")]
+    seen, out = set(), []
+    for d in dirs:
+        key = os.path.normcase(os.path.abspath(d))
+        if key not in seen and key != os.path.normcase(os.path.abspath(folder)) and os.path.isdir(d):
+            seen.add(key)
+            out.append(d)
+    return out
+
+
+def _walk(folder, max_depth=3, limit=20000):
+    """Klasör ve alt klasörlerindeki girdi dosyaları (gizli/sistem klasörleri atlanır)."""
+    count = 0
+    root_depth = os.path.abspath(folder).count(os.sep)
+    for d, subdirs, files in os.walk(folder):
+        if os.path.abspath(d).count(os.sep) - root_depth >= max_depth:
+            subdirs[:] = []
+        subdirs[:] = [s for s in subdirs if not s.startswith((".", "$", "_cikti", "node_modules", "AppData"))]
+        for f in files:
+            count += 1
+            if f.lower().endswith(INPUT_EXTS) and not f.startswith("~$"):
+                yield os.path.join(d, f)
+        if count > limit:
+            return

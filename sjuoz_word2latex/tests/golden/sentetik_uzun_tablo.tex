@@ -2,6 +2,7 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -39,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -131,10 +132,10 @@
 
 \noindent \large \textbf{Original Article} \\[-5pt]
 \begin{center} \titlesize \textbf{A LONG TABLE THAT SPANS SEVERAL PAGES} \end{center}
-\begin{center} \large \textbf{Rojin Saleh \textsuperscript{*} and Hawar Aziz}
+\begin{center} \large \textbf{Rojin Saleh \textsuperscript{1,*} and Hawar Aziz \textsuperscript{1}}
 \end{center}
 \noindent
-\large Department of Statistics, University of Zakho, Duhok, Iraq.\\
+\large \textsuperscript{1}Department of Statistics, University of Zakho, Duhok, Iraq.\\
 
 \begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:rojin.saleh@uoz.edu.krd}{rojin.saleh@uoz.edu.krd}
 \end{center}

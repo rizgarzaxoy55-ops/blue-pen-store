@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Kapak mektubu ve makale yapısının ayrıştırılması."""
+import copy
 import re
 import unicodedata
 
@@ -21,6 +22,10 @@ def strip_titles(name):
     return TITLE_PREFIX_RE.sub("", name.strip()).strip()
 
 
+COVER_TITLE_END = re.compile(r"(for (its )?(consideration|possible|publication)|to be considered|this manuscript|"
+                             r"in the science journal|submitted to)", re.I)
+
+
 def parse_cover_letter(doc):
     info = {"authors": [], "title": None, "date": None, "editor": None}
     lines = []
@@ -34,10 +39,19 @@ def parse_cover_letter(doc):
         if re.match(r"dear\b", ln, re.I):
             info["editor"] = re.sub(r"^dear\s*|\s*:\s*$", "", ln, flags=re.I).strip() or None
         if re.search(r"manuscript entitled", ln, re.I):
+            # başlık birkaç satıra bölünmüş olabilir (PDF'ten okunan mektup): boş satıra ya da
+            # "for consideration …" satırına kadar birleştirilir
+            parts = []
             for nxt in lines[i + 1:]:
-                if nxt:
-                    info["title"] = nxt
+                if not nxt:
+                    if parts:
+                        break
+                    continue
+                if parts and (COVER_TITLE_END.match(nxt) or len(parts) >= 4):
                     break
+                parts.append(nxt)
+            if parts:
+                info["title"] = " ".join(parts).strip()
     current = None
     role = None
     for ln in lines:
@@ -57,6 +71,14 @@ def parse_cover_letter(doc):
         elif current is not None:
             current[key] = val
     info["authors"] = [a for a in info["authors"] if a.get("name")]
+    if not info["title"]:
+        # serbest mektup: … article titled "A Lightweight …"
+        joined = " ".join(lines)
+        mt = re.search(r"\b(?:en)?titled\s*:?\s*[\"“](.+?)[\"”]", joined, re.I)
+        if mt:
+            info["title"] = mt.group(1).strip()
+    if not info["authors"]:
+        info["authors"] = _signature_authors(lines)
     for a in info["authors"]:
         orcid = a.get("orcid", "")
         mt = re.search(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dXx])", orcid)
@@ -64,10 +86,53 @@ def parse_cover_letter(doc):
     return info
 
 
+def _signature_authors(lines):
+    """Alanları olmayan mektup: "Sincerely," altındaki imza grupları (ad, kurum satırları, Email: …)."""
+    start = next((k for k, ln in enumerate(lines) if re.match(r"(sincerely|yours|best regards|regards)\b", ln, re.I)),
+                 None)
+    if start is None:
+        return []
+    authors, group = [], []
+    for ln in lines[start + 1:]:
+        if not ln:
+            continue
+        mt = re.match(r"e-?mail\s*:\s*(\S+@\S+)", ln, re.I)
+        if mt:
+            if group and len(group[0].split()) <= 6 and not re.search(r"\d|@|universit|department|college",
+                                                                        group[0], re.I):
+                authors.append({"name": strip_titles(group[0]), "raw_name": group[0], "email": mt.group(1),
+                                "affiliation": ", ".join(group[1:]), "corresponding": not authors})
+            group = []
+        elif re.match(r"orcid\s*:", ln, re.I) and authors:
+            authors[-1]["orcid"] = ln.split(":", 1)[1].strip()
+        else:
+            group.append(ln)
+    return authors
+
+
 def name_key(name):
     n = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
     parts = re.findall(r"[a-z]+", n)
     return parts
+
+
+def fuller_name(ms_name, cl_name):
+    """Makalede baş harfle kısaltılmış ad ("Ban J. Khoshaba"), kapak mektubunda tam yazılmışsa
+    ("Ban Jibrael Khoshaba") tam ad; değilse makaledeki ad."""
+    ms, cl = ms_name.split(), strip_titles(cl_name).split()
+    if len(ms) != len(cl) or not any(re.fullmatch(r"[A-Z]\.?", w) for w in ms):
+        return ms_name
+    out = []
+    for m, c in zip(ms, cl):
+        if re.fullmatch(r"[A-Z]\.?", m):
+            if not c[:1].upper() == m[0] or len(c.rstrip(".")) < 2:
+                return ms_name
+            out.append(c[0].upper() + c[1:])
+        elif name_key(m) == name_key(c):
+            out.append(m)
+        else:
+            return ms_name
+    return " ".join(out)
 
 
 def match_author(ms_name, cl_authors):
@@ -134,6 +199,8 @@ class Article:
         self.abstract = []         # LaTeX paragrafları
         self.abstract_plain = []   # düz metin (Crossref/JATS için)
         self.keywords = ""
+        self.title_tokens = []     # başlığın biçimli parçaları (italik tür adları için)
+        self.keyword_tokens = []
         self.body = []             # body blokları (Para/Table)
         self.references = []       # Para listesi
 
@@ -154,6 +221,12 @@ def parse_front(blocks):
     if i < n and ARTICLE_TYPE_RE.match(paras[i].text().strip()):
         art.article_type = re.sub(r"\s+", " ", paras[i].text().strip()).title()
         i = nxt_nonempty(i + 1)
+    # Başlık ve yazarlar aynı paragrafta satır sonuyla ayrılmış olabilir
+    if i < n and isinstance(paras[i], Para):
+        head, tail = _split_at_break(paras[i])
+        if tail is not None and _looks_like_authors(tail):
+            paras[i:i + 1] = [head, tail]   # yerinde: çağıran blocks[i:] ile devam eder
+            n += 1
     # Başlık: ilk paragraf. Uzun başlık birkaç satıra bölünmüşse (hepsi BÜYÜK harf ve kalın)
     # sonraki paragraflar da eklenir.
     title_parts = []
@@ -168,11 +241,18 @@ def parse_front(blocks):
             title_parts.append(paras[i])
             i += 1
     art.title = " ".join(re.sub(r"\s+", " ", p.text()).strip() for p in title_parts)
+    art.title_tokens = []
+    for p in title_parts:
+        if art.title_tokens:
+            art.title_tokens.append(("t", " ", (False, False, None, None)))
+        art.title_tokens += [t for t in p.tokens if t[0] == "t"]
     i = nxt_nonempty(i)
 
     # Yazarlar
     if i < n and isinstance(paras[i], Para):
         art.authors = parse_authors(paras[i])
+        for a in art.authors:
+            a["name"] = re.sub(r"\s+", " ", a["name"]).strip()
         i += 1
 
     # Affiliasyonlar, sorumlu yazar, özet, anahtar kelimeler
@@ -188,6 +268,8 @@ def parse_front(blocks):
         if KEYWORDS_HEAD.match(txt):
             kw = KEYWORDS_HEAD.sub("", txt).strip()
             art.keywords = kw
+            art.keyword_tokens = drop_chars([t for t in b.tokens if t[0] == "t"],
+                                            len(b.text()) - len(b.text().lstrip()) + len(KEYWORDS_HEAD.match(txt).group(0)))
             i += 1
             break
         if abstract_mode:
@@ -235,6 +317,33 @@ def parse_front(blocks):
             continue
         i += 1
     return art, i
+
+
+def drop_chars(tokens, n):
+    """Metin token'larının baştaki n karakterini atar."""
+    out = []
+    for t in tokens:
+        if n > 0:
+            cut = min(n, len(t[1]))
+            n -= cut
+            t = (t[0], t[1][cut:], t[2])
+        if t[1]:
+            out.append(t)
+    return out
+
+
+def _split_at_break(p):
+    """Paragrafı ilk satır sonundan (boş olmayan iki parça olarak) böler; bölünemezse (p, None)."""
+    toks = p.tokens
+    for k, t in enumerate(toks):
+        if t[0] == "t" and "\n" in t[1]:
+            before = toks[:k] + [("t", t[1].split("\n", 1)[0], t[2])]
+            after = [("t", t[1].split("\n", 1)[1].lstrip("\n"), t[2])] + toks[k + 1:]
+            if any(x[0] == "t" and x[1].strip() for x in before) and any(x[0] == "t" and x[1].strip() for x in after):
+                a, b = copy.copy(p), copy.copy(p)
+                a.tokens, b.tokens = before, after
+                return a, b
+    return p, None
 
 
 def _looks_like_authors(p):
@@ -335,6 +444,10 @@ def apply_cover_letter(art, cl):
         if not a:
             warn("Kapak mektubunda '%s' için bilgi bulunamadı (ORCID eklenmedi)." % au["name"])
             continue
+        full = fuller_name(au["name"], a["name"])
+        if full != au["name"]:
+            print("Bilgi: yazar adı kapak mektubundaki tam adla yazıldı: %s → %s" % (au["name"], full))
+            au["name"] = full
         au["orcid"] = a.get("orcid")
         au["email"] = a.get("email")
         au["tel"] = a.get("tel")
@@ -349,7 +462,7 @@ def apply_cover_letter(art, cl):
                  % (art.corr_email, corr["email"]))
         if not art.corr_tel and corr.get("tel"):
             art.corr_tel = corr["tel"]
-    if cl.get("title") and art.title and name_key(cl["title"]) != name_key(art.title):
+    if cl.get("title") and art.title and "".join(name_key(cl["title"])) != "".join(name_key(art.title)):
         warn("Makale başlığı ile kapak mektubundaki başlık farklı.")
     if not art.title and cl.get("title"):
         art.title = cl["title"]

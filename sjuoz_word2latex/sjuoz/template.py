@@ -12,6 +12,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -49,7 +50,7 @@ TEMPLATE = r"""%!TEX TS-program = xelatex
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -197,12 +198,38 @@ def link_color(name):
     return name if re.fullmatch(r"[A-Za-z]+(?:![0-9]{1,3}(?:![A-Za-z]+)?)*", name) else "black"
 
 
+def italic_tex(tokens, upper=False):
+    """Düz metin; yalnız italik parçalar (ör. tür adları "Zinnia elegans") \\textit{} olarak ve
+    büyük harfe çevrilmeden korunur. İçinde küçük harfli italik parça yoksa None."""
+    runs = []
+    for t in tokens:
+        if t[0] != "t":
+            continue
+        txt = re.sub(r"\s+", " ", t[1])
+        it = bool(t[2][1]) and bool(txt.strip())
+        if runs and runs[-1][1] == it:
+            runs[-1][0] += txt
+        else:
+            runs.append([txt, it])
+    if not any(it and re.search(r"[a-z]", txt) for txt, it in runs):
+        return None
+    out = []
+    for txt, it in runs:
+        if it:
+            core = txt.strip(" ")
+            out.append(txt[:len(txt) - len(txt.lstrip(" "))] + r"\textit{%s}" % tex_escape(core)
+                       + txt[len(txt.rstrip(" ")):])
+        else:
+            out.append(tex_escape(txt.upper() if upper else txt))
+    return re.sub(r"\s+", " ", "".join(out)).strip()
+
+
 def build_tex(art, writer, opts):
     # yazarlar
     au_tex = []
     for au in art.authors:
         s = tex_escape(au["name"])
-        marks = au["marks"] if len(art.affiliations) > 1 else [m_ for m_ in au["marks"] if m_ == "*"]
+        marks = au["marks"]   # dergi tek affiliasyonda da numarayı yazar ("Muhammed 1,*")
         if marks:
             s += r" \textsuperscript{%s}" % ",".join(marks)
         if au.get("orcid"):
@@ -212,11 +239,8 @@ def build_tex(art, writer, opts):
         authors = ", ".join(au_tex[:-1]) + ", and " + au_tex[-1]
     else:
         authors = " and ".join(au_tex)
-    if len(art.affiliations) > 1:
-        affs = "\n".join(r"\large \textsuperscript{%d}%s\\" % (k + 1, tex_escape(a))
-                         for k, a in enumerate(art.affiliations))
-    else:
-        affs = "\n".join(r"\large %s\\" % tex_escape(a) for a in art.affiliations)
+    affs = "\n".join(r"\large \textsuperscript{%d}%s\\" % (k + 1, tex_escape(a))
+                     for k, a in enumerate(art.affiliations))
     corr = r"\textsuperscript{*}\textit{Corresponding author, E-mail:}"
     if art.corr_email:
         corr += r"\href{mailto:%s}{%s}" % (art.corr_email, tex_escape(art.corr_email))
@@ -232,7 +256,7 @@ def build_tex(art, writer, opts):
         runhead = tex_escape(surnames[0]) if surnames else ""
 
     abstract = r" \par ".join(art.abstract) or "~"
-    kw = render_plain(art.keywords.strip())
+    kw = italic_tex(getattr(art, "keyword_tokens", [])) or render_plain(art.keywords.strip())
     if kw and kw[-1] not in ".":
         kw += "."
 
@@ -253,7 +277,8 @@ def build_tex(art, writer, opts):
         "LASTPAGE": last,
         "ARTICLEURL": "https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/%s" % opts.article_id,
         "ARTICLETYPE": tex_escape(opts.article_type or art.article_type),
-        "TITLE": tex_escape(art.title.upper() if not opts.keep_title_case else art.title),
+        "TITLE": italic_tex(getattr(art, "title_tokens", []), upper=not opts.keep_title_case)
+        or tex_escape(art.title.upper() if not opts.keep_title_case else art.title),
         "AUTHORS": authors,
         "AFFILIATIONS": affs,
         "CORRESPONDING": corr,

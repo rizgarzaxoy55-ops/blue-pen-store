@@ -323,3 +323,80 @@ def test_caption_sentence_is_not_a_caption():
     w = Writer.__new__(Writer)
     assert w.is_caption(P("Table 1 reports total annual production per crop.")) is None
     assert w.is_caption(P("Table 1: Estimated production values")) == "table"
+
+
+# ---------------------------------------------------------------- dergi biçimi (bitmiş makalelerle karşılaştırma)
+def _para(tokens, style="Normal"):
+    from sjuoz.docx import Para
+    p = Para.__new__(Para)
+    p.tokens, p.style, p.num_id = tokens, style, None
+    return p
+
+
+def test_full_names_from_cover_letter():
+    from sjuoz.parse import fuller_name
+    assert fuller_name("Ban J. Khoshaba", "Ban Jibrael Khoshaba") == "Ban Jibrael Khoshaba"
+    assert fuller_name("Shamil K. Ramadhan", "shamil Khadr Ramadhan") == "Shamil Khadr Ramadhan"
+    assert fuller_name("Arzu Çığ", "Arzu Çığ") == "Arzu Çığ"
+    assert fuller_name("A. B. Smith", "John Smith") == "A. B. Smith"          # sözcük sayısı farklı
+    assert fuller_name("Ban J. Khoshaba", "Ban Karim Khoshaba") == "Ban J. Khoshaba"  # baş harf tutmuyor
+
+
+def test_title_keeps_italic_species_name():
+    from sjuoz.template import italic_tex
+    b, bi = (True, False, None, None), (True, True, None, None)
+    toks = [("t", "Properties of Zinnia Cultivars (", b), ("t", "Zinnia elegans", bi), ("t", ")", b)]
+    assert italic_tex(toks, upper=True) == r"PROPERTIES OF ZINNIA CULTIVARS (\textit{Zinnia elegans})"
+    assert italic_tex([("t", "Plain title", b)], upper=True) is None   # italik yoksa eski yol
+
+
+def test_title_and_authors_in_one_paragraph_are_split():
+    from sjuoz.parse import _split_at_break, _looks_like_authors
+    f, sup = (True, False, None, None), (True, False, "superscript", None)
+    p = _para([("t", "A TITLE", f), ("t", "\n", f), ("t", "\n", f), ("t", "Linus Labik", f), ("t", "1,*", sup),
+               ("t", ", Felix Asare", f), ("t", "1", sup)])
+    head, tail = _split_at_break(p)
+    assert head.text().strip() == "A TITLE" and _looks_like_authors(tail)
+    assert _split_at_break(_para([("t", "No break", f)]))[1] is None
+
+
+def test_long_heading_styled_paragraph_is_body_text():
+    assert _para([("t", "Charging Protocol:", (True, False, None, None))], "heading 2").heading_level() == 2
+    assert _para([("t", "x " * 150, (False, False, None, None))], "heading 2").heading_level() is None
+
+
+def test_unbolded_colon_keeps_heading_bold():
+    p = _para([("t", "Nitrogen percentage (N%)", (True, False, None, None)), ("t", ":", (False, False, None, None)),
+               ("t", " ", (False, False, None, None))])
+    assert p.all_bold()
+
+
+def test_cover_letter_title_over_two_lines():
+    from sjuoz.parse import parse_cover_letter
+    f = (False, False, None, None)
+    lines = ["I am pleased to submit an original research manuscript entitled:",
+             "Second-life Assessment of Salvaged 18650 Lithium-Ion Cells Using Capacity and Internal",
+             "Resistance Metrics.", "for consideration for publication in the Science Journal of University of Zakho."]
+
+    class Doc:
+        def body_blocks(self):
+            return [_para([("t", ln, f)]) for ln in lines]
+    assert parse_cover_letter(Doc())["title"].endswith("Internal Resistance Metrics.")
+
+
+def test_free_form_cover_letter_signature():
+    from sjuoz.parse import parse_cover_letter
+    f = (False, False, None, None)
+    lines = ['We are pleased to submit our original research article titled "A Lightweight CNN" for publication.',
+             "Sincerely,", "Kazheen Sileman Muhammad", "Department of Information Technology", "Kurdistan Region, Iraq",
+             "Email: kazheen.sileman@auas.edu.krd", "Araz Rajab Abrahim", "Duhok Polytechnic University",
+             "Email: araz.abrahim@dpu.edu.krd"]
+
+    class Doc:
+        def body_blocks(self):
+            return [_para([("t", ln, f)]) for ln in lines]
+    info = parse_cover_letter(Doc())
+    assert info["title"] == "A Lightweight CNN"
+    assert [(a["name"], a["email"], a["corresponding"]) for a in info["authors"]] == [
+        ("Kazheen Sileman Muhammad", "kazheen.sileman@auas.edu.krd", True),
+        ("Araz Rajab Abrahim", "araz.abrahim@dpu.edu.krd", False)]

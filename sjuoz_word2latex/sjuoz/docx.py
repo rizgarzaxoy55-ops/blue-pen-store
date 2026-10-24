@@ -289,11 +289,14 @@ class Para:
         return not self.text().strip() and not self.images and not self.maths
 
     def all_bold(self):
-        ts = [t for t in self.tokens if t[0] == "t" and t[1].strip()]
+        # sondaki kalın yazılmamış ":" / "." başlığı bozmaz ("Nitrogen percentage (N%):")
+        ts = [t for t in self.tokens if t[0] == "t" and t[1].strip() and not re.fullmatch(r"[\s:.;]+", t[1])]
         return bool(ts) and all(t[2][0] for t in ts)
 
     def heading_level(self):
         if self.style.lower().startswith("heading"):
+            if len(self.text().strip()) > 200:
+                return None   # başlık biçemi verilmiş gövde paragrafı
             mt = re.search(r"(\d)", self.style)
             return int(mt.group(1)) if mt else 1
         if self.style.lower() == "title":

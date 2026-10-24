@@ -2,6 +2,7 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -39,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -164,7 +165,7 @@ Intro text with a citation (\hyperlink{ref:2}{Smith \textit{et al.}, 2020}) and 
 \begin{equation*}
   \sjuozfitone{\int_{0}^{\infty} e^{-x^{2}} \mathit{dx}=\frac{\sqrt{\pi}}{2}}
 \end{equation*}
-\subsection{Methods subsection}
+\subsection*{Methods subsection}
 \begin{itemize}
 \item first bullet with $\alpha\leq\beta$
 \item second bullet
@@ -202,7 +203,7 @@ B & 2.5 & 0.2 \\
 \section{CONCLUSIONS}
 Done. The results agree with (\hyperlink{ref:1}{Brown \& Lee, 2019}; \hyperlink{ref:2}{Smith \textit{et al.}, 2020}).
 
-\subsection*{Acknowledgements}
+\subsection*{Acknowledgements:}
 Thanks to everyone who helped with the experiments in this study.
 
 \section*{REFERENCES}

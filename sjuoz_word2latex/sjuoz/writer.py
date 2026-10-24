@@ -639,6 +639,9 @@ class Writer:
             return False
         if BACK_MATTER.match(clean):
             level, numbered = 2, False
+            clean += ":"            # dergide son bölüm başlıkları iki noktayla biter ("Funding:")
+        elif level >= 2:
+            numbered = False        # dergide alt başlıklar numarasızdır (yazarın "3.1." numarası atılır)
         self.flush_images()
         self.close_list()
         self.open_cols()

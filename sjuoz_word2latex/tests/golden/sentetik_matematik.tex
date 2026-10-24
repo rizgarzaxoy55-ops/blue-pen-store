@@ -2,6 +2,7 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -39,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -131,10 +132,10 @@
 
 \noindent \large \textbf{Original Article} \\[-5pt]
 \begin{center} \titlesize \textbf{ON THE CONVERGENCE OF A CLASS OF ITERATIVE METHODS} \end{center}
-\begin{center} \large \textbf{Dilan Omer \textsuperscript{*} and Karwan Ali}
+\begin{center} \large \textbf{Dilan Omer \textsuperscript{1,*} and Karwan Ali \textsuperscript{1}}
 \end{center}
 \noindent
-\large Department of Mathematics, Faculty of Science, University of Zakho, Duhok, Iraq.\\
+\large \textsuperscript{1}Department of Mathematics, Faculty of Science, University of Zakho, Duhok, Iraq.\\
 
 \begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:dilan.omer@uoz.edu.krd}{dilan.omer@uoz.edu.krd}
 \end{center}

@@ -2,6 +2,7 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -39,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -131,10 +132,10 @@
 
 \noindent \large \textbf{Review Article} \\[-5pt]
 \begin{center} \titlesize \textbf{DEEP LEARNING FOR CROP YIELD PREDICTION} \end{center}
-\begin{center} \large \textbf{Karwan Ali \textsuperscript{*} and Dilan Omer}
+\begin{center} \large \textbf{Karwan Ali \textsuperscript{1,*} and Dilan Omer \textsuperscript{1}}
 \end{center}
 \noindent
-\large Department of Computer Science, Faculty of Science, University of Zakho, Duhok, Iraq.\\
+\large \textsuperscript{1}Department of Computer Science, Faculty of Science, University of Zakho, Duhok, Iraq.\\
 
 \begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:karwan.ali@uoz.edu.krd}{karwan.ali@uoz.edu.krd}
 \end{center}
@@ -165,10 +166,10 @@ Prior work used classical regression [\hyperlink{ref:1}{1}], [\hyperlink{ref:2}{
   \sjuozfitone{L=\frac{1}{N}\sum\limits_{i=1}^{N} {\left( y_{i}-{\hat{y}}_{i} \right)}^{2}}
 \end{equation}
 \section{METHODOLOGY}
-\subsection{Data}
+\subsection*{Data}
 The data set has 1,200 samples.\footnote{Collected in 2024.}
 
-\subsection{Models}
+\subsection*{Models}
 \end{multicols}
 \noindent
 \begin{minipage}{\linewidth}

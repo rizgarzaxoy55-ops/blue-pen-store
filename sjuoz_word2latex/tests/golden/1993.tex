@@ -2,6 +2,7 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
@@ -39,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -366,19 +367,19 @@ Overall & 28164 & 28008 & 99.567 & 114 & 2.097 & 0.585 \\
 \section{CONCLUSIONS}
 The mouth detection time is an important issue in visual speech recognition. In this paper, a modification of VJA using an adaptive threshold was proposed. The experimental results have shown that our algorithm enhanced the mouth detection time with the baseline algorithm reduced to more than 3.5 times approximately. Consequently, the proposed algorithm gives a good solution for real-time visual speech recognition regarding the detection time enhancement. The drawback of this paper is that the experimental results are limited to a maximum distance of 8 ft from the camera; therefore, the maximum limit (150) may change at greater distances depending on the application and real-time implementation. Moreover, the limitation of the present study is an important direction for future validation using more diverse datasets.
 
-\subsection*{ACKNOWLEDGEMENTS}
+\subsection*{ACKNOWLEDGEMENTS:}
 \textbf{“The authors sincerely thank the original investigators,} \textbf{Wisam H Ali, R. Saeed, and H. Al-Muifraje, for their foundational work and for making the dataset from their published study} (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}) \textbf{available for this retrospective analysis.”}
 
-\subsection*{Ethical Statement}
+\subsection*{Ethical Statement:}
 \textbf{"The original data collection was conducted by the primary investigators} (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}) \textbf{with the official approval of their institutional university authorities at that time. Informed consent was explicitly obtained from all human volunteers by the original research team. For the present study, a secondary analysis was performed using this existing dataset, which was provided in a fully anonymized and de-identified format to protect participant confidentiality."}
 
-\subsection*{Author Contributions}
+\subsection*{Author Contributions:}
 \noindent Study concept and design: M. E. Safi, E. I. Abbas, A. H. Ali; Analysis and interpretation of data: M. E. Safi, E. I. Abbas; Drafting of the manuscript: M. E. Safi, E. I. Abbas, A. H. Ali; Critical revision of the manuscript for important intellectual content: M. E. Safi, E. I. Abbas; Statistical analysis: M. E. Safi, E. I. Abbas, A. H. Ali; Administrative, technical, and material support: M. E. Safi, E. I. Abbas, A. H. Ali; Study supervision: M. E. Safi, E. I. Abbas, A. H. Ali.
 
-\subsection*{Conflict of Interest}
+\subsection*{Conflict of Interest:}
 “The authors declare that they have no conflicts of interest related to the publication or funding of this manuscript.”
 
-\subsection*{Funding}
+\subsection*{Funding:}
 “The authors declare that no financial support, grants, or funding were received from any public, commercial, or non-profit organizations for the research, authorship, or publication of this article.”
 
 \section*{REFERENCES}

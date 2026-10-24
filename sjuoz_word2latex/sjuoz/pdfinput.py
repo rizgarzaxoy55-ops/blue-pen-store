@@ -65,7 +65,8 @@ def ensure_docx(path, workdir=None):
         cv.close()
     tidy_docx(out, path)
     from .common import WARNINGS
-    if PDF_NOTE not in WARNINGS:  # makale + kapak mektubu PDF'se bir kez
+    if PDF_NOTE not in WARNINGS and not re.search(r"cover|kapak", os.path.basename(path), re.I):
+        # makale için bir kez; kapak mektubunda denklem/tablo olmadığından gerekmez
         warn(PDF_NOTE)
     if looks_two_column(path):
         warn("%s iki sütunlu dizilmiş bir PDF gibi görünüyor (ör. yayımlanmış dergi sayfası): sütunlar ve "

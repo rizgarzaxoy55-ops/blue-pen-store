@@ -6,6 +6,8 @@ sonuç yazarın Word dosyası kadar iyi olmaz: denklemler resim/düz metin olara
 Çeviri pdf2docx ile yapılır (pip install pdf2docx), ardından:
   * satır/sayfa sonunda bölünmüş paragraflar birleştirilir,
   * kaynakça yeniden girdilere ayrılır (PDF'te girdiler birbirine yapışık ya da bölük gelir),
+  * kaybolan kelime boşlukları PDF'in kelime sırasından geri konur,
+  * numaralı denklemler LaTeX'e (pdfmath), yalnız yatay çizgili tablolar Word tablosuna geri kurulur,
   * Symbol yazı tipindeki madde işaretleri düzeltilir.
 """
 import copy
@@ -27,7 +29,7 @@ REF_START = re.compile(
     r"^\s*(?:\[\d+\]|\d+\.\s"
     r"|(?:(?:[Vv]an|[Vv]on|[Dd]e|[Dd]el|[Dd]er|[Dd]i|[Dd]a|[Ll]a|[Ll]e|Al|El)\s+)?"
     r"[A-ZÀ-ÖØ-ÞŠŽ][\w'’\-]+(?:[ -][A-ZÀ-ÖØ-ÞŠŽ][\w'’\-]+)*,\s+(?:[A-ZÀ-ÖØ-ÞŠŽ]\.|[A-ZÀ-ÖØ-ÞŠŽ][a-z])"
-    r"|[A-Z][\w&\- ]+\.\s\((?:\d{4}|n\.d\.))")
+    r"|[A-Z][\w&\- ]+?\.?\s\((?:\d{4}[a-z]?|n\.d\.)\))")  # kurum: "World Bank (2014)", "MathWorks. (n.d.)"
 # Önceki girdinin bittiği yer: DOI/URL ya da sayfa numarasından sonra nokta
 REF_END = re.compile(r"(?:https?://\S+|doi:\s*\S+|\d\.)\s+$", re.I)
 SENT_END = (".", "?", "!", ":", ";")
@@ -62,7 +64,9 @@ def ensure_docx(path, workdir=None):
     finally:
         cv.close()
     tidy_docx(out, path)
-    warn(PDF_NOTE)
+    from .common import WARNINGS
+    if PDF_NOTE not in WARNINGS:  # makale + kapak mektubu PDF'se bir kez
+        warn(PDF_NOTE)
     if looks_two_column(path):
         warn("%s iki sütunlu dizilmiş bir PDF gibi görünüyor (ör. yayımlanmış dergi sayfası): sütunlar ve "
              "boşluklar karışabilir, sonuç güvenilir değil. Bu yol tek sütunlu yazar taslakları içindir."
@@ -127,6 +131,356 @@ def prefer_latex_source(path):
     return path
 
 
+# --------------------------------------------------------------------------
+# Tablolar: LaTeX (booktabs) tabloları yalnız yatay çizgilidir; pdf2docx onları düz metne çevirir.
+# PyMuPDF'in çizgi tabanlı tablo bulucusu yapıyı bulur, hücre metni karakter konumlarından okunur.
+# --------------------------------------------------------------------------
+def page_chars(page):
+    """(x0, y0, x1, y1, karakter, boyut, taban çizgisi) listesi."""
+    out = []
+    for b in page.get_text("rawdict")["blocks"]:
+        for ln in b.get("lines", []):
+            for sp in ln["spans"]:
+                for c in sp["chars"]:
+                    if c["c"].strip():
+                        out.append(tuple(c["bbox"]) + (c["c"], sp["size"], c["origin"][1]))
+    return out
+
+
+def text_in(chars, rect):
+    """Dikdörtgendeki metin: satırlara ayrılır, aralıklardan boşluk konur ("25,700" virgülü biraz aşağıda
+    durduğu için PyMuPDF'in kendi hücre metni "25700\n," olur)."""
+    inside = [c for c in chars if rect[0] - 1 <= (c[0] + c[2]) / 2 <= rect[2] + 1
+              and rect[1] - 1 <= (c[1] + c[3]) / 2 <= rect[3] + 1]
+    lines = []
+    for c in sorted(inside, key=lambda c: c[6]):
+        for ln in lines:
+            if abs(ln[0] - c[6]) < 0.45 * c[5]:
+                ln[1].append(c)
+                break
+        else:
+            lines.append([c[6], [c]])
+    out = []
+    for _, cs in sorted(lines, key=lambda ln: ln[0]):
+        cs.sort(key=lambda c: c[0])
+        t, prev = "", None
+        for c in cs:
+            if prev and c[0] - prev[2] > 0.18 * c[5]:
+                t += " "
+            t += c[4]
+            prev = c
+        out.append(t)
+    return " ".join(out)
+
+
+def _hrules(page):
+    rules = []
+    try:
+        for d in page.get_drawings():
+            for it in d["items"]:
+                if it[0] == "l" and abs(it[1].y - it[2].y) < 0.8 and abs(it[2].x - it[1].x) > 40:
+                    rules.append((min(it[1].x, it[2].x), it[1].y, max(it[1].x, it[2].x)))
+                elif it[0] == "re" and it[1].height < 1.5 and it[1].width > 40:
+                    rules.append((it[1].x0, (it[1].y0 + it[1].y1) / 2, it[1].x1))
+    except Exception:  # noqa
+        pass
+    return sorted(rules, key=lambda r: r[1])
+
+
+def rule_tables(page, chars):
+    """Yalnız yatay çizgili tablolar (LaTeX booktabs / \\hline): aynı genişlikteki çizgiler tablonun
+    üstü ve altıdır; satırlar metin satırlarından, sütunlar geniş boşluklardan bulunur."""
+    rules = _hrules(page)
+    groups = []
+    for r in rules:
+        for g in groups:
+            if abs(g[-1][0] - r[0]) < 3 and abs(g[-1][2] - r[2]) < 3 and r[1] - g[-1][1] < 350:
+                g.append(r)
+                break
+        else:
+            groups.append([r])
+    out = []
+    for g in groups:
+        if len(g) < 2:
+            continue
+        x0, x1, top, bottom = min(r[0] for r in g), max(r[2] for r in g), g[0][1], g[-1][1]
+        inside = [c for c in chars if x0 - 2 <= (c[0] + c[2]) / 2 <= x1 + 2 and top < (c[1] + c[3]) / 2 < bottom]
+        if not inside:
+            continue
+        size = max(c[5] for c in inside)
+        lines = []
+        for c in sorted(inside, key=lambda c: c[6]):
+            for ln in lines:
+                if abs(ln[0] - c[6]) < 0.5 * size:
+                    ln[1].append(c)
+                    break
+            else:
+                lines.append([c[6], [c]])
+        rows = []
+        for _, cs in sorted(lines, key=lambda ln: ln[0]):
+            cs.sort(key=lambda c: c[0])
+            segs, cur = [], [cs[0]]
+            for c in cs[1:]:
+                if c[0] - cur[-1][2] > 0.9 * size:   # hücre aralığı (kelime aralığından geniş)
+                    segs.append(cur)
+                    cur = [c]
+                else:
+                    cur.append(c)
+            segs.append(cur)
+            rows.append([(s[0][0], s[-1][2], text_in(s, (s[0][0], min(c[1] for c in s), s[-1][2],
+                                                           max(c[3] for c in s)))) for s in segs])
+        if len(rows) < 2:
+            continue
+        # sütunlar: gövde satırlarındaki parçaların x aralıklarının birleşimi
+        cols = []
+        for seg in sorted((sg for r in (rows[1:] or rows) for sg in r), key=lambda sg: sg[0]):
+            if cols and seg[0] <= cols[-1][1] + 2:
+                cols[-1][1] = max(cols[-1][1], seg[1])
+            else:
+                cols.append([seg[0], seg[1]])
+        if len(cols) < 2:
+            continue
+        table = []
+        for r in rows:
+            cells = [""] * len(cols)
+            for a, b, t in r:
+                mid = (a + b) / 2
+                k = min(range(len(cols)), key=lambda i: 0 if cols[i][0] - 2 <= mid <= cols[i][1] + 2
+                        else min(abs(mid - cols[i][0]), abs(mid - cols[i][1])))
+                cells[k] = (cells[k] + " " + t).strip()
+            table.append(cells)
+        out.append(((x0, top, x1, bottom), table))
+    return out
+
+
+def pdf_tables(path):
+    """PDF'teki tablolar (sırayla): [satırlar] — denklem blokları ("… (17)") hariç."""
+    pm = _pymupdf()
+    if pm is None:
+        return []
+    out = []
+    try:
+        doc = pm.open(path)
+        for page in doc:
+            try:
+                found = page.find_tables(strategy="lines").tables
+            except Exception:  # noqa
+                found = []
+            chars = page_chars(page)
+            page_tabs = []
+            for t in found:
+                rows = [[text_in(chars, c) if c else "" for c in r.cells] for r in t.rows]
+                page_tabs.append((tuple(t.bbox), rows))
+            # yalnız yatay çizgili tablolar (PyMuPDF 1.x bunları bulamaz)
+            for bbox, rows in rule_tables(page, chars):
+                if not any(bbox[0] < b[2] and b[0] < bbox[2] and bbox[1] < b[3] and b[1] < bbox[3]
+                           for b, _ in page_tabs):
+                    page_tabs.append((bbox, rows))
+            for bbox, rows in sorted(page_tabs, key=lambda t: t[0][1]):
+                rows = [r for r in rows if any(x.strip() for x in r)]
+                last = [r[-1].strip() for r in rows if r[-1].strip()]
+                if len(rows) < 2 or (last and all(re.fullmatch(r"\(\d+\)", x) for x in last)):
+                    continue  # numaralı denklemler tablo değildir
+                out.append(rows)
+        doc.close()
+    except Exception:  # noqa
+        return []
+    return out
+
+
+def _letters(s):
+    return re.sub(r"[^0-9a-zà-ÿµσϵα-ω]", "", s.lower())
+
+
+def _table_el(rows):
+    tbl = etree.Element(W + "tbl")
+    pr = etree.SubElement(tbl, W + "tblPr")
+    borders = etree.SubElement(pr, W + "tblBorders")
+    for side in ("top", "bottom", "insideH"):
+        b = etree.SubElement(borders, W + side)
+        b.set(W + "val", "single")
+        b.set(W + "sz", "4")
+    grid = etree.SubElement(tbl, W + "tblGrid")
+    ncol = max(len(r) for r in rows)
+    for _ in range(ncol):
+        etree.SubElement(grid, W + "gridCol")
+    for k, row in enumerate(rows):
+        tr = etree.SubElement(tbl, W + "tr")
+        for cell in row + [""] * (ncol - len(row)):
+            tc = etree.SubElement(tr, W + "tc")
+            p = etree.SubElement(tc, W + "p")
+            r = etree.SubElement(p, W + "r")
+            if k == 0:  # başlık satırı kalın
+                etree.SubElement(etree.SubElement(r, W + "rPr"), W + "b")
+            t = etree.SubElement(r, W + "t")
+            t.text = cell
+            t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    return tbl
+
+
+TABLE_CAPTION = re.compile(r"^\s*Table\s*\(?\s*\d+\s*\)?\s*[:.]", re.I)
+
+
+def rebuild_tables(body, tables):
+    """Her "Table N:" başlığından sonra düz metne dönmüş tablo satırlarını gerçek tabloyla değiştirir."""
+    if not tables:
+        return 0
+    used, done = set(), 0
+    for cap in [p for p in body.findall(W + "p") if TABLE_CAPTION.match(_text(p))]:
+        # tablonun ilk satırı başlıkla aynı paragrafa yapışmış olabilir: "Table 1: … crop Crops Yield …"
+        ctext = _text(cap)
+        norm, idx = _norm_map(ctext)
+        for k, rows in enumerate(tables):
+            key = re.sub(r"\s+", "", " ".join(rows[0]))[:15]
+            pos = norm.find(key, 8) if k not in used and len(key) >= 4 else -1
+            if pos > 0:
+                for part in _split(cap, [idx[pos]])[1:]:
+                    _strip_lead(part)
+                break
+        # başlıktan sonraki metinle en iyi eşleşen (henüz kullanılmamış) tablo
+        follow, nxt = [], cap.getnext()
+        while nxt is not None and len(follow) < 60:
+            if nxt.tag == W + "p":
+                if TABLE_CAPTION.match(_text(nxt)) or nxt.find(W + "pPr/" + W + "pStyle") is not None:
+                    break
+                follow.append(nxt)
+            elif nxt.tag == W + "tbl":
+                break
+            nxt = nxt.getnext()
+        text_after = _letters(" ".join(_text(p) for p in follow[:6]))
+        best = None
+        for k, rows in enumerate(tables):
+            head = _letters(" ".join(rows[0]))
+            if k not in used and head and head[:20] in text_after:
+                best = k
+                break
+        if best is None:
+            continue
+        used.add(best)
+        whole = _letters(" ".join(" ".join(r) for r in tables[best]))
+        consumed = []
+        for p in follow:
+            t = _letters(_text(p))
+            if not t:
+                consumed.append(p)
+                continue
+            if t in whole:
+                consumed.append(p)
+            else:
+                break
+        for p in consumed:
+            body.remove(p)
+        cap.addnext(_table_el(tables[best]))
+        done += 1
+    return done
+
+
+# --------------------------------------------------------------------------
+# Denklemler: PDF'ten yeniden kurulan LaTeX (pdfmath) .docx'te denklem paragrafı olur
+# --------------------------------------------------------------------------
+M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+
+
+def pdf_equations(path):
+    pm = _pymupdf()
+    if pm is None:
+        return []
+    from .pdfmath import find_equations
+    out = []
+    try:
+        doc = pm.open(path)
+        for page in doc:
+            out += find_equations(page)
+        doc.close()
+    except Exception:  # noqa
+        return out
+    return out
+
+
+def _locate(text, key, num):
+    """Paragraf metninde denklemin yeri: (başlangıç, bitiş) ya da None. Anahtar ana boyuttaki
+    karakterlerdir; metinde arada alt/üst simge karakterleri (en çok 3) bulunabilir."""
+    norm, idx = _norm_map(text)
+    tag = "(%s)" % num
+    for mt in re.finditer(re.escape(tag), norm):
+        j = mt.start() - 1
+        k = len(key) - 1
+        skipped = 0
+        while k >= 0 and j >= 0:
+            if norm[j] == key[k]:
+                k -= 1
+                j -= 1
+                skipped = 0
+            elif skipped < 3:
+                j -= 1
+                skipped += 1
+            else:
+                break
+        if k < 0:
+            return idx[j + 1], idx[mt.end() - 1] + 1
+    return None
+
+
+def _math_par(like, mark):
+    p = _new_para_like(like)
+    omp = etree.SubElement(p, "{%s}oMathPara" % M_NS)
+    om = etree.SubElement(omp, "{%s}oMath" % M_NS)
+    r = etree.SubElement(om, "{%s}r" % M_NS)
+    t = etree.SubElement(r, "{%s}t" % M_NS)
+    t.text = mark
+    return p
+
+
+def insert_equations(body, equations, docx_path):
+    """Bulunan denklemleri paragraflardan ayırıp denklem paragrafına çevirir; kaç tanesi yerleşti."""
+    from .texinput import TEX_MATH, math_mark
+    table = TEX_MATH.setdefault(os.path.abspath(docx_path), {})
+    placed = 0
+    paras = list(body.iter(W + "p"))
+    start = 0
+    for num, latex, key in equations:
+        for i in range(start, len(paras)):
+            p = paras[i]
+            if p.getparent() is None:
+                continue
+            loc = _locate(_text(p), key, num)
+            if not loc and "(%s)" % num in re.sub(r"\s+", "", _text(p)):
+                # numara ayrı paragrafa düşmüş olabilir: önceki kardeş paragraflarla birlikte dene
+                group = [p]
+                prev = p.getprevious()
+                while prev is not None and prev.tag == W + "p" and len(group) < 4:
+                    group.insert(0, prev)
+                    if _locate("".join(_text(x) for x in group), key, num):
+                        first = group[0]
+                        for x in group[1:]:
+                            _append(first, x, space=False)
+                            x.getparent().remove(x)
+                        p = first
+                        loc = _locate(_text(p), key, num)
+                        break
+                    prev = prev.getprevious()
+            if not loc:
+                continue
+            a, b = loc
+            parts = _split(p, [x for x in (a, b) if 0 < x < len(_text(p))])
+            # [önce][denklem][sonra] — kenarlarda olmayanlar yoktur
+            eq = parts[1] if a > 0 else parts[0]
+            n = len(table)
+            table[n] = (latex, num)
+            new = _math_par(eq, math_mark(n))
+            eq.addprevious(new)
+            eq.getparent().remove(eq)
+            for part in parts:
+                if part is not eq and part.getparent() is not None and not _text(part).strip():
+                    if not any(x.tag.endswith(("}drawing", "}pict")) for x in part.iter()):
+                        part.getparent().remove(part)
+            paras = list(body.iter(W + "p"))
+            start = paras.index(new) + 1
+            placed += 1
+            break
+    return placed
+
+
 def pdf_word_pairs(path):
     """PDF'teki ardışık kelime çiftleri ve kelimeler (PyMuPDF boşlukları doğru çıkarır)."""
     pm = _pymupdf()
@@ -175,8 +529,8 @@ def restore_spaces(body, pairs, words):
 
 
 def _split_glued(tok, following, words, depth=0):
-    """PDF'te kelime olmayan parçayı PDF'te ardışık duran kelimelere böler (en çok 4 kelime)."""
-    if not tok or tok in words or len(tok) < 4 or depth > 3:
+    """PDF'te kelime olmayan parçayı PDF'te ardışık duran kelimelere böler (en çok 12 kelime)."""
+    if not tok or tok in words or len(tok) < 2 or depth > 11:
         return tok
     for k in range(len(tok) - 1, 0, -1):
         a, b = tok[:k], tok[k:]
@@ -188,6 +542,13 @@ def _split_glued(tok, following, words, depth=0):
         if any(b.startswith(y) and len(y) > 1 for y in nxt):
             rest = _split_glued(b, following, words, depth + 1)
             if rest != b:
+                return a + " " + rest
+    # PDF'te ardışık değiller (ör. satır sonu) ama ikisi de PDF'te ayrı kelime: "significantly|improve"
+    if len(tok) >= 10 and tok.isalpha():
+        for k in range(len(tok) - 3, 2, -1):
+            a, b = tok[:k], tok[k:]
+            if a in words and (b in words or _split_glued(b, following, words, depth + 1) != b):
+                rest = b if b in words else _split_glued(b, following, words, depth + 1)
                 return a + " " + rest
     return tok
 
@@ -321,12 +682,19 @@ def caption_continues(prev, el):
     return nxt is not None and nxt.tag == W + "tbl"
 
 
+YEAR_SOON = re.compile(r".{0,160}?\((?:\d{4}[a-z]?|n\.d\.)\)", re.S)
+
+
 def split_refs_text(text):
-    """Bir kaynakça paragrafında yeni girdinin başladığı karakter konumları."""
+    """Bir kaynakça paragrafında yeni girdinin başladığı karakter konumları. Önceki girdi DOI/URL ya da
+    sayfa numarasıyla bitiyorsa girdi başı yeter; düz noktayla bitiyorsa yeni girdide yıl da olmalı."""
     cuts = []
     for mt in re.finditer(r"\s+(?=\S)", text):
         start = mt.end()
-        if REF_END.search(text[:start]) and REF_START.match(text[start:]):
+        rest = text[start:]
+        if not REF_START.match(rest):
+            continue
+        if REF_END.search(text[:start]) or (text[:start].rstrip().endswith(".") and YEAR_SOON.match(rest)):
             cuts.append(start)
     return cuts
 
@@ -530,6 +898,18 @@ def _bold(run):
     return b is not None and b.get(W + "val") not in ("0", "false")
 
 
+def split_affiliations(body):
+    """Özetten önce: "…Guinea. 2School of …" — numaralı kurum satırları ayrı paragraf olmalı."""
+    for p in list(body.findall(W + "p")):
+        txt = _text(p)
+        if ABSTRACT_HEAD.match(txt) or KEYWORDS_HEAD.match(txt):
+            break
+        cuts = [m.end() for m in re.finditer(r"[.;]\s*(?=[1-9]\d?\s?[A-Z][a-z])", txt)]
+        if len(cuts) >= 1 and re.match(r"^\s*[1-9*]", txt):
+            for part in _split(p, cuts)[1:]:
+                _strip_lead(part)
+
+
 def mark_headings(body):
     """PDF'te başlık stili yoktur: gövde yazısından büyük, kalın, kısa satırları yazı boyutuna göre
     Heading 1/2/3 yapar (en büyük boyut 1). Özet/anahtar kelimelerden önceki kısım (başlık, yazarlar) atlanır."""
@@ -626,11 +1006,12 @@ def tidy_body(body, starts=(), pairs=None, words=None):
                 if cuts:
                     for part in _split(el, cuts)[1:]:
                         _strip_lead(part)
+    split_affiliations(body)
     mark_headings(body)
-    # Symbol yazı tipindeki madde işareti (U+F0B7) ve benzerleri
+    # Symbol yazı tipindeki madde işareti (U+F0B7); LaTeX'in yazar yıldızı "∗" (U+2217)
     for t in body.iter(W + "t"):
-        if t.text and "" in t.text:
-            t.text = t.text.replace("", "•")
+        if t.text and ("\uf0b7" in t.text or "\u2217" in t.text):
+            t.text = t.text.replace("\uf0b7", "\u2022").replace("\u2217", "*")
 
 
 def tidy_docx(path, pdf=None):
@@ -638,7 +1019,16 @@ def tidy_docx(path, pdf=None):
         items = {n: z.read(n) for n in z.namelist()}
     root = etree.fromstring(items["word/document.xml"])
     pairs, words = pdf_word_pairs(pdf) if pdf else (set(), set())
-    tidy_body(root.find(W + "body"), pdf_line_starts(pdf) if pdf else (), pairs, words)
+    body = root.find(W + "body")
+    tidy_body(body, pdf_line_starts(pdf) if pdf else (), pairs, words)
+    if pdf:
+        eqs = pdf_equations(pdf)
+        placed = insert_equations(body, eqs, path) if eqs else 0
+        if placed:
+            print("Bilgi: PDF'teki %d numaralı denklem LaTeX olarak yeniden kuruldu." % placed)
+        n = rebuild_tables(body, pdf_tables(pdf))
+        if n:
+            print("Bilgi: PDF'teki %d tablo yeniden kuruldu." % n)
     items["word/document.xml"] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         for n, data in items.items():

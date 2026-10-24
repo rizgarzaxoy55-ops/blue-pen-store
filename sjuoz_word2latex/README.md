@@ -144,9 +144,12 @@ birleştirilir, PDF'teki satır konumlarına ve yazı boyutlarına bakılarak ba
 ayrılır, bölüm başlıklarının düzeyi bulunur, birbirine yapışmış kaynakça girdileri ayrılır.
 Sınırları:
 
-* PDF'te paragraf ve denklem bilgisi yoktur: **denklemler LaTeX denklemi olmaz**, PDF'te metin değil
-  çizim olan denklemler hiç gelmez.
-* **Çizgisiz (kenarlıksız) tablolar** tablo olarak tanınmaz; başlığı metin olarak kalır ve rapor uyarır.
+* **LaTeX ile üretilmiş PDF'lerde** satır sonunda "(N)" numarası olan denklemler, karakterlerin yazı
+  tipinden (CMMI/CMR/CMSY), boyutundan ve konumundan **LaTeX'e yeniden kurulur** (alt/üst simge, Yunan
+  harfleri, ≤ ∼ gibi işaretler, `\text{…}`, kesirler). Büyük operatör sınırlı (∑ alt/üst sınırlı) ya da
+  çok satırlı denklemler kurulamazsa düz metin kalır. Word'den alınmış PDF'lerde denklemler LaTeX olmaz.
+* **Tablolar:** çizgili tablolar ve yalnız yatay çizgili LaTeX tabloları (booktabs, `\hline`) yeniden
+  kurulur; hiç çizgisi olmayan tablolar tanınmaz, başlığı metin kalır ve rapor uyarır.
 * Kalın/italik ve alt/üst simgeler kaybolabilir.
 * **İki sütunlu, dizilmiş dergi PDF'leri** güvenilir dönüşmez; program bunu fark edip uyarır.
 * **LaTeX ile üretilmiş PDF** verilirse program yanında (aynı klasörde ya da oradaki bir zip'te) aynı adlı

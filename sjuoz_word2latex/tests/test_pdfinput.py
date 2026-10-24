@@ -158,3 +158,63 @@ def test_latex_pdf_prefers_source_next_to_it(tmp_path, monkeypatch):
     with zipfile.ZipFile(tmp_path / "kaynak.zip", "w") as z:
         z.writestr("proje/makale.tex", r"\documentclass{article}\begin{document}x\end{document}")
     assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(tmp_path / "kaynak.zip")
+
+
+# ---------------------------------------------------------------- LaTeX ile üretilmiş PDF
+LATEX_PDF = os.path.join(FIXTURES, "sentetik_latexpdf", "makale.pdf")  # kaynağı: makale_kaynak.tex
+
+
+def test_latex_pdf_end_to_end_rebuilds_equations_tables_and_refs(tmp_path, monkeypatch):
+    pytest.importorskip("pdf2docx")
+    import shutil
+    work = tmp_path / "w"
+    work.mkdir()
+    shutil.copy(LATEX_PDF, work / "makale.pdf")  # yanında .tex kaynağı yok: PDF yolu sınanır
+    monkeypatch.setenv("HOME", str(tmp_path / "ev"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "ev"))
+    monkeypatch.delenv("OneDrive", raising=False)
+    monkeypatch.chdir(work)
+    opts = conv.build_parser().parse_args(["makale.pdf", "--article-id", "2014", "-o", "o", "--no-zip",
+                                          "--no-compile"])
+    res = conv.convert(opts)
+    st = res["stats"]
+    assert (st["authors"], st["affiliations"], st["tables"]) == (2, 2, 1)
+    assert (st["numbered_equations"], st["references"], st["linked_references"]) == (5, 3, 3)
+    with open(res["tex_path"], encoding="utf-8") as f:
+        tex = f.read()
+    assert r"x_{1}=\text{allocated land for Coffee (hectares)}" in tex
+    assert r"\frac{t_{i}}{\mu _{i}}" in tex and r"\sigma _{i}^{2}" in tex
+    assert "1,776.5" in tex and "Sweet Potato" in tex  # tablo hücreleri karakter konumlarından
+    assert not [i for i in res["items"] if i["level"] == "HATA"], res["items"]
+
+
+def test_equation_locating_tolerates_scripts():
+    # anahtar ana boyuttaki karakterlerdir; metindeki alt simgeler ("1") atlanabilir
+    text = "Let: x1= allocated land for Coffee (hectares) (1) and more"
+    a, b = pdfinput._locate(text, "x=allocatedlandforCoffee(hectares)", "1")
+    assert text[a:b] == "x1= allocated land for Coffee (hectares) (1)"
+    assert pdfinput._locate(text, "y=other", "1") is None
+
+
+def test_rebuild_tables_replaces_flattened_rows():
+    b = body("Table 2: Yield per hectare by crop", "Crops Yield (tonnes/ha)", "Coffee 0.75",
+             "Banana 6.50", "The table shows the yields.")
+    n = pdfinput.rebuild_tables(b, [[["Crops", "Yield (tonnes/ha)"], ["Coffee", "0.75"], ["Banana", "6.50"]]])
+    assert n == 1
+    kinds = [el.tag.split("}")[1] for el in b]
+    assert kinds == ["p", "tbl", "p"] and texts(b)[-1] == "The table shows the yields."
+
+
+def test_references_split_before_corporate_author():
+    t = ("Filippi, C. (2017). Mixed integer models. Computers and Operations Research, 81:26-39. "
+         "Food and Agriculture Organization (2024). Papua New Guinea agricultural profile. "
+         "World Bank (2014). Coffee and cocoa project.")
+    cuts = pdfinput.split_refs_text(t)
+    assert [t[c:c + 10] for c in cuts] == ["Food and A", "World Bank"]
+
+
+def test_affiliations_glued_after_full_stop_are_split():
+    b = body("Ali Hassan1, Sara Ahmed2", "1Dept A, Univ X, Iraq.2Dept B, Univ Y, Iraq.", "ABSTRACT")
+    pdfinput.split_affiliations(b)
+    assert [t.strip() for t in texts(b)] == ["Ali Hassan1, Sara Ahmed2", "1Dept A, Univ X, Iraq.",
+                                             "2Dept B, Univ Y, Iraq.", "ABSTRACT"]

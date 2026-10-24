@@ -69,6 +69,28 @@ class Linker:
             cands = [r for r in cands if second in r["head"]] or cands
         return cands[0] if cands else None
 
+    def corporate_narrative(self, text, taken):
+        """Kurum adıyla anlatı atfı: "… Food and Agriculture Organization of the United Nations (2023)"."""
+        found = []
+        for mt in re.finditer(r"\((%s)\)" % YEAR_PAT, text):
+            if any(a <= mt.start() < b for a, b, _ in taken + found):
+                continue
+            year = mt.group(1).replace(" ", "")
+            before = text[max(0, mt.start() - 200):mt.start()]
+            nb = norm_key(before)
+            for r in self.refs:
+                name = r["first"]
+                if r["year"] != year or len(name) < 10 or not nb.endswith(name):
+                    continue
+                i, count = len(before), 0
+                while i > 0 and count < len(name):
+                    i -= 1
+                    count += len(norm_key(before[i]))
+                found.append((mt.start() - len(before) + i, mt.end(), r["key"]))
+                self.used.add(r["key"])
+                break
+        return found
+
     def spans(self, text):
         out = []
         if self.refs:
@@ -107,6 +129,8 @@ class Linker:
                     if r:
                         out.append((mt.start(), mt.end(), r["key"]))
                         self.used.add(r["key"])
+        if self.refs and not self.numeric:
+            out += self.corporate_narrative(text, out)
         for mt in XREF_RE.finditer(text):
             kind = {"t": "tab", "f": "fig", "e": "eq"}[mt.group(1)[0].lower()]
             n = int(mt.group(2))

@@ -480,12 +480,12 @@ class Writer:
             return None
         rest = mt.group(3)
         style = p.style.lower()
-        if ("caption" in style or p.jc == "center" or p.images or
-                re.match(r"^\s*(figure|fig\.?|table)\s*\(?\s*\d+\s*\)?\s*[:.\-–—]", txt, re.I)):
-            return "table" if mt.group(1).lower().startswith("tab") else "figure"
-        # Gövde cümlesi mi? ("Figure 5 shows ...")
-        if rest and rest[0].islower():
+        has_sep = re.match(r"^\s*(figure|fig\.?|table)\s*\(?\s*\d+\s*\)?\s*[:.\-–—]", txt, re.I)
+        # Gövde cümlesi: "Table 1 reports …", "Figure 5 shows …" (ayraç yok, küçük harfle sürüyor)
+        if not has_sep and rest and rest[0].islower():
             return None
+        if "caption" in style or p.jc == "center" or p.images or has_sep:
+            return "table" if mt.group(1).lower().startswith("tab") else "figure"
         return None
 
     # ---- ana gövde

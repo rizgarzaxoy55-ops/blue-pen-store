@@ -293,3 +293,33 @@ def test_scaled_equations_in_log(tmp_path):
     log.write_text("SJUOZ-EQ-SCALED: 5; 142.5pt; 613.4pt\nSJUOZ-EQ-SCALED: 6; 142.5pt; 150.0pt\n", encoding="utf-8")
     res = conv.analyze_log(str(log), [])
     assert [(n, round(r, 2)) for n, r in res["eq_scaled"]] == [("5", 0.23), ("6", 0.95)]
+
+
+def test_corporate_narrative_citation_links():
+    class P:
+        def __init__(self, t):
+            self._t = t
+
+        def text(self):
+            return self._t
+    lk = conv.Linker([P("Food and Agriculture Organization of the United Nations (2023). Stats."),
+                      P("Smith, J. (2020). X.")], 0, 0, 0)
+    t = "as described by Food and Agriculture Organization of the United Nations (2023) and Smith (2020)."
+    assert [(t[a:b], k) for a, b, k in lk.spans(t)] == [
+        ("Food and Agriculture Organization of the United Nations (2023)", "ref:1"), ("Smith (2020)", "ref:2")]
+
+
+def test_caption_sentence_is_not_a_caption():
+    from sjuoz.writer import Writer
+
+    class P:
+        style, jc, images = "Normal", "center", []
+
+        def __init__(self, t):
+            self._t = t
+
+        def text(self):
+            return self._t
+    w = Writer.__new__(Writer)
+    assert w.is_caption(P("Table 1 reports total annual production per crop.")) is None
+    assert w.is_caption(P("Table 1: Estimated production values")) == "table"

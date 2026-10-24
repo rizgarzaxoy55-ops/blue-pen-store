@@ -48,6 +48,23 @@ def found_ratio(src_text, out_letters, size=24, step=12):
     return sum(1 for c in chunks if c in out_letters) / len(chunks)
 
 
+def glued_words(art):
+    """Boşluğu kaybolmuş kelimeler ("InPapuaNewGuinea"): 18+ harfli, tire/eğik çizgi/adres içermeyen,
+    içinde küçük harften sonra büyük harf ya da noktalama-harf geçişi olan parçalar."""
+    out = []
+    from .docx import Para
+    for b in art.body:
+        if not isinstance(b, Para):
+            continue
+        for tok in b.text().split():
+            letters = re.sub(r"[^A-Za-z]", "", tok)
+            if (len(letters) >= 18 and not re.search(r"[-/@_]|https?:|www\.|\.(?:com|org|edu)", tok)
+                    and (re.search(r"[a-z][A-Z]|[a-z][.,;:)][A-Za-z]", tok) or len(letters) >= 26)):
+                out.append(tok[:40])
+    words = sum(len(b.text().split()) for b in art.body if hasattr(b, "text"))
+    return out if len(out) >= 5 and len(out) > 0.005 * max(words, 1) else []
+
+
 def text_segments(p):
     """Paragraf metnini satır içi denklemlerden böler: "Where [y] is …" Word metninde "Where is …"
     olur ama PDF'te arada denklem vardır; sınırı aşan parçalar yanlış "kayıp" alarmı verir."""
@@ -297,6 +314,11 @@ def build_report(ctx):
         add(REPORT_ERROR, "Kaybolmuş olabilecek metin (%s'te bulunamadı)" % where, "<br>".join(lost[:15]))
     else:
         add(REPORT_OK, "Metin bütünlüğü", "Word'deki bütün paragraflar %s'te bulundu." % where)
+    glued = glued_words(art)
+    if glued:
+        add(REPORT_ERROR, "Birbirine yapışmış kelimeler",
+            "%d kelimede boşluklar kaybolmuş görünüyor (ör. %s). Kaynak PDF'se bu PDF'ten okumanın sınırıdır: "
+            "yazardan Word ya da LaTeX dosyasını isteyin." % (len(glued), ", ".join(glued[:6])))
 
     # 5) Derleme
     lg = ctx.get("log")

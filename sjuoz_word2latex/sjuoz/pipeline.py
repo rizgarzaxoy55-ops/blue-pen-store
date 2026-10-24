@@ -10,7 +10,7 @@ import zipfile
 
 from .common import (BIDI, DATA_DIR, NO_WINDOW, warn, WARNINGS)
 from .inputs import expand_inputs
-from .pdfinput import ensure_docx
+from .pdfinput import ensure_docx, prefer_latex_source
 from .texinput import is_tex_input, tex_to_docx
 from .docx import Docx, Para
 from .render import Linker
@@ -145,20 +145,24 @@ def convert(opts):
             {x.strip() for x in opts.wide_figs.split(",") if x.strip()}
 
     # PDF ya da LaTeX kaynağı (.tex / .zip) verildiyse önce Word'e çevrilir
+    given = list(opts.docx)
     opts.docx = expand_inputs(opts.docx)  # zip açılır, .doc/.odt/.rtf → .docx
+    opts.docx = [prefer_latex_source(p) for p in opts.docx]
     opts.docx = [tex_to_docx(p) if is_tex_input(p) else ensure_docx(p) for p in opts.docx]
     manuscript, cover = classify(opts.docx)
     if manuscript is None:
         return None
 
     if not opts.article_id:
-        for p in opts.docx:
+        for p in given + opts.docx:  # önce kullanıcının verdiği adlar (zip / .tex adı da olabilir)
             mt = re.search(r"(\d{3,})", os.path.basename(p))
             if mt:
                 opts.article_id = mt.group(1)
                 break
         else:
             opts.article_id = "0000"
+            warn("Makale numarası dosya adlarında bulunamadı; 0000 kullanıldı (DOI ve dosya adları buna göre). "
+                 "--article-id 1993 gibi verin.")
     if opts.month is None:
         opts.month = MONTHS[today.month - 1]
     month_no = next((k + 1 for k, mname in enumerate(MONTHS) if mname.lower().startswith(opts.month.lower()[:3])), today.month)

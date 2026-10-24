@@ -114,3 +114,37 @@ def test_two_column_detection():
     sample = os.path.join(FIXTURES, "..", "..", "ornek_cikti_1993", "1993.pdf")
     assert pdfinput.looks_two_column(sample)
     assert not pdfinput.looks_two_column(PDF)
+
+
+def test_glued_words_are_split_using_pdf_word_pairs():
+    b = body([("In", False), ("Papua", False), ("New", False), ("Guinea, the", False)],
+             "it can significantlyimprove yields")
+    pairs = {("In", "Papua"), ("Papua", "New"), ("New", "Guinea,"), ("significantly", "improve")}
+    words = {"In", "Papua", "New", "Guinea,", "the", "significantly", "improve"}
+    pdfinput.restore_spaces(b, pairs, words)
+    assert texts(b) == ["In Papua New Guinea, the", "it can significantly improve yields"]
+    # PDF'te tek kelime olan parça bölünmez (ör. italik değişimiyle iki parçaya düşmüş "Fok" + "I")
+    b2 = body([("Fok", False), ("I", False)])
+    pdfinput.restore_spaces(b2, {("FokI", "gene")}, {"FokI"})
+    assert texts(b2) == ["FokI"]
+
+
+def test_page_number_lines_are_removed():
+    b = body("A paragraph that is long enough.", "12", "- 3 -", "Next paragraph.")
+    pdfinput.tidy_body(b)
+    left = [t.strip() for t in texts(b)]
+    assert "12" not in left and "- 3 -" not in left
+    assert " ".join(left) == "A paragraph that is long enough. Next paragraph."
+
+
+def test_latex_pdf_prefers_source_next_to_it(tmp_path):
+    pytest.importorskip("pdf2docx")
+    import shutil
+    import zipfile
+    latex_pdf = os.path.join(FIXTURES, "..", "..", "ornek_cikti_1993", "1993.pdf")
+    assert pdfinput.is_latex_pdf(latex_pdf) and not pdfinput.is_latex_pdf(PDF)
+    shutil.copy(latex_pdf, tmp_path / "makale.pdf")
+    assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(tmp_path / "makale.pdf")
+    with zipfile.ZipFile(tmp_path / "kaynak.zip", "w") as z:
+        z.writestr("proje/makale.tex", r"\documentclass{article}\begin{document}x\end{document}")
+    assert pdfinput.prefer_latex_source(str(tmp_path / "makale.pdf")) == str(tmp_path / "kaynak.zip")

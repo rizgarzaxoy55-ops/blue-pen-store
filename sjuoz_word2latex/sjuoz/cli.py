@@ -17,6 +17,20 @@ def _key(name):
     return re.sub(r"(docx|doc|pdf|tex|zip|odt|rtf)+$", "", re.sub(r"[^0-9a-z]", "", name.lower()))
 
 
+# Aynı ada uyan dosyalardan hangisi kullanılır: Word, LaTeX, eski Word, zip, en son PDF
+_RANK = {".docx": 0, ".tex": 1, ".doc": 2, ".odt": 2, ".rtf": 2, ".zip": 3, ".pdf": 4}
+
+
+def _best(hits):
+    """En iyi biçimdeki tek dosya (varsa); yoksa None."""
+    if not hits:
+        return None
+    rank = lambda h: _RANK.get(os.path.splitext(h)[1].lower(), 9)
+    top = min(rank(h) for h in hits)
+    best = [h for h in hits if rank(h) == top]
+    return best[0] if len(best) == 1 else None
+
+
 def _nearby_dirs(folder):
     """Dosyaların sık bulunduğu yerler: üst klasör, Masaüstü, İndirilenler, Belgeler (OneDrive dahil)."""
     home = os.path.expanduser("~")
@@ -89,13 +103,13 @@ def resolve_docx(path):
     want = _key(os.path.basename(path))
     here = [p for p in _walk(folder, 1)]
     hits = [p for p in here if _key(os.path.basename(p)) == want]
-    if len(hits) == 1:
-        return (os.path.relpath(hits[0]) if folder == "." else hits[0]), None
+    if _best(hits):
+        return (os.path.relpath(_best(hits)) if folder == "." else _best(hits)), None
     if not hits and not os.path.dirname(path):  # yalnız ad verildiyse daha geniş ara
         hits = _matches(folder, want) + [h for d in _nearby_dirs(folder) for h in _matches(d, want)]
         hits = list(dict.fromkeys(os.path.abspath(h) for h in hits))
-        if len(hits) == 1:
-            return hits[0], None
+        if _best(hits):
+            return _best(hits), None
         if not hits:
             import tempfile
             target, zhits = _from_zips([folder] + _nearby_dirs(folder), want, tempfile.mkdtemp(prefix="sjuoz_zip_"))

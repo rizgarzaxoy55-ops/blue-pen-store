@@ -149,6 +149,10 @@ Sınırları:
 * **Çizgisiz (kenarlıksız) tablolar** tablo olarak tanınmaz; başlığı metin olarak kalır ve rapor uyarır.
 * Kalın/italik ve alt/üst simgeler kaybolabilir.
 * **İki sütunlu, dizilmiş dergi PDF'leri** güvenilir dönüşmez; program bunu fark edip uyarır.
+* **LaTeX ile üretilmiş PDF** verilirse program yanında (aynı klasörde ya da oradaki bir zip'te) aynı adlı
+  `.tex` kaynağını arar ve bulursa onu kullanır; bulamazsa kaynağı istemenizi söyler.
+* İki yana yaslı PDF'lerde kaybolan kelime boşlukları PDF'teki kelime sırasından geri konur; yine de
+  yapışık kelime kalırsa kontrol raporu HATA verir. Tek başına sayfa numarası satırları silinir.
 
 Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaştırarak kontrol edin.
 

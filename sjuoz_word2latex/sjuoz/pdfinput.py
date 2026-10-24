@@ -70,6 +70,118 @@ def ensure_docx(path, workdir=None):
     return out
 
 
+def is_latex_pdf(path):
+    """PDF LaTeX ile mi üretilmiş? (Creator/Producer: LaTeX, pdfTeX, XeTeX, LuaTeX, dvipdfmx)"""
+    pm = _pymupdf()
+    if pm is None:
+        return False
+    try:
+        meta = pm.open(path).metadata or {}
+    except Exception:  # noqa
+        return False
+    info = " ".join(str(meta.get(k) or "") for k in ("creator", "producer"))
+    return bool(re.search(r"latex|pdftex|xetex|luatex|dvipdf|miktex|tex live", info, re.I))
+
+
+def latex_source_for(pdf):
+    """LaTeX ile üretilmiş PDF'in yanında (aynı klasörde, ya da oradaki bir zip'te) aynı adlı .tex var mı?"""
+    from .inputs import zip_names
+    folder = os.path.dirname(os.path.abspath(pdf))
+    stem = os.path.splitext(os.path.basename(pdf))[0].lower()
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return None
+    for n in names:
+        if n.lower() == stem + ".tex":
+            return os.path.join(folder, n)
+    for n in names:
+        if n.lower().endswith(".zip"):
+            zp = os.path.join(folder, n)
+            if any(os.path.basename(m).lower() == stem + ".tex" for m in zip_names(zp)):
+                return zp
+    return None
+
+
+def prefer_latex_source(path):
+    """LaTeX ile üretilmiş PDF verildiyse yanındaki .tex kaynağını kullanır; yoksa güçlü uyarı verir."""
+    if not is_pdf(path) or not is_latex_pdf(path):
+        return path
+    src = latex_source_for(path)
+    if src:
+        print("Bilgi: %s LaTeX ile üretilmiş; yanındaki LaTeX kaynağı kullanılıyor: %s"
+              % (os.path.basename(path), os.path.basename(src)))
+        return src
+    warn("%s LaTeX ile üretilmiş bir PDF. PDF'ten denklemler, tablolar ve bölüm yapısı doğru çıkmaz: yazarın "
+         ".tex kaynağını (resimler ve .bib ile birlikte .zip) isteyip onu verin." % os.path.basename(path))
+    return path
+
+
+def pdf_word_pairs(path):
+    """PDF'teki ardışık kelime çiftleri ve kelimeler (PyMuPDF boşlukları doğru çıkarır)."""
+    pm = _pymupdf()
+    pairs, words = set(), set()
+    if pm is None:
+        return pairs, words
+    try:
+        doc = pm.open(path)
+    except Exception:  # noqa
+        return pairs, words
+    for page in doc:
+        ws = [w[4] for w in page.get_text("words")]
+        words.update(ws)
+        pairs.update(zip(ws, ws[1:]))
+    doc.close()
+    return pairs, words
+
+
+def restore_spaces(body, pairs, words):
+    """pdf2docx iki yana yaslı satırlarda kelimeleri ayrı parçalara bölüp boşlukları atıyor
+    ("InPapuaNewGuinea"): PDF'te ardışık iki ayrı kelime olan parçaların arasına boşluk koyar."""
+    if not pairs:
+        return
+    for p in body.iter(W + "p"):
+        runs = [r for r in p.iter(W + "r") if r.find(W + "t") is not None]
+        for a, b in zip(runs, runs[1:]):
+            ta = "".join(t.text or "" for t in a.iter(W + "t"))
+            tb = "".join(t.text or "" for t in b.iter(W + "t"))
+            if not ta.strip() or not tb.strip() or ta[-1].isspace() or tb[0].isspace():
+                continue
+            left, right = ta.split()[-1], tb.split()[0]
+            if (left, right) in pairs and left + right not in words:
+                last = list(a.iter(W + "t"))[-1]
+                last.text = (last.text or "") + " "
+                last.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    # aynı parçanın içinde yapışık kalanlar: "significantlyimprove" → PDF'te "significantly" "improve"
+    following = {}
+    for x, y in pairs:
+        following.setdefault(x, set()).add(y)
+    for t in body.iter(W + "t"):
+        if t.text and t.text.strip():
+            new = " ".join(_split_glued(tok, following, words) for tok in t.text.split(" "))
+            if new != t.text:
+                t.text = new
+                t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+
+
+def _split_glued(tok, following, words, depth=0):
+    """PDF'te kelime olmayan parçayı PDF'te ardışık duran kelimelere böler (en çok 4 kelime)."""
+    if not tok or tok in words or len(tok) < 4 or depth > 3:
+        return tok
+    for k in range(len(tok) - 1, 0, -1):
+        a, b = tok[:k], tok[k:]
+        nxt = following.get(a)
+        if not nxt:
+            continue
+        if b in nxt:
+            return a + " " + b
+        if any(b.startswith(y) and len(y) > 1 for y in nxt):
+            rest = _split_glued(b, following, words, depth + 1)
+            if rest != b:
+                return a + " " + rest
+    return tok
+
+
 def looks_two_column(path):
     """Sayfaların çoğunda metin blokları sayfanın iki yarısında ayrı ayrı duruyorsa iki sütunludur."""
     pymupdf = _pymupdf()
@@ -445,8 +557,16 @@ def mark_headings(body):
         ppr.insert(0, st)
 
 
-def tidy_body(body, starts=()):
-    """document.xml gövdesini yerinde toparlar. starts: PDF'ten bulunan paragraf başları."""
+def tidy_body(body, starts=(), pairs=None, words=None):
+    """document.xml gövdesini yerinde toparlar. starts: PDF'ten bulunan paragraf başları;
+    pairs/words: PDF'teki kelime çiftleri (yapışık kelimeleri ayırmak için)."""
+    if pairs:
+        restore_spaces(body, pairs, words or set())
+    # yalnız sayfa numarası olan satırlar ("3", "- 3 -")
+    for p in list(body.findall(W + "p")):
+        if re.fullmatch(r"[\s\-–]*\d{1,4}[\s\-–]*", _text(p) or "x") and not any(
+                x.tag.endswith(("}drawing", "}pict", "}oMath")) for x in p.iter()):
+            body.remove(p)
     keys = start_keys(starts)
     split_lines(body)
     split_at_line_starts(body, keys)
@@ -507,7 +627,8 @@ def tidy_docx(path, pdf=None):
     with zipfile.ZipFile(path) as z:
         items = {n: z.read(n) for n in z.namelist()}
     root = etree.fromstring(items["word/document.xml"])
-    tidy_body(root.find(W + "body"), pdf_line_starts(pdf) if pdf else ())
+    pairs, words = pdf_word_pairs(pdf) if pdf else (set(), set())
+    tidy_body(root.find(W + "body"), pdf_line_starts(pdf) if pdf else (), pairs, words)
     items["word/document.xml"] = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         for n, data in items.items():

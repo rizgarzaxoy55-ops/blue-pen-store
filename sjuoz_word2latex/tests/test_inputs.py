@@ -88,3 +88,34 @@ def test_resolve_searches_subfolders_and_zips(tmp_path, monkeypatch):
     assert err is None and os.path.basename(real) == "SJUOZ+Cover+Letter-JORDAN (2).docx" and os.path.isfile(real)
     real, err = resolve_docx("yok.pdf")
     assert real is None and "zip" in err
+
+
+def test_resolve_prefers_word_and_latex_over_pdf(tmp_path, monkeypatch):
+    for n in ("makale.pdf", "makale.docx", "rapor.pdf", "rapor.tex"):
+        (tmp_path / n).write_bytes(b"x")
+    monkeypatch.chdir(tmp_path)
+    assert resolve_docx("makale")[0] == "makale.docx"
+    assert resolve_docx("rapor.docx")[0] == "rapor.tex"  # PDF'ten önce LaTeX kaynağı
+
+
+def test_report_flags_glued_words():
+    from sjuoz.report import glued_words
+
+    class P:
+        def __init__(self, t):
+            self._t = t
+
+        def text(self):
+            return self._t
+
+    class A:
+        pass
+    import sjuoz.docx as dx
+    art = A()
+    art.body = [dx.Para.__new__(dx.Para) for _ in range(2)]
+    art.body[0].tokens = [("t", "InPapuaNewGuinea,agricultureisoneofthemost important " * 3, None)]
+    art.body[1].tokens = [("t", "Agricultureisthemainsourceofliving for many; Thecoefficientpiisdefinedstrictly x", None)]
+    assert len(glued_words(art)) >= 5
+    art.body[0].tokens = [("t", "A normal sentence with optimisation-based https://doi.org/10.1000/abcdefghijklmnop", None)]
+    art.body[1].tokens = [("t", "Another normal sentence.", None)]
+    assert glued_words(art) == []

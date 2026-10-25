@@ -1,0 +1,29 @@
+{
+  "description": "pandoc ile üretilmiş: Heading stilleri, listeler, satır içi/ayrı denklem, tablo, şekil, özel karakterler, kapak mektubu yok",
+  "args": [
+    "--article-id",
+    "2001",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October"
+  ],
+  "expect": {
+    "authors": 3,
+    "orcids": 0,
+    "affiliations": 2,
+    "figures": 1,
+    "figures_captioned": 1,
+    "tables": 1,
+    "equations": 1,
+    "numbered_equations": 0,
+    "references": 2,
+    "linked_references": 2
+  },
+  "expect_pages": 2,
+  "max_status": "KONTROL"
+}

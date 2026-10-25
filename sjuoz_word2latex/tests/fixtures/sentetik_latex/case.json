@@ -1,0 +1,9 @@
+{
+  "description": "LaTeX kaynağı (.tex + .bib): authblk yazarları, \\rev/\\mycite makroları, numaralı ve çok satırlı (align) denklemler, \\eqref/\\ref ile denklem-tablo-şekil-bölüm atıfları, natbib + .bib (APA)",
+  "input": "main.tex",
+  "args": ["--article-id", "2013", "--volume", "14", "--issue", "4", "--year", "2026", "--month", "October"],
+  "expect": {"authors": 2, "affiliations": 2, "figures": 1, "tables": 1, "equations": 6, "numbered_equations": 4,
+             "references": 2, "linked_references": 2},
+  "expect_pages": 2,
+  "max_status": "KONTROL"
+}

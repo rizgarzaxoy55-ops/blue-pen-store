@@ -1,0 +1,168 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<doi_batch xmlns="http://www.crossref.org/schema/5.3.1" xmlns:jats="http://www.ncbi.nlm.nih.gov/JATS1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="5.3.1" xsi:schemaLocation="http://www.crossref.org/schema/5.3.1 https://www.crossref.org/schemas/crossref5.3.1.xsd">
+  <head>
+    <doi_batch_id>sjuoz-14-4-1993-20261025131354</doi_batch_id>
+    <timestamp>20261025131354</timestamp>
+    <depositor>
+      <depositor_name>Science Journal of University of Zakho</depositor_name>
+      <email_address>editor@example.org</email_address>
+    </depositor>
+    <registrant>University of Zakho</registrant>
+  </head>
+  <body>
+    <journal>
+      <journal_metadata language="en">
+        <full_title>Science Journal of University of Zakho</full_title>
+        <abbrev_title>SJUOZ</abbrev_title>
+        <issn media_type="print">2663-628X</issn>
+        <issn media_type="electronic">2663-6298</issn>
+      </journal_metadata>
+      <journal_issue>
+        <publication_date media_type="online">
+          <month>10</month>
+          <year>2026</year>
+        </publication_date>
+        <journal_volume>
+          <volume>14</volume>
+        </journal_volume>
+        <issue>4</issue>
+      </journal_issue>
+      <journal_article publication_type="full_text" language="en">
+        <titles>
+          <title>Performance Enhancement for Mouth Detection Time Based on Modified Viola-Jones Algorithm</title>
+        </titles>
+        <contributors>
+          <person_name sequence="first" contributor_role="author">
+            <given_name>Mohammed E.</given_name>
+            <surname>Safi</surname>
+            <affiliations>
+              <institution>
+                <institution_name>College of Electrical Engineering, University of Technology- Iraq, Baghdad, Iraq</institution_name>
+              </institution>
+            </affiliations>
+            <ORCID authenticated="false">https://orcid.org/0000-0003-4267-1702</ORCID>
+          </person_name>
+          <person_name sequence="additional" contributor_role="author">
+            <given_name>Eyad I.</given_name>
+            <surname>Abbas</surname>
+            <affiliations>
+              <institution>
+                <institution_name>College of Electrical Engineering, University of Technology- Iraq, Baghdad, Iraq</institution_name>
+              </institution>
+            </affiliations>
+            <ORCID authenticated="false">https://orcid.org/0000-0002-5087-4713</ORCID>
+          </person_name>
+          <person_name sequence="additional" contributor_role="author">
+            <given_name>Alaa H.</given_name>
+            <surname>Ali</surname>
+            <affiliations>
+              <institution>
+                <institution_name>Department of Medical Instrumentation Techniques Engineering, Al-Mustaqbal University, 51001, Babylon, Iraq</institution_name>
+              </institution>
+            </affiliations>
+            <ORCID authenticated="false">https://orcid.org/0000-0002-6982-4994</ORCID>
+          </person_name>
+        </contributors>
+        <jats:abstract>
+          <jats:p>Mouth detection is an important issue in visual speech recognition. The de facto algorithm used to achieve this is the Viola-Jones algorithm. Nevertheless, time enhancement for the auto-detection of this algorithm is required. Therefore, the goal of this research is to propose a modified approach based on the Viola-Jones algorithm to enhance the detection time. The main contribution of the proposed algorithm is limiting the auto-valuing for the threshold of the Viola-Jones algorithm and enhancing the time by configuring the maximum step for the adaptive threshold value. The UOTletters database was used in the experiments of this research with 30 speakers pronouncing English letters with overall frames of 28164. The experiment results have shown that the average detection time for the proposed method was 0.585 sec, compared with the baseline method's 2.097 sec. As a result, the proposed approach enhanced the mouth detection time with respect to the baseline algorithm (358.46%). Consequently, the proposed algorithm is a good solution for real-time visual speech recognition regarding the detection time enhancement.</jats:p>
+        </jats:abstract>
+        <publication_date media_type="online">
+          <month>10</month>
+          <year>2026</year>
+        </publication_date>
+        <pages>
+          <first_page>571</first_page>
+          <last_page>576</last_page>
+        </pages>
+        <ns0:program xmlns:ns0="http://www.crossref.org/AccessIndicators.xsd" name="AccessIndicators">
+          <ns0:license_ref>https://creativecommons.org/licenses/by-nc-sa/4.0/</ns0:license_ref>
+        </ns0:program>
+        <doi_data>
+          <doi>10.25271/sjuoz.2026.14.4.1993</doi>
+          <resource>https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/1993</resource>
+        </doi_data>
+        <citation_list>
+          <citation key="ref1">
+            <doi>10.1109/CSASE48920.2020.9142095</doi>
+            <unstructured_citation>Ali, Wisam H, R. Saeed, T., &amp; H. Al-Muifraje, M. (2020). FPGA Implementation of Visual Speech Recognition System based on NVGRAM-WNN. 2020 International Conference on Computer Science and Software Engineering (CSASE), 132–137. https://doi.org/10.1109/CSASE48920.2020.9142095</unstructured_citation>
+          </citation>
+          <citation key="ref2">
+            <unstructured_citation>Ali, Wissam Hassan. (2016). Pattern Recognition System for Human Utterance (Issue June). University of Technology-Iraq.</unstructured_citation>
+          </citation>
+          <citation key="ref3">
+            <doi>10.1016/j.eswa.2008.08.001</doi>
+            <unstructured_citation>Balasubramanian, M., Palanivel, S., &amp; Ramalingam, V. (2009). Real time face and mouth recognition using radial basis function neural networks. Expert Systems with Applications, 36(3, Part 2), 6879–6888. https://doi.org/https://doi.org/10.1016/j.eswa.2008.08.001</unstructured_citation>
+          </citation>
+          <citation key="ref4">
+            <doi>10.1109/GMAI.2006.18</doi>
+            <unstructured_citation>Berbar, M. A., Kelash, H. M., &amp; Kandeel, A. A. (2006). Faces and Facial Features Detection in Color Images. Geometric Modeling and Imaging--New Trends (GMAI’06), 209–214. https://doi.org/10.1109/GMAI.2006.18</unstructured_citation>
+          </citation>
+          <citation key="ref5">
+            <doi>10.1016/j.jvcir.2015.04.013</doi>
+            <unstructured_citation>Ibrahim, M. Z., &amp; Mulvaney, D. J. (2015). Geometrical-based lip-reading using template probabilistic multi-dimension dynamic time warping. JOURNAL OF VISUAL COMMUNICATION AND IMAGE REPRESENTATION, 30, 219–233. https://doi.org/10.1016/j.jvcir.2015.04.013</unstructured_citation>
+          </citation>
+          <citation key="ref6">
+            <doi>10.1088/1742-6596/1198/9/092003</doi>
+            <unstructured_citation>Indrabayu, Hasanuddin, &amp; Nurtanio, I. (2019). An Approach in Auto Valuing for Optimal Threshold of Viola Jones. Symposium of Emerging Nuclear Technology and Engineering Novelty. https://doi.org/10.1088/1742-6596/1198/9/092003</unstructured_citation>
+          </citation>
+          <citation key="ref7">
+            <doi>10.1088/1757-899X/1022/1/012065</doi>
+            <unstructured_citation>Joshi, A., Chavan, V., &amp; Kaveri, P. (2021). Semantic Gap Reduction From Mouth Feature Threshold Value Using Viola Jones Algorithm. ICCRDA 2020. https://doi.org/10.1088/1757-899X/1022/1/012065</unstructured_citation>
+          </citation>
+          <citation key="ref8">
+            <unstructured_citation>Kaur, J., &amp; Sharma, A. (2017). Performance Analysis of Face Detection by using Viola-Jones algorithm. International Journal of Computational Intelligence Research, 13(5), 707–717.</unstructured_citation>
+          </citation>
+          <citation key="ref9">
+            <doi>10.1109/ICMWI.2010.5648043</doi>
+            <unstructured_citation>Kherchaoui, S., &amp; Houacine, A. (2010). Face detection based on a model of the skin color with constraints and template matching. 2010 International Conference on Machine and Web Intelligence, 469–472. https://doi.org/10.1109/ICMWI.2010.5648043</unstructured_citation>
+          </citation>
+          <citation key="ref10">
+            <doi>10.5120/17667-8494</doi>
+            <unstructured_citation>Maghraby, A. El, Abdalla, M., &amp; El, M. Y. (2014). Detect and Analyze Face Parts Information using Viola- Jones and Geometric Approaches. International Journal of Computer Applications, 101(3), 23–28. https://doi.org/10.5120/17667-8494</unstructured_citation>
+          </citation>
+          <citation key="ref11">
+            <unstructured_citation>MathWorks. (n.d.). vision.CascadeObjectDetector (Detect objects using the Viola-Jones algorithm). Retrieved December 27, 2022, from https://www.mathworks.com/help/vision/ref/vision.cascadeobjectdetector-system-object.html</unstructured_citation>
+          </citation>
+          <citation key="ref12">
+            <doi>10.1109/TSMCB.2005.862728</doi>
+            <unstructured_citation>Nguyen, D., Halupka, D., Member, S., Aarabi, P., Sheikholeslami, A., &amp; Member, S. (2006). Real-Time Face Detection and Lip Feature Extraction Using Field-Programmable Gate Arrays. IEEE TRANSACTIONS ON SYSTEMS, MAN, AND CYBERNETICS, 36(4), 902–912. https://doi.org/10.1109/TSMCB.2005.862728</unstructured_citation>
+          </citation>
+          <citation key="ref13">
+            <doi>10.1109/ICCV.1998.710772</doi>
+            <unstructured_citation>Papageorgiou, C. P., Oren, M., &amp; Poggio, T. (1998). A general framework for object detection. Sixth International Conference on Computer Vision (IEEE Cat. No.98CH36271), 555–562. https://doi.org/10.1109/ICCV.1998.710772</unstructured_citation>
+          </citation>
+          <citation key="ref14">
+            <doi>10.1016/j.phycom.2022.101831</doi>
+            <unstructured_citation>Radhi, A. A., Akkar, H. A. R., &amp; Abdullah, H. N. (2022). Skewness and access kurtosis as denoised mixed features-based K-Medoids for cooperative spectrum sensing. Physical Communication, 54, 101831. https://doi.org/https://doi.org/10.1016/j.phycom.2022.101831</unstructured_citation>
+          </citation>
+          <citation key="ref15">
+            <doi>10.1016/S0031-3203(00)00173-4</doi>
+            <unstructured_citation>Ryu, Y.-S., &amp; Oh, S.-Y. (2001). Automatic extraction of eye and mouth fields from a face image using eigenfeatures and multilayer perceptrons. Pattern Recognition, 34(12), 2459–2466. https://doi.org/https://doi.org/10.1016/S0031-3203(00)00173-4</unstructured_citation>
+          </citation>
+          <citation key="ref16">
+            <doi>10.1109/AIC-MITCSA.2016.7759909</doi>
+            <unstructured_citation>Safi, Mohammed E., &amp; Abbas, E. I. (2016). Microcontroller - Controlled security door based on speech recognition. In Al-Sadiq International Conference on Multidisciplinary in IT and Communication Techniques Science and Applications, AIC-MITCSA 2016 (pp. 48–53). https://doi.org/10.1109/AIC-MITCSA.2016.7759909</unstructured_citation>
+          </citation>
+          <citation key="ref17">
+            <doi>10.1016/j.apacoust.2022.108848</doi>
+            <unstructured_citation>Safi, Mohammed Ehsan, &amp; Abbas, E. I. (2022). Isolated word recognition based on PNCC with different classifiers in a noisy environment. Applied Acoustics, 195, 108848. https://doi.org/https://doi.org/10.1016/j.apacoust.2022.108848</unstructured_citation>
+          </citation>
+          <citation key="ref18">
+            <doi>10.1109/ICEANS58413.2023.10630463</doi>
+            <unstructured_citation>Safi, Mohammed Ehsan, &amp; Abbas, E. I. (2023). Lip Segmentation for Visual Speech Recognition Based on the Convolution Process. 2023 International Conference on Engineering Applied and Nano Sciences (ICEANS), 102–106. https://doi.org/10.1109/ICEANS58413.2023.10630463</unstructured_citation>
+          </citation>
+          <citation key="ref19">
+            <unstructured_citation>Setu, T. A., &amp; Rahman, M. (2016). Human Face Detection and Segmentation of Facial Feature Region. Global Journal of Computer Science and Technology: G Interdisciplinary, 16(1).</unstructured_citation>
+          </citation>
+          <citation key="ref20">
+            <doi>10.1109/CVPR.2001.990517</doi>
+            <unstructured_citation>Viola, P., &amp; Jones, M. (2001). Rapid Object Detection using a Boosted Cascade of Simple Features. Proceedings of the 2001 IEEE Computer Society Conference on Computer Vision and Pattern Recognition. https://doi.org/https://doi.org/10.1109/CVPR.2001.990517</unstructured_citation>
+          </citation>
+          <citation key="ref21">
+            <unstructured_citation>Zhang, C., &amp; Zhang, Z. (2010). A Survey of Recent Advances in Face Detection. Microsoft Research, 1(MSR-TR-2010-66). https://www.microsoft.com/en-us/research/publication/a-survey-of-recent-advances-in-face-detection/</unstructured_citation>
+          </citation>
+        </citation_list>
+      </journal_article>
+    </journal>
+  </body>
+</doi_batch>

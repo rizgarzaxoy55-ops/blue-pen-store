@@ -1,0 +1,120 @@
+name: SJUOZ Word2LaTeX testleri
+
+on:
+  push:
+    paths: ["sjuoz_word2latex/**", ".github/workflows/sjuoz-word2latex.yml"]
+  pull_request:
+    paths: ["sjuoz_word2latex/**", ".github/workflows/sjuoz-word2latex.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Sistem paketleri (XeLaTeX, yazı tipleri, EMF dönüştürücü, pdftotext)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex texlive-latex-extra texlive-fonts-recommended fonts-urw-base35 \
+            fonts-liberation fonts-hosny-amiri poppler-utils libreoffice-draw
+
+      - name: Python paketleri ve paket kurulumu
+        working-directory: sjuoz_word2latex
+        run: |
+          pip install ".[test]" pyflakes
+          sjuoz-word2latex --help > /dev/null
+
+      - name: Kod denetimi (pyflakes)
+        working-directory: sjuoz_word2latex
+        run: python -m pyflakes sjuoz tests
+
+      - name: Testler
+        working-directory: sjuoz_word2latex
+        run: python -m pytest tests -v
+
+      - name: Örnek çıktılar (PDF + kontrol raporu)
+        if: always()
+        working-directory: sjuoz_word2latex
+        run: |
+          for d in tests/fixtures/*/; do
+            name=$(basename "$d")
+            [ -f "$d/case.json" ] || continue
+            # case.json'da "input" varsa (ör. LaTeX main.tex) o, yoksa klasördeki .docx'ler
+            inputs=$(python -c "import json,glob; c=json.load(open('$d/case.json')); print(' '.join(['$d'+c['input']] if c.get('input') else sorted(glob.glob('$d*.docx'))))")
+            python sjuoz_word2latex.py $inputs -o "../ci_cikti/$name" \
+              $(python -c "import json,sys; print(' '.join(json.load(open('$d/case.json'))['args']))") || true
+          done
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: sjuoz-ornek-ciktilar
+          path: |
+            ci_cikti/**/*.pdf
+            ci_cikti/**/*_kontrol_raporu.html
+            ci_cikti/*.zip
+
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Paketler
+        # PyMuPDF 2.x yapay zekâ düzen modülü (onnxruntime) getiriyor: .exe'yi bozuyor ve büyütüyor
+        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2" pypandoc_binary python-docx
+
+      - name: .exe üret
+        working-directory: sjuoz_word2latex
+        shell: pwsh
+        run: ./packaging/build_windows.ps1
+
+      - name: Duman testi (.exe bir makaleyi dönüştürebiliyor mu?)
+        working-directory: sjuoz_word2latex
+        shell: pwsh
+        run: |
+          ./dist/sjuoz-word2latex.exe tests/fixtures/sentetik_temel/sentetik_temel.docx -o duman `
+            --article-id 2001 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip `
+            --published "15 Oct 2026" --depositor-email editor@uoz.edu.krd
+          if ($LASTEXITCODE -ne 0) { throw "exe hata verdi" }
+          foreach ($f in "duman/2001.tex", "duman/2001.docx", "duman/2001_crossref.xml", "duman/2001_jats.xml", "duman/SJUOZ.png") {
+            if (-not (Test-Path $f)) { throw "eksik: $f" }
+          }
+          if (-not (Select-String -Path duman/2001_kontrol_raporu.html -Pattern "Crossref 5.3.1")) {
+            throw "Crossref şeması .exe içinde bulunamadı"
+          }
+          # PDF girişi (pdf2docx + PyMuPDF .exe içinde çalışıyor mu?)
+          ./dist/sjuoz-word2latex.exe tests/fixtures/sentetik_pdf/sentetik_pdf.pdf -o duman_pdf `
+            --article-id 2011 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe PDF'te hata verdi" }
+          if (-not (Select-String -Path duman_pdf/2011.tex -Pattern "Ali Hassan")) { throw "PDF'ten yazar okunamadı" }
+          # LaTeX girişi (pandoc .exe içinde, APA stili veri olarak)
+          ./dist/sjuoz-word2latex.exe tests/fixtures/sentetik_latex/main.tex -o duman_tex `
+            --article-id 2013 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe LaTeX'te hata verdi" }
+          if (-not (Select-String -Path duman_tex/2013.tex -SimpleMatch -Pattern "\text{with } \sigma")) {
+            throw "LaTeX denklemi korunmadı"
+          }
+          if (-not (Select-String -Path duman_tex/2013.tex -Pattern "Van Hai")) { throw "LaTeX kaynakçası okunamadı" }
+          # İçinde Word dosyası olan zip
+          Compress-Archive -Path tests/fixtures/sentetik_temel/sentetik_temel.docx -DestinationPath duman_word.zip
+          ./dist/sjuoz-word2latex.exe duman_word.zip -o duman_zip `
+            --article-id 2001 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip
+          if ($LASTEXITCODE -ne 0) { throw "exe zip'te hata verdi" }
+          if (-not (Select-String -Path duman_zip/2001.tex -Pattern "Ali Hassan")) { throw "zip'teki Word okunamadı" }
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: SJUOZ-Word2LaTeX-Windows
+          path: |
+            sjuoz_word2latex/dist/*.exe
+            sjuoz_word2latex/README.md

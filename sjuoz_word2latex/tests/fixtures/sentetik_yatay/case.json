@@ -1,0 +1,8 @@
+{
+  "description": "Yatay sayfa: Word'de yatay bölümdeki tablo ve şekil, ayrıca 12 sütunlu tablo kendiliğinden yatay sayfaya konmalı",
+  "args": ["--article-id", "2006", "--volume", "14", "--issue", "4", "--year", "2026", "--month", "October"],
+  "expect": {"authors": 2, "orcids": 0, "affiliations": 1, "figures": 1, "figures_captioned": 1, "tables": 2,
+             "equations": 0, "numbered_equations": 0, "references": 1, "linked_references": 1},
+  "expect_pages": 5,
+  "max_status": "KONTROL"
+}

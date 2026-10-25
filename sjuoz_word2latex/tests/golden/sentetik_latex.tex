@@ -1,0 +1,244 @@
+% !TEX program = xelatex
+%!TEX TS-program = xelatex
+% Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
+\documentclass[9pt]{extarticle}
+\usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
+\usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{qrcode}
+\usepackage{xurl}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+
+\titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+\newcommand{\titlesize}{\fontsize{12}{10}}
+\renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
+\renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
+\renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\DeclareCaptionLabelFormat{sjuozparen}{#1 (#2)}
+\captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
+\definecolor{sjuozblue}{HTML}{C1D1EB}
+\definecolor{colorabs}{HTML}{E2EAF4}
+
+% Yazı tipleri: Times New Roman / Garamond yoksa benzerleri kullanılır
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{%
+  \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}{%
+    \IfFontExistsTF{Liberation Serif}{\setmainfont{Liberation Serif}}{}}}
+\IfFontExistsTF{Garamond}{\newfontfamily{\garamond}{Garamond}}{%
+  \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
+
+\newcommand{\sjuozdoi}{https://doi.org/10.25271/sjuoz.2026.14.4.2013}
+% İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
+\newcommand{\firstfooterbottom}{0.4in}
+\newcommand{\firstpagereserve}{1.4in}
+% Sadece ilk sayfada metin alanını kısalt; ilk sayfa basıldıktan sonra eski haline döndür
+\makeatletter
+\newlength{\sjuozfulltextheight}
+\AtBeginDocument{%
+  \setlength{\sjuozfulltextheight}{\textheight}%
+  \global\advance\textheight by -\firstpagereserve
+  \global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight
+  \AddToHookNext{shipout/after}{\global\textheight\sjuozfulltextheight}}
+\makeatother
+
+% Başlık ve altlık (header/footer)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\large \textit{Ali \& Omer}}
+\rhead{\small{\garamond{\textbf{SJUOZ|VOL14|OCT 2026|Pxxx-xxx}}}}
+\lfoot{\raisebox{8pt}{\textit{DOI:}\href{\sjuozdoi}{\textit{\small{\sjuozdoi}}}}}
+\cfoot{\raisebox{8pt}{\thepage}}
+
+\fancypagestyle{firstpage}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \rhead{\IfFileExists{SJUOZ.png}{\includegraphics[width=1.04in]{SJUOZ.png}}{\textbf{SJUOZ}}}
+  \lhead{\colorbox{sjuozblue}{%
+      \begin{minipage}[b]{0.83\textwidth}
+        \vspace{0.15cm}
+        \hspace{-3pt}\ \normalsize \noindent \garamond{Science Journal of University of Zakho}\\
+        \normalsize \textit{\garamond{DOI: \sjuozdoi}}
+        \vspace{0.2cm}
+      \end{minipage}}}
+}
+
+% İlk sayfanın altındaki bilgi kutusu (sayfaya mutlak konumla yerleştirilir)
+\newcommand{\sjuozfirstfooter}{%
+  \begin{minipage}[b]{\textwidth}
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \begin{minipage}[t]{0.2\textwidth}\hspace{1pt} \small Access this article online \\
+        \vspace{0.1cm}
+        {\hypersetup{urlcolor=black}\qrcode[height=2.6162cm]{https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/2013}}
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}
+        \small DOI:\href{\sjuozdoi}{\sjuozdoi} \\ \\[0.5cm]
+        Printed ISSN 2663-628X; \\
+        Electronic ISSN 2663-6298
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}\small \textbf{Science Journal of University of Zakho} \\
+        \textbf{Vol. 14, No. 04, pp. xxx-xxx, October-2026} \\[0.5cm]
+        This is an open access article under a CC BY-NC-SA 4.0 license \\
+        (\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{https://creativecommons.org/licenses/by-nc-sa/4.0/})
+      \end{minipage} \\[0.15cm]
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \centering \normalsize \thepage
+  \end{minipage}}
+
+% ORCID simgesi: orcid.png varsa o, yoksa çizilmiş yeşil "iD" simgesi
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{\IfFileExists{orcid.png}{\includegraphics[width=9pt]{orcid.png}}{%
+  \tikz[baseline=-0.7ex]{\fill[orcidgreen] (0,0) circle (4.5pt);
+  \node[text=white, font=\fontsize{4.5pt}{4.5pt}\selectfont\bfseries, inner sep=0pt] at (0,0) {iD};}}}
+\newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
+
+\begin{document}
+\setcounter{page}{1}
+\thispagestyle{firstpage}
+\AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
+
+\noindent \large \textbf{Original Article} \\[-5pt]
+\begin{center} \titlesize \textbf{OPTIMAL ALLOCATION OF LAND USING LINEAR PROGRAMMING} \end{center}
+\begin{center} \large \textbf{Karwan Ali \textsuperscript{1} and Dilan Omer \textsuperscript{2,*}}
+\end{center}
+\noindent
+\large \textsuperscript{1}Department of Mathematics, University of Zakho, Duhok, Iraq.\\
+\large \textsuperscript{2}Department of Statistics, University of Duhok, Duhok, Iraq.\\
+
+\begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:dilan.omer@uod.ac}{dilan.omer@uod.ac} (Tel: +964-7500000000)
+\end{center}
+\rule{\textwidth}{1.5pt}
+\begin{minipage}[t]{0.175\textwidth}
+  \hspace{0cm} \vspace{0cm}
+\end{minipage} \begin{minipage}[t]{0.8\textwidth}
+\large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
+\rule{\textwidth}{1.5pt} \\
+\begin{minipage}[t]{0.175\textwidth}
+  \vspace{1cm} Received \\ xxx \\[0.5cm] Accepted \\ xxx \\[0.5cm] Published \\ xxx \\[0.25cm]
+\end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
+  \large{We formulate a linear program for land allocation and study the effect of random yields on the optimal plan. The model is solved with the simplex method and validated on regional data.
+  \\[2pt]
+  \normalsize \textbf{Keywords:} linear programming; stochastic yield; land allocation.
+  }
+\end{minipage}}
+\\[-10pt]
+
+\normalsize
+\noindent \rule{\textwidth}{0.75pt}
+\begin{multicols}{2}
+\section{INTRODUCTION}
+Agriculture depends on land and labour (\hyperlink{ref:1}{Smith \& Doe, 2020}). Earlier work by \hyperlink{ref:2}{Van Hai \& Silhavy (2022)} used clustering, and the problem in $\mathbb{R}^n$ is convex (\hyperlink{ref:1}{Smith \& Doe, 2020}; \hyperlink{ref:2}{Van Hai \& Silhavy, 2022}). The model is given in \hyperlink{eq:1}{Equation~(1)}, the constraints in \hyperlink{eq:2}{(2)} and \hyperlink{eq:3}{(3)}, the data in \hyperlink{tab:1}{Table~1} and the plot in \hyperlink{fig:1}{Figure~1}.
+
+\section{METHODS}
+The objective is
+
+\hypertarget{eq:1}{}
+\begin{equation}
+  \sjuozfitone{Z = \sum_{i=1}^{6} p_i x_i}
+\end{equation}
+subject to
+
+\hypertarget{eq:2}{}
+\begin{equation}
+  \sjuozfitone{x_1 + x_2 + x_3 + x_4 + x_5 + x_6  \leq \lambda}
+\end{equation}
+\hypertarget{eq:3}{}
+\begin{equation}
+  \sjuozfitone{c_1 x_1 + c_2 x_2 + c_3 x_3 + c_4 x_4 + c_5 x_5 + c_6 x_6  \leq \beta}
+\end{equation}
+\begin{equation*}
+  \sjuozfitone{x_i  \geq 0}
+\end{equation*}
+and the yield is random, $Y_i = \mu_i + \epsilon_i$:
+
+\begin{equation*}
+  \sjuozfit{\epsilon_i \sim N(0, \sigma^2), \quad \text{with } \sigma = 0.11\,\mu_i}{\begin{aligned}\epsilon_i &\sim N(0, \sigma^2), \quad \text{with } \sigma \\ &= 0.11\,\mu_i\end{aligned}}{\begin{aligned}\epsilon_i &\sim N(0, \sigma^2), \quad \text{with } \sigma \\ &= 0.11\,\mu_i\end{aligned}}
+\end{equation*}
+As shown in Section~1, the yield follows
+
+\hypertarget{eq:4}{}
+\begin{equation}
+  \sjuozfitone{Y_i \sim N\left(\mu_i, \sigma^2\right)}
+\end{equation}
+\end{multicols}
+\noindent
+\begin{minipage}{\linewidth}
+\centering
+\hypertarget{tab:1}{}
+\captionof{table}{Yield per hectare.}
+\vspace{-6pt}
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Crop} & \textbf{Yield (t/ha)} \\ \midrule
+Coffee & 0.75 \\ \addlinespace[0.3em]
+Banana & 6.50 \\
+\bottomrule
+\end{tabularx}
+\end{minipage}
+\par\vspace{6pt}
+
+\setlength{\premulticols}{0.45\textheight}\begin{multicols}{2}\setlength{\premulticols}{50pt}
+\noindent\begin{minipage}{\linewidth}
+\centering\hypertarget{fig:1}{}
+\includegraphics[width=\linewidth, height=0.42\textheight, keepaspectratio]{figures/Figure1.IMG}
+\captionof{figure}{Total production by crop.}
+\end{minipage}
+\par\vspace{6pt}
+
+\section{CONCLUSION}
+\hyperlink{eq:4}{Equation~(4)} completes the model (\hyperlink{ref:2}{Van Hai \& Silhavy, 2022}).
+
+\subsection*{Conflict of Interest:}
+The authors declare no conflict of interest.
+
+\section*{REFERENCES}
+\begin{list}{}{
+    \setlength{\leftmargin}{1.5em}
+    \setlength{\itemindent}{-1.5em}
+    \setlength{\parsep}{0pt}
+    \setlength{\itemsep}{6pt}
+}
+\item \hypertarget{ref:1}{}Smith, J., \& Doe, J. (2020). Linear programming in agriculture. \textit{Journal of Farm Planning}, \textit{12}(3), 45–60. DOI:\href{https://doi.org/10.1000/jfp.2020.45}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1000/jfp.2020.45}}}
+
+\item \hypertarget{ref:2}{}Van Hai, V., \& Silhavy, P. (2022). Effort estimation via clustering. \textit{IEEE Access}, \textit{10}, 1–10.
+
+\end{list}
+\end{multicols}
+
+\end{document}

@@ -1,0 +1,25 @@
+{
+  "description": "Matematik makalesi: iki sütunda uzun denklemler — '+' ve '='den satırlara bölünen toplamlar ve eşitlik zincirleri, bölünemeyen kesir ve matris (gerekirse küçültülür), ‖x‖ normu, cases; hiçbir denklem sütundan taşmamalı",
+  "args": [
+    "--article-id",
+    "2012",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October"
+  ],
+  "expect": {
+    "authors": 2,
+    "affiliations": 1,
+    "equations": 7,
+    "numbered_equations": 7,
+    "references": 1,
+    "linked_references": 1
+  },
+  "expect_pages": 1,
+  "max_status": "KONTROL"
+}

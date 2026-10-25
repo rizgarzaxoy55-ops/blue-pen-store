@@ -1,0 +1,31 @@
+{
+  "description": "Gerçek makale (SJUOZ 1993): yazar-yıl atıfları, OMML denklemler, SEQ alan kodları, birleştirilecek affiliasyonlar, kapak mektubundan ORCID",
+  "args": [
+    "--article-id",
+    "1993",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October",
+    "--first-page",
+    "571"
+  ],
+  "expect": {
+    "authors": 3,
+    "orcids": 3,
+    "affiliations": 2,
+    "figures": 9,
+    "figures_captioned": 9,
+    "tables": 2,
+    "equations": 6,
+    "numbered_equations": 6,
+    "references": 21,
+    "linked_references": 21
+  },
+  "expect_pages": 6,
+  "max_status": "KONTROL"
+}

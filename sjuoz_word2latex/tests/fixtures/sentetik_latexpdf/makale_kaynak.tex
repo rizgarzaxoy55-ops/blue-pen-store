@@ -1,0 +1,68 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage{amsmath,times}
+\usepackage[margin=2.5cm]{geometry}
+\begin{document}
+\begin{center}
+{\large\bfseries ALLOCATION OF LAND WITH LINEAR PROGRAMMING}\\[6pt]
+Karwan Ali$^{1}$, Dilan Omer$^{2,*}$\\[4pt]
+{\small $^{1}$Department of Mathematics, University of Zakho, Duhok, Iraq. $^{2}$Department of Statistics, University of Duhok, Duhok, Iraq.}\\[4pt]
+{\small * Corresponding author. E-mail: dilan.omer@uod.ac}
+\end{center}
+
+\noindent\textbf{ABSTRACT}
+
+\noindent We formulate a linear program for allocating land among crops and study random yields with a
+simple stochastic model. The optimal plan is found with the simplex method.
+
+\noindent\textbf{KEYWORDS:} linear programming; stochastic yield
+
+\section{INTRODUCTION}
+Agriculture is important for food security (World Bank, 2014). The planning problem was described by
+Food and Agriculture Organization of the United Nations (2023) and solved by Smith and Doe (2020).
+
+\section{METHODS}
+Let the decision variables be defined as follows.
+\begin{equation}
+x_1 = \text{allocated land for Coffee (hectares)}
+\end{equation}
+The objective is
+\begin{equation}
+Z = p_1x_1 + p_2x_2 + p_3x_3 + p_4x_4 + p_5x_5 + p_6x_6
+\end{equation}
+subject to the land constraint
+\begin{equation}
+x_1 + x_2 + x_3 \leq \lambda
+\end{equation}
+and the yield follows $Y_i = \mu_i + \epsilon_i$ with
+\begin{equation}
+\epsilon_i \sim N(0,\sigma_i^2), \quad \text{with } \sigma_i \text{ as its standard deviation}
+\end{equation}
+The implied area is
+\begin{equation}
+a_i = \frac{t_i}{\mu_i}
+\end{equation}
+
+\begin{table}[h]
+\centering
+\caption{Yield per hectare by crop}
+\begin{tabular}{lcc}
+\hline
+Crops & Yield (tonnes/ha) & Cost (PGK/ha) \\
+\hline
+Coffee & 0.75 & 498 \\
+Sweet Potato & 14.00 & 2,500 \\
+Banana & 6.50 & 1,776.5 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{CONCLUSION}
+The model is useful for planning.
+
+\section*{REFERENCES}
+\noindent Food and Agriculture Organization of the United Nations (2023). Agricultural production statistics: Papua New Guinea. Rome.
+
+\noindent Smith, J. and Doe, J. (2020). Linear programming in agriculture. Journal of Farm Planning, 12(3):45--60.
+
+\noindent World Bank (2014). Coffee and cocoa agriculture project Papua New Guinea.
+\end{document}

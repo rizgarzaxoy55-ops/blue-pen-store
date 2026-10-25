@@ -1,0 +1,29 @@
+{
+  "description": "sentetik_temel + Word sütun grafiği (chart) + EMF resim",
+  "args": [
+    "--article-id",
+    "2002",
+    "--volume",
+    "14",
+    "--issue",
+    "4",
+    "--year",
+    "2026",
+    "--month",
+    "October"
+  ],
+  "expect": {
+    "authors": 3,
+    "orcids": 0,
+    "affiliations": 2,
+    "figures": 3,
+    "figures_captioned": 3,
+    "tables": 1,
+    "equations": 1,
+    "numbered_equations": 0,
+    "references": 2,
+    "linked_references": 2
+  },
+  "expect_pages": 2,
+  "max_status": "KONTROL"
+}

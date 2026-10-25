@@ -1,0 +1,8 @@
+{
+  "description": "80 satırlık tablo: sayfalara bölünmeli, başlık satırı her sayfada tekrarlanmalı, hiçbir satır kaybolmamalı",
+  "args": ["--article-id", "2004", "--volume", "14", "--issue", "4", "--year", "2026", "--month", "October"],
+  "expect": {"authors": 2, "orcids": 0, "affiliations": 1, "figures": 0, "figures_captioned": 0, "tables": 1,
+             "equations": 0, "numbered_equations": 0, "references": 1, "linked_references": 1},
+  "expect_pages": 3,
+  "max_status": "KONTROL"
+}

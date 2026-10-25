@@ -1,0 +1,283 @@
+% !TEX program = xelatex
+%!TEX TS-program = xelatex
+% Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
+\documentclass[9pt]{extarticle}
+\usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
+\usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{qrcode}
+\usepackage{xurl}
+\usepackage{lastpage}
+\usepackage{indentfirst}
+\usepackage{eso-pic}
+\usepackage{tikz}
+\usepackage[colorlinks=true, urlcolor=blue, linkcolor=black, citecolor=black]{hyperref}
+
+\titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+\newcommand{\titlesize}{\fontsize{12}{10}}
+\renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
+\renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
+\renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\DeclareCaptionLabelFormat{sjuozparen}{#1 (#2)}
+\captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
+\captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
+\captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
+\definecolor{sjuozblue}{HTML}{C1D1EB}
+\definecolor{colorabs}{HTML}{E2EAF4}
+
+% Yazı tipleri: Times New Roman / Garamond yoksa benzerleri kullanılır
+\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{%
+  \IfFontExistsTF{TeX Gyre Termes}{\setmainfont{TeX Gyre Termes}}{%
+    \IfFontExistsTF{Liberation Serif}{\setmainfont{Liberation Serif}}{}}}
+\IfFontExistsTF{Garamond}{\newfontfamily{\garamond}{Garamond}}{%
+  \IfFontExistsTF{EB Garamond}{\newfontfamily{\garamond}{EB Garamond}}{\newcommand{\garamond}{\rmfamily}}}
+
+\newcommand{\sjuozdoi}{https://doi.org/10.25271/sjuoz.2026.14.4.2004}
+% İlk sayfadaki bilgi kutusunun sayfa altından yüksekliği ve metin için ayrılan boşluk
+\newcommand{\firstfooterbottom}{0.4in}
+\newcommand{\firstpagereserve}{1.4in}
+% Sadece ilk sayfada metin alanını kısalt; ilk sayfa basıldıktan sonra eski haline döndür
+\makeatletter
+\newlength{\sjuozfulltextheight}
+\AtBeginDocument{%
+  \setlength{\sjuozfulltextheight}{\textheight}%
+  \global\advance\textheight by -\firstpagereserve
+  \global\@colht\textheight \global\@colroom\textheight \global\vsize\textheight
+  \AddToHookNext{shipout/after}{\global\textheight\sjuozfulltextheight}}
+\makeatother
+
+% Başlık ve altlık (header/footer)
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\large \textit{Saleh \& Aziz}}
+\rhead{\small{\garamond{\textbf{SJUOZ|VOL14|OCT 2026|Pxxx-xxx}}}}
+\lfoot{\raisebox{8pt}{\textit{DOI:}\href{\sjuozdoi}{\textit{\small{\sjuozdoi}}}}}
+\cfoot{\raisebox{8pt}{\thepage}}
+
+\fancypagestyle{firstpage}{%
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \rhead{\IfFileExists{SJUOZ.png}{\includegraphics[width=1.04in]{SJUOZ.png}}{\textbf{SJUOZ}}}
+  \lhead{\colorbox{sjuozblue}{%
+      \begin{minipage}[b]{0.83\textwidth}
+        \vspace{0.15cm}
+        \hspace{-3pt}\ \normalsize \noindent \garamond{Science Journal of University of Zakho}\\
+        \normalsize \textit{\garamond{DOI: \sjuozdoi}}
+        \vspace{0.2cm}
+      \end{minipage}}}
+}
+
+% İlk sayfanın altındaki bilgi kutusu (sayfaya mutlak konumla yerleştirilir)
+\newcommand{\sjuozfirstfooter}{%
+  \begin{minipage}[b]{\textwidth}
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \begin{minipage}[t]{0.2\textwidth}\hspace{1pt} \small Access this article online \\
+        \vspace{0.1cm}
+        {\hypersetup{urlcolor=black}\qrcode[height=2.6162cm]{https://sjuoz.uoz.edu.krd/index.php/sjuoz/article/view/2004}}
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}
+        \small DOI:\href{\sjuozdoi}{\sjuozdoi} \\ \\[0.5cm]
+        Printed ISSN 2663-628X; \\
+        Electronic ISSN 2663-6298
+      \end{minipage}\begin{minipage}[t]{0.4\textwidth}\small \textbf{Science Journal of University of Zakho} \\
+        \textbf{Vol. 14, No. 04, pp. xxx-xxx, October-2026} \\[0.5cm]
+        This is an open access article under a CC BY-NC-SA 4.0 license \\
+        (\href{https://creativecommons.org/licenses/by-nc-sa/4.0/}{https://creativecommons.org/licenses/by-nc-sa/4.0/})
+      \end{minipage} \\[0.15cm]
+      \rule{\textwidth}{1.5pt} \\[0.15cm]
+      \centering \normalsize \thepage
+  \end{minipage}}
+
+% ORCID simgesi: orcid.png varsa o, yoksa çizilmiş yeşil "iD" simgesi
+\definecolor{orcidgreen}{HTML}{A6CE39}
+\newcommand{\orcidicon}{\IfFileExists{orcid.png}{\includegraphics[width=9pt]{orcid.png}}{%
+  \tikz[baseline=-0.7ex]{\fill[orcidgreen] (0,0) circle (4.5pt);
+  \node[text=white, font=\fontsize{4.5pt}{4.5pt}\selectfont\bfseries, inner sep=0pt] at (0,0) {iD};}}}
+\newcommand{\orcidlink}[1]{\href{#1}{\orcidicon}}
+
+\begin{document}
+\setcounter{page}{1}
+\thispagestyle{firstpage}
+\AddToShipoutPictureFG*{\put(\LenToUnit{0.75in},\LenToUnit{\firstfooterbottom}){\sjuozfirstfooter}}
+
+\noindent \large \textbf{Original Article} \\[-5pt]
+\begin{center} \titlesize \textbf{A LONG TABLE THAT SPANS SEVERAL PAGES} \end{center}
+\begin{center} \large \textbf{Rojin Saleh \textsuperscript{1,*} and Hawar Aziz \textsuperscript{1}}
+\end{center}
+\noindent
+\large \textsuperscript{1}Department of Statistics, University of Zakho, Duhok, Iraq.\\
+
+\begin{center} \textsuperscript{*}\textit{Corresponding author, E-mail:}\href{mailto:rojin.saleh@uoz.edu.krd}{rojin.saleh@uoz.edu.krd}
+\end{center}
+\rule{\textwidth}{1.5pt}
+\begin{minipage}[t]{0.175\textwidth}
+  \hspace{0cm} \vspace{0cm}
+\end{minipage} \begin{minipage}[t]{0.8\textwidth}
+\large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
+\rule{\textwidth}{1.5pt} \\
+\begin{minipage}[t]{0.175\textwidth}
+  \vspace{1cm} Received \\ xxx \\[0.5cm] Accepted \\ xxx \\[0.5cm] Published \\ xxx \\[0.25cm]
+\end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
+  \large{This synthetic manuscript contains a table with eighty rows that cannot fit on one page and must be split across pages without losing any row.
+  \\[2pt]
+  \normalsize \textbf{Keywords:} long table; pagination.
+  }
+\end{minipage}}
+\\[-10pt]
+
+\normalsize
+\noindent \rule{\textwidth}{0.75pt}
+\begin{multicols}{2}
+\section{INTRODUCTION}
+The full results are listed in \hyperlink{tab:1}{Table 1} (\hyperlink{ref:1}{Saleh, 2024}).
+
+\end{multicols}
+\begingroup
+\small
+\setlength{\LTcapwidth}{\linewidth}
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X@{}}
+\caption{Results for all eighty speakers.}\hypertarget{tab:1}{}\\
+\toprule
+\textbf{Speaker} & \textbf{Frames} & \textbf{Time (s)} & \textbf{Accuracy (\%)} \\ \midrule
+\endfirsthead
+\multicolumn{4}{@{}l}{\textbf{Table \thetable:} \textit{(continued)}} \\[2pt]
+\toprule
+\textbf{Speaker} & \textbf{Frames} & \textbf{Time (s)} & \textbf{Accuracy (\%)} \\ \midrule
+\endhead
+\midrule \multicolumn{4}{@{}r@{}}{\textit{(continued on next page)}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+S01 & 713 & 0.110 & 90.5 \\ \addlinespace[0.3em]
+S02 & 726 & 0.121 & 91.0 \\ \addlinespace[0.3em]
+S03 & 739 & 0.131 & 91.5 \\ \addlinespace[0.3em]
+S04 & 752 & 0.141 & 92.0 \\ \addlinespace[0.3em]
+S05 & 765 & 0.152 & 92.5 \\ \addlinespace[0.3em]
+S06 & 778 & 0.162 & 93.0 \\ \addlinespace[0.3em]
+S07 & 791 & 0.172 & 93.5 \\ \addlinespace[0.3em]
+S08 & 804 & 0.182 & 94.0 \\ \addlinespace[0.3em]
+S09 & 817 & 0.193 & 94.5 \\ \addlinespace[0.3em]
+S10 & 830 & 0.203 & 90.0 \\ \addlinespace[0.3em]
+S11 & 843 & 0.213 & 90.5 \\ \addlinespace[0.3em]
+S12 & 856 & 0.224 & 91.0 \\ \addlinespace[0.3em]
+S13 & 869 & 0.234 & 91.5 \\ \addlinespace[0.3em]
+S14 & 882 & 0.244 & 92.0 \\ \addlinespace[0.3em]
+S15 & 895 & 0.255 & 92.5 \\ \addlinespace[0.3em]
+S16 & 908 & 0.265 & 93.0 \\ \addlinespace[0.3em]
+S17 & 921 & 0.275 & 93.5 \\ \addlinespace[0.3em]
+S18 & 934 & 0.286 & 94.0 \\ \addlinespace[0.3em]
+S19 & 947 & 0.296 & 94.5 \\ \addlinespace[0.3em]
+S20 & 960 & 0.306 & 90.0 \\ \addlinespace[0.3em]
+S21 & 973 & 0.316 & 90.5 \\ \addlinespace[0.3em]
+S22 & 986 & 0.327 & 91.0 \\ \addlinespace[0.3em]
+S23 & 999 & 0.337 & 91.5 \\ \addlinespace[0.3em]
+S24 & 1012 & 0.347 & 92.0 \\ \addlinespace[0.3em]
+S25 & 1025 & 0.358 & 92.5 \\ \addlinespace[0.3em]
+S26 & 1038 & 0.368 & 93.0 \\ \addlinespace[0.3em]
+S27 & 1051 & 0.378 & 93.5 \\ \addlinespace[0.3em]
+S28 & 1064 & 0.389 & 94.0 \\ \addlinespace[0.3em]
+S29 & 1077 & 0.399 & 94.5 \\ \addlinespace[0.3em]
+S30 & 1090 & 0.409 & 90.0 \\ \addlinespace[0.3em]
+S31 & 1103 & 0.420 & 90.5 \\ \addlinespace[0.3em]
+S32 & 1116 & 0.430 & 91.0 \\ \addlinespace[0.3em]
+S33 & 1129 & 0.440 & 91.5 \\ \addlinespace[0.3em]
+S34 & 1142 & 0.451 & 92.0 \\ \addlinespace[0.3em]
+S35 & 1155 & 0.461 & 92.5 \\ \addlinespace[0.3em]
+S36 & 1168 & 0.471 & 93.0 \\ \addlinespace[0.3em]
+S37 & 1181 & 0.481 & 93.5 \\ \addlinespace[0.3em]
+S38 & 1194 & 0.492 & 94.0 \\ \addlinespace[0.3em]
+S39 & 1207 & 0.502 & 94.5 \\ \addlinespace[0.3em]
+S40 & 1220 & 0.512 & 90.0 \\ \addlinespace[0.3em]
+S41 & 1233 & 0.523 & 90.5 \\ \addlinespace[0.3em]
+S42 & 1246 & 0.533 & 91.0 \\ \addlinespace[0.3em]
+S43 & 1259 & 0.543 & 91.5 \\ \addlinespace[0.3em]
+S44 & 1272 & 0.554 & 92.0 \\ \addlinespace[0.3em]
+S45 & 1285 & 0.564 & 92.5 \\ \addlinespace[0.3em]
+S46 & 1298 & 0.574 & 93.0 \\ \addlinespace[0.3em]
+S47 & 1311 & 0.585 & 93.5 \\ \addlinespace[0.3em]
+S48 & 1324 & 0.595 & 94.0 \\ \addlinespace[0.3em]
+S49 & 1337 & 0.605 & 94.5 \\ \addlinespace[0.3em]
+S50 & 1350 & 0.615 & 90.0 \\ \addlinespace[0.3em]
+S51 & 1363 & 0.626 & 90.5 \\ \addlinespace[0.3em]
+S52 & 1376 & 0.636 & 91.0 \\ \addlinespace[0.3em]
+S53 & 1389 & 0.646 & 91.5 \\ \addlinespace[0.3em]
+S54 & 1402 & 0.657 & 92.0 \\ \addlinespace[0.3em]
+S55 & 1415 & 0.667 & 92.5 \\ \addlinespace[0.3em]
+S56 & 1428 & 0.677 & 93.0 \\ \addlinespace[0.3em]
+S57 & 1441 & 0.688 & 93.5 \\ \addlinespace[0.3em]
+S58 & 1454 & 0.698 & 94.0 \\ \addlinespace[0.3em]
+S59 & 1467 & 0.708 & 94.5 \\ \addlinespace[0.3em]
+S60 & 1480 & 0.719 & 90.0 \\ \addlinespace[0.3em]
+S61 & 1493 & 0.729 & 90.5 \\ \addlinespace[0.3em]
+S62 & 1506 & 0.739 & 91.0 \\ \addlinespace[0.3em]
+S63 & 1519 & 0.749 & 91.5 \\ \addlinespace[0.3em]
+S64 & 1532 & 0.760 & 92.0 \\ \addlinespace[0.3em]
+S65 & 1545 & 0.770 & 92.5 \\ \addlinespace[0.3em]
+S66 & 1558 & 0.780 & 93.0 \\ \addlinespace[0.3em]
+S67 & 1571 & 0.791 & 93.5 \\ \addlinespace[0.3em]
+S68 & 1584 & 0.801 & 94.0 \\ \addlinespace[0.3em]
+S69 & 1597 & 0.811 & 94.5 \\ \addlinespace[0.3em]
+S70 & 1610 & 0.822 & 90.0 \\ \addlinespace[0.3em]
+S71 & 1623 & 0.832 & 90.5 \\ \addlinespace[0.3em]
+S72 & 1636 & 0.842 & 91.0 \\ \addlinespace[0.3em]
+S73 & 1649 & 0.853 & 91.5 \\ \addlinespace[0.3em]
+S74 & 1662 & 0.863 & 92.0 \\ \addlinespace[0.3em]
+S75 & 1675 & 0.873 & 92.5 \\ \addlinespace[0.3em]
+S76 & 1688 & 0.884 & 93.0 \\ \addlinespace[0.3em]
+S77 & 1701 & 0.894 & 93.5 \\ \addlinespace[0.3em]
+S78 & 1714 & 0.904 & 94.0 \\ \addlinespace[0.3em]
+S79 & 1727 & 0.914 & 94.5 \\ \addlinespace[0.3em]
+S80 & 1740 & 0.925 & 90.0 \\
+\end{xltabular}
+\endgroup
+\par\vspace{6pt}
+
+\begin{multicols}{2}
+\section{CONCLUSIONS}
+Every row of \hyperlink{tab:1}{Table 1} must appear in the PDF.
+
+\section*{REFERENCES}
+\begin{list}{}{
+    \setlength{\leftmargin}{1.5em}
+    \setlength{\itemindent}{-1.5em}
+    \setlength{\parsep}{0pt}
+    \setlength{\itemsep}{6pt}
+}
+\item \hypertarget{ref:1}{}Saleh, R. (2024). Long tables in journals. \textit{Journal of Layout}, 2(1), 1–9.
+
+\end{list}
+\end{multicols}
+
+\end{document}

@@ -35,7 +35,7 @@ sjuoz-word2latex makale.docx kapak.docx --volume 14 --issue 4 --month October --
 ```bash
 pip install lxml Pillow matplotlib
 pip install pdf2docx "pymupdf<2"   # yalnız PDF girişi için
-pip install pypandoc_binary        # yalnız LaTeX girişi için
+pip install pypandoc_binary python-docx   # LaTeX girişi ve Word çıktısı için
 python sjuoz_word2latex.py makale.docx kapak.docx --first-page 571
 ```
 
@@ -90,7 +90,7 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 | `--keep-heading-case`, `--keep-title-case` | Başlıkları BÜYÜK harfe çevirme. |
 | `--main-font`, `--header-font` | Varsayılan Times New Roman / Garamond; yoksa benzeri seçilir. |
 | `--assets KLASÖR` | Başka bir `SJUOZ.png` / `orcid.png` kullan. |
-| `--no-compile`, `--no-zip`, `--no-export`, `--no-report`, `--no-links` | İlgili adımı atla. |
+| `--no-compile`, `--no-zip`, `--no-export`, `--no-report`, `--no-links`, `--no-word` | İlgili adımı atla. |
 | `--link-color RENK` | Şekil/tablo/denklem/atıf bağlantılarının rengi (`black` varsayılan; `blue`, `red`, `blue!70!black` …). |
 | `--strict` | Raporda HATA varsa çıkış kodu 2 (toplu işlemler/CI için). |
 | `--sayi KLASÖR` | Bütün sayıyı işle (bölüm 5). |
@@ -165,6 +165,7 @@ Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaş
 1993/
 ├── 1993.tex                  ← SJUOZ şablonu; resimleri figures/… yoluyla çağırır
 ├── 1993.pdf                  ← xelatex iki kez çalıştırılır
+├── 1993.docx                 ← aynı makalenin dergi biçiminde Word sürümü (aşağıya bakın)
 ├── figures/                  ← Word'deki bütün resimler ve grafikler (Figure1.png, Figure6a.png …)
 ├── SJUOZ.png, orcid.png
 ├── 1993_kontrol_raporu.html  ← editör için kontrol raporu
@@ -174,6 +175,16 @@ Kontrol raporu PDF'ten okunduğunu her zaman belirtir; sonucu PDF'le karşılaş
 └── 1993_atif.bib             ← bu makaleye atıf için BibTeX
 1993_latex.zip                ← .tex + figures/ + logolar + PDF (Overleaf'e doğrudan yüklenir)
 ```
+
+### Dergi biçiminde Word sürümü (`1993.docx`)
+
+PDF'le aynı içerikten üretilir (PDF'ten çevrilmez; çevirme iki sütunlu sayfada kelimeleri yapıştırıp
+düzeni bozuyor): makale türü, başlık, yazarlar ve ORCID simgeleri, kurumlar, sorumlu yazar, tarihli ve
+gölgeli özet kutusu, anahtar kelimeler; ön kısım tek, metin iki sütun; geniş tablolar sayfa genişliğinde;
+denklemler **Word denklemi**, tablolar **Word tablosu** (düzenlenebilir); ilk sayfada dergi başlığı, logo
+ve bilgi kutusu (QR kodlu), diğer sayfalarda kısa yazar adı ve `SJUOZ|VOL…` satırı, altlıkta DOI ve
+sayfa numarası. Pandoc gerekir (`pip install pypandoc_binary python-docx`); yoksa bu adım atlanır.
+İstenmezse `--no-word`.
 
 ### Word'den neler aktarılır?
 

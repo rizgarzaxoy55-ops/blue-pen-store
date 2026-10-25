@@ -71,7 +71,7 @@ jobs:
 
       - name: Paketler
         # PyMuPDF 2.x yapay zekâ düzen modülü (onnxruntime) getiriyor: .exe'yi bozuyor ve büyütüyor
-        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2" pypandoc_binary
+        run: pip install pyinstaller lxml Pillow matplotlib pypdf pdf2docx "pymupdf<2" pypandoc_binary python-docx
 
       - name: .exe üret
         working-directory: sjuoz_word2latex
@@ -86,7 +86,7 @@ jobs:
             --article-id 2001 --volume 14 --issue 4 --year 2026 --month October --no-compile --no-zip `
             --published "15 Oct 2026" --depositor-email editor@uoz.edu.krd
           if ($LASTEXITCODE -ne 0) { throw "exe hata verdi" }
-          foreach ($f in "duman/2001.tex", "duman/2001_crossref.xml", "duman/2001_jats.xml", "duman/SJUOZ.png") {
+          foreach ($f in "duman/2001.tex", "duman/2001.docx", "duman/2001_crossref.xml", "duman/2001_jats.xml", "duman/SJUOZ.png") {
             if (-not (Test-Path $f)) { throw "eksik: $f" }
           }
           if (-not (Select-String -Path duman/2001_kontrol_raporu.html -Pattern "Crossref 5.3.1")) {

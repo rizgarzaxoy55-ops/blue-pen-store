@@ -82,3 +82,52 @@ def test_issue_crossref_single_file(tmp_path):
     ok, errors = conv.validate_crossref(xml)
     assert ok, errors
     assert len(etree.fromstring(xml).findall(".//{%s}journal_article" % conv.CROSSREF_NS)) == 2
+
+
+@pytest.mark.parametrize("case", CASES, ids=[c["name"] for c in CASES])
+def test_word_version_matches_article(case, tmp_path):
+    """Dergi biçimindeki Word sürümü: ön kısım, iki sütun, bütün denklemler Word denklemi, bütün tablolar."""
+    from conftest import has_pandoc
+    if not has_pandoc():
+        pytest.skip("Word çıktısı için pandoc yok (pip install pypandoc_binary)")
+    import zipfile
+    res = run_with_dates(case, tmp_path)
+    assert res["word_path"], "Word dosyası üretilmedi"
+    with zipfile.ZipFile(res["word_path"]) as z:
+        xml = z.read("word/document.xml").decode("utf-8")
+        names = z.namelist()
+    stats = res["stats"]
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    root = etree.fromstring(xml.encode("utf-8"))
+    text = "".join(t.text or "" for t in root.iter(W + "t"))
+    for au in res["context"]["art"].authors:
+        assert au["name"] in text
+    assert "ABSTRACT" in text and "Keywords:" in text and "SJUOZTEKSUTUN" not in text and "SJUOZIKISUTUN" not in text
+    cols = [c.get(W + "num") for c in root.iter(W + "cols")]
+    assert cols[0] == "1" and "2" in cols                      # ön kısım tek, gövde iki sütun
+    display = len(re.findall(r"<m:oMathPara", xml))
+    assert display >= stats["equations"]
+    # ön kısımdaki özet kutusu + gövde tabloları (hücre içi alt tablolar hariç)
+    body_tables = [t for t in root.iter(W + "tbl") if not any(a.tag == W + "tbl" for a in t.iterancestors())]
+    assert len(body_tables) >= stats["tables"] + 1
+    assert sum(1 for n in names if n.startswith("word/media/")) >= min(1, stats["figures"])
+    assert any(n.startswith("word/header") for n in names) and any(n.startswith("word/footer") for n in names)
+
+
+def test_pandoc_latex_simplifies_writer_output():
+    from sjuoz.wordout import pandoc_latex
+    body = (r"\begin{multicols}{2}" "\n"
+            r"\section{INTRODUCTION}" "\nText with \\hyperlink{ref:1}{Smith, 2020}.\n"
+            r"\begin{equation}" "\n" r"  \sjuozfit{a=b}{a\\=b}{a}" "\n" r"\end{equation}" "\n"
+            r"\end{multicols}" "\n" r"\noindent" "\n" r"\begin{minipage}{\linewidth}" "\n" r"\centering" "\n"
+            r"\hypertarget{tab:1}{}" "\n" r"\captionof{table}{Values.}" "\n"
+            r"\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash\hsize=0.50\hsize}X"
+            r">{\raggedright\arraybackslash\hsize=1.50\hsize}X@{}}" "\n"
+            r"\toprule" "\n" r"\textbf{A} & \textbf{B} \\ \midrule" "\n" r"1 & 2 \\" "\n" r"\bottomrule" "\n"
+            r"\end{tabularx}" "\n" r"\end{minipage}" "\n" r"\par\vspace{6pt}" "\n")
+    out = pandoc_latex(body)
+    assert r"\section{1. INTRODUCTION}" in out
+    assert "Smith, 2020" in out and "hyperlink" not in out
+    assert r"\[ a=b \qquad (1)\]" in out
+    assert r"\textbf{Table 1:} Values." in out and r"\begin{tabular}{p{" in out
+    assert "SJUOZTEKSUTUN" in out and "SJUOZIKISUTUN" in out and "multicols" not in out

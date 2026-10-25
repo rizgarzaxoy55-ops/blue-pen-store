@@ -17,6 +17,7 @@ from .render import Linker
 from .parse import parse_article, parse_cover_letter
 from .template import (FIGDIR, LANDSCAPE_COLS, MONTHS, build_tex)
 from .writer import Writer
+from .wordout import make_docx, qr_from_pdf, running_head
 from .export import (article_metadata, bibtex_references, bibtex_self, crossref_xml, jats_xml, validate_crossref)
 from .report import (REPORT_OK, analyze_log, build_report, pdf_to_text, report_status, word_source_stats, write_report_html)
 from . import render
@@ -79,6 +80,8 @@ def build_parser():
     ap.add_argument("--link-color", default="black",
                     help="metindeki şekil/tablo/denklem/atıf bağlantılarının rengi (varsayılan: black — dergi "
                          "görünümü; tıklanabilirlik görünsün diye ör. blue)")
+    ap.add_argument("--no-word", dest="word", action="store_false",
+                    help="dergi biçimindeki Word (.docx) sürümünü üretme")
     ap.add_argument("--no-export", dest="export", action="store_false",
                     help="Crossref XML, JATS XML ve BibTeX dosyalarını üretme")
     ap.add_argument("--depositor-name", default=None, help="Crossref gönderen adı (varsayılan: dergi adı)")
@@ -275,6 +278,27 @@ def convert(opts):
         crossref_check = validate_crossref(xml)
         print("Dışa aktarma: %s" % ", ".join(os.path.basename(v) for v in exports.values()))
 
+    word_path = None
+    if getattr(opts, "word", True):
+        word_path = os.path.join(outdir, "%s.docx" % opts.article_id)
+        if os.path.abspath(word_path) == os.path.abspath(manuscript.path):
+            word_path = os.path.join(outdir, "%s_sjuoz.docx" % opts.article_id)
+        pages = "%s-%s" % (opts.first_page, last_page or "xxx") if opts.first_page else "xxx-xxx"
+        info = {"doi": "https://doi.org/10.25271/sjuoz.%s.%s.%s.%s" % (opts.year, opts.volume, opts.issue,
+                                                                       opts.article_id),
+                "pages": pages, "runhead": running_head(art),
+                "logo": os.path.join(outdir, "SJUOZ.png"), "orcid_png": os.path.join(outdir, "orcid.png"),
+                "qr": qr_from_pdf(pdf_path, os.path.join(outdir, "qr.png")) if compiled else None}
+        try:
+            word_path = make_docx(art, writer, opts, outdir, word_path, info)
+        except Exception as e:  # noqa  Word sürümü yan üründür: hata dönüşümü durdurmaz
+            warn("Word çıktısı üretilemedi: %s" % e)
+            word_path = None
+        if info["qr"] and os.path.isfile(info["qr"]):
+            os.remove(info["qr"])
+        if word_path:
+            print("Word (dergi biçiminde): %s" % word_path)
+
     zp = None
     if opts.zip:
         zp = os.path.join(os.path.dirname(os.path.abspath(outdir)), "%s_latex.zip" % opts.article_id)
@@ -314,7 +338,7 @@ def convert(opts):
         print("  Ayrıntılar: %s" % report_path)
 
     return {
-        "tex_path": tex_path, "pdf_path": pdf_path if compiled else None, "zip_path": zp,
+        "tex_path": tex_path, "pdf_path": pdf_path if compiled else None, "zip_path": zp, "word_path": word_path,
         "report_path": report_path, "status": status, "items": items, "warnings": list(WARNINGS),
         "stats": {"authors": len(art.authors), "orcids": sum(1 for a in art.authors if a.get("orcid")),
                   "affiliations": len(art.affiliations), "figures": writer.fig_count,

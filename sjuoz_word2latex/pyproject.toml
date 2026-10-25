@@ -13,10 +13,11 @@ authors = [{name = "Science Journal of University of Zakho"}]
 dependencies = ["lxml>=4.6"]
 
 [project.optional-dependencies]
-tam = ["Pillow>=9", "matplotlib>=3.5", "pypdf>=3", "pdf2docx>=0.5.6", "pymupdf<2", "pypandoc_binary>=1.13"]
+tam = ["Pillow>=9", "matplotlib>=3.5", "pypdf>=3", "pdf2docx>=0.5.6", "pymupdf<2", "pypandoc_binary>=1.13", "python-docx>=1.1"]
 pdf = ["pdf2docx>=0.5.6", "pymupdf<2"]
 latex = ["pypandoc_binary>=1.13"]
-test = ["pytest>=7", "Pillow>=9", "matplotlib>=3.5", "pdf2docx>=0.5.6", "pymupdf<2", "pypandoc_binary>=1.13"]
+word = ["pypandoc_binary>=1.13", "python-docx>=1.1"]
+test = ["pytest>=7", "Pillow>=9", "matplotlib>=3.5", "pdf2docx>=0.5.6", "pymupdf<2", "pypandoc_binary>=1.13", "python-docx>=1.1"]
 
 [project.scripts]
 sjuoz-word2latex = "sjuoz.cli:main"

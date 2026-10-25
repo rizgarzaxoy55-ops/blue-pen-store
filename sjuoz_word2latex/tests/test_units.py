@@ -479,3 +479,22 @@ def test_conflict_statement_from_cover_letter():
 
 
 COI = "The authors have no conflict of interest to declare concerning the publication of this paper."
+
+
+def test_mendeley_cell_and_glued_star_mark():
+    from lxml import etree
+    from sjuoz.docx import _children, W
+    from sjuoz.parse import split_marks
+    tr = etree.fromstring('<w:tr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                          '<w:sdt><w:sdtContent><w:tc/></w:sdtContent></w:sdt><w:tc/><w:tc/></w:tr>')
+    assert len(_children(tr, W + "tc")) == 3        # Mendeley atıf hücresi atlanmaz
+    assert split_marks("1,2*") == ["1", "2", "*"]
+    assert split_marks("1, *") == ["1", "*"]
+
+
+def test_unicode_script_letters_and_broken_image():
+    from sjuoz.common import tex_escape
+    from sjuoz.writer import image_ok
+    assert tex_escape("Lᵢ = wᵧᵢ, R²") == r"L\textsubscript{i} = w\textsubscript{γi}, R²"
+    assert tex_escape("e⁻ᴱⁱ") == r"e$^{-}$\textsuperscript{Ei}"
+    assert not image_ok(b"\x89PNG\r\n\x1a\n" + b"\x00" * 40)

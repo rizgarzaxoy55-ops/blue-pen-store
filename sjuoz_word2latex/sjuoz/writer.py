@@ -108,8 +108,12 @@ class Writer:
         """Resmi figures/ klasörüne kaydeder; LaTeX'te kullanılacak yolu döndürür."""
         path, data = self.doc.media(rid)
         if data is None:
-            warn("Resim bulunamadı: %s" % rid)
-            return None
+            if rid.startswith("chart:") or not path:
+                warn("Resim bulunamadı: %s" % rid)
+                return None
+            # .docx'te resim dosyası eksik: şekil ve başlığı kaybolmasın diye yer tutucu konur
+            warn("Resim dosyası .docx'te yok (%s): yerine yer tutucu kondu; yazardan resmi isteyin." % path)
+            data = b""
         h = hashlib.md5(data).hexdigest()
         if h in self.saved_hashes:
             return self.saved_hashes[h]
@@ -130,8 +134,15 @@ class Writer:
                 return None
         elif ext in (".png", ".jpg", ".jpeg", ".pdf"):
             fname = name + ext
-            with open(os.path.join(figdir, fname), "wb") as f:
-                f.write(data)
+            if ext != ".pdf" and (not data or not image_ok(data)):
+                # yarım/bozuk resim xdvipdfmx'i çökertir ve PDF hiç oluşmaz: yerine yer tutucu konur
+                if data:
+                    warn("Resim dosyası bozuk (%s): yerine yer tutucu kondu; yazardan resmi isteyin." % path)
+                fname = name + ".png"
+                placeholder_png(os.path.join(figdir, fname), os.path.basename(path))
+            else:
+                with open(os.path.join(figdir, fname), "wb") as f:
+                    f.write(data)
         elif ext in (".tif", ".tiff", ".gif", ".bmp", ".webp", ".jfif"):
             fname = name + ".png"
             try:
@@ -303,6 +314,10 @@ class Writer:
         else:
             colspec = r"@{}" + r">{\raggedright\arraybackslash}X" * ncols + "@{}"
             size = r"\small"
+        widths = column_weights(tbl, ncols)
+        if widths and numeric <= 0.6:
+            # uzun açıklama sütunu geniş, kısa sütunlar dar: sütun genişliği içerik uzunluğuyla orantılı
+            colspec = "@{}" + "".join(r">{\raggedright\arraybackslash\hsize=%.2f\hsize}X" % w for w in widths) + "@{}"
         lines = []
         # başlık satırları: ilk satır + dikey birleştirilmiş hücresi devam eden satırlar
         n_head = 1
@@ -337,7 +352,7 @@ class Writer:
             elif ri < len(tbl.rows) - 1 and ri >= n_head:
                 line += r" \addlinespace[0.3em]"
             lines.append(line)
-        long_table = len(tbl.rows) > LONG_TABLE_ROWS
+        long_table = len(tbl.rows) > LONG_TABLE_ROWS or table_lines(tbl, ncols, widths) > LONG_TABLE_LINES
         if long_table:
             # sayfalara bölünebilen tablo: başlık her sayfada tekrarlanır
             head = lines[:n_head]
@@ -700,6 +715,67 @@ class Writer:
             self.emit(r"\item " + s)
             self.emit()
         self.emit(r"\end{list}")
+
+
+LONG_TABLE_LINES = 60   # tahmini satır sayısı bunu aşan tablo sayfalara bölünebilir biçimde yazılır
+
+
+def _cell_texts(tbl, ncols):
+    """Her satır için [(sütun, genişlik, metin)]."""
+    rows = []
+    for row in tbl.rows:
+        col, out = 0, []
+        for paras, span, vmerge in row:
+            txt = "" if vmerge == "continue" else " ".join(p.text() for p in paras if isinstance(p, Para)).strip()
+            out.append((col, span, txt))
+            col += span
+        rows.append(out)
+    return rows
+
+
+def column_weights(tbl, ncols):
+    """Sütun genişlik oranları (toplamı ncols); sütunlar arasında belirgin fark yoksa None."""
+    if ncols < 2:
+        return None
+    sums, counts = [0.0] * ncols, [0] * ncols
+    for row in _cell_texts(tbl, ncols):
+        for col, span, txt in row:
+            if span == 1 and col < ncols:
+                sums[col] += len(txt)
+                counts[col] += 1
+    avg = [max(4.0, sums[i] / counts[i]) if counts[i] else 4.0 for i in range(ncols)]
+    w = [a ** 0.6 for a in avg]
+    if max(w) / min(w) < 1.6:
+        return None
+    total = sum(w)
+    w = [max(0.35, x * ncols / total) for x in w]
+    total = sum(w)
+    return [x * ncols / total for x in w]
+
+
+def table_lines(tbl, ncols, widths=None):
+    """Tablonun tahmini satır yüksekliği (küçük yazıyla tam genişlikte ~130 karakter/satır)."""
+    widths = widths or [1.0] * ncols
+    per_col = [max(4, int(130 * w / max(1, ncols))) for w in widths]
+    total = 0
+    for row in _cell_texts(tbl, ncols):
+        total += max([1] + [-(-len(txt) // max(4, sum(per_col[c] for c in range(col, min(col + span, ncols)))))
+                            for col, span, txt in row])
+    return total
+
+
+def image_ok(data):
+    """PNG/JPEG baştan sona okunabiliyor mu? (Pillow yoksa doğru sayılır.)"""
+    try:
+        import io
+        from PIL import Image
+    except ImportError:
+        return True
+    try:
+        Image.open(io.BytesIO(data)).load()
+        return True
+    except Exception:  # noqa
+        return False
 
 
 def apa_authors(tokens):

@@ -8,7 +8,8 @@ from .common import (BIDI, render_plain, tex_escape, title_case_caps, url_escape
 # --------------------------------------------------------------------------
 # Şablon
 # --------------------------------------------------------------------------
-TEMPLATE = r"""%!TEX TS-program = xelatex
+TEMPLATE = r"""% !TEX program = xelatex
+%!TEX TS-program = xelatex
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}

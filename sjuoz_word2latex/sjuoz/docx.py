@@ -304,14 +304,29 @@ class Para:
         return None
 
 
+def _children(el, tag):
+    """Doğrudan alt öğeler; içerik denetimleri (w:sdt, ör. Mendeley atıf hücresi) ve customXml içi dahil."""
+    out = []
+    for c in el:
+        if c.tag == tag:
+            out.append(c)
+        elif c.tag == W + "sdt":
+            content = c.find(W + "sdtContent")
+            if content is not None:
+                out += _children(content, tag)
+        elif c.tag == W + "customXml":
+            out += _children(c, tag)
+    return out
+
+
 class Table:
     def __init__(self, el, doc):
         self.el = el
         self.doc = doc
         self.rows = []  # her satır: [(cell_paras, span, vmerge)]
-        for tr in el.findall(W + "tr"):
+        for tr in _children(el, W + "tr"):
             row = []
-            for tc in tr.findall(W + "tc"):
+            for tc in _children(tr, W + "tc"):
                 tcpr = tc.find(W + "tcPr")
                 span = int(wval(tcpr.find(W + "gridSpan"), "1")) if tcpr is not None else 1
                 vm = tcpr.find(W + "vMerge") if tcpr is not None else None

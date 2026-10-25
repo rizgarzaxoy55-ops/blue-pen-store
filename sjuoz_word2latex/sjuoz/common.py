@@ -90,8 +90,43 @@ _TEX_SPECIAL = {
 }
 
 
+def _script_letter(c):
+    """Unicode üst/alt simge harfi ("ᶜ", "ᴱ", "ⁱ", "ᵢ", "ᵧ") → ("^" | "_", taban harf); değilse None.
+    Bu harflerin çoğu Times New Roman'da yoktur; rakamlar (², ₀) yazı tipinde bulunduğu için dokunulmaz."""
+    if c.isascii() or c in _TEX_SPECIAL:
+        return None
+    dec = unicodedata.decomposition(c)
+    if not dec.startswith(("<super>", "<sub>")):
+        return None
+    base = unicodedata.normalize("NFKC", c)
+    if not base.isalpha():
+        return None
+    return ("^" if dec.startswith("<super>") else "_"), base
+
+
 def tex_escape(s):
-    return "".join(_TEX_SPECIAL.get(c, c) for c in s)
+    if s.isascii():
+        return "".join(_TEX_SPECIAL.get(c, c) for c in s)
+    out, run, kind = [], [], None
+
+    def flush():
+        if run:
+            out.append(r"\text%s{%s}" % ("superscript" if kind == "^" else "subscript", "".join(run)))
+            run.clear()
+    for c in s:
+        sl = _script_letter(c)
+        if sl and sl[0] == kind:
+            run.append(sl[1])
+            continue
+        flush()
+        if sl:
+            kind = sl[0]
+            run.append(sl[1])
+        else:
+            kind = None
+            out.append(_TEX_SPECIAL.get(c, c))
+    flush()
+    return "".join(out)
 
 
 def url_escape(u):

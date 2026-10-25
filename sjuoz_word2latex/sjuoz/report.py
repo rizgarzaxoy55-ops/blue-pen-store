@@ -10,7 +10,7 @@ import unicodedata
 from .common import (C_NS, M, MC, NO_WINDOW, NS, RTL_RUN_RE, W)
 from .docx import Para, Table
 from .render import strip_eq_number_text
-from .parse import CAPTION_RE, SUBFIG_RE
+from .parse import CAPTION_RE, MANUAL_NUMBER, SUBFIG_RE
 from .figures import layout_table_images
 from .export import JOURNAL
 from . import render
@@ -303,6 +303,8 @@ def build_report(ctx):
             sub = SUBFIG_RE.match(src_text)
             if cap:  # "Figure 8" / "Figure 2-A:" numarasını LaTeX kendisi yazar
                 src_text = src_text[sub.end():] if sub else cap.group(3)
+            elif len(src_text) < 150:  # alt başlıkların "4.7." numarası bilerek atılır
+                src_text = MANUAL_NUMBER.sub("", src_text, count=1)
             found = max(found_ratio(v, out_letters) for v in (src_text, writer.abbreviate_names(src_text)))
             if found < 0.7 and any(t[0] == "m" for t in p.tokens):
                 found = max(found, found_ratio_segments(text_segments(p), out_letters))

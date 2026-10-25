@@ -80,8 +80,8 @@ dakika sürebilir, pencereyi kapatmayın. Bir derleme 10 dakikayı aşarsa durdu
 |---|---|
 | `--article-id` | Makale no (DOI, QR kod, dosya adları). Verilmezse dosya adındaki sayı. |
 | `--volume`, `--issue`, `--year`, `--month` | Cilt, sayı, yıl, ay. |
-| `--first-page`, `--last-page` | Sayfa aralığı. `--last-page` verilmezse LaTeX hesaplar. |
-| `--received`, `--accepted`, `--published` | Tarihler (ör. `12 May 2026`; varsayılan `XX`). |
+| `--first-page`, `--last-page` | Sayfa aralığı. `--first-page` verilmezse `pp. xxx-xxx`; `--last-page` verilmezse LaTeX hesaplar. |
+| `--received`, `--accepted`, `--published` | Tarihler (ör. `12 May 2026`; verilmezse dergideki gibi `xxx`). |
 | `--article-type` | `Original Article` (varsayılan), `Review Article` … |
 | `--depositor-name`, `--depositor-email` | Crossref gönderen bilgisi. |
 | `--wide-figs 3,5` / `all` | İki sütunu kaplayacak şekiller. |

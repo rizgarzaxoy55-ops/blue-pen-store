@@ -2,11 +2,23 @@
 % Bu dosya sjuoz_word2latex.py tarafından otomatik üretildi.
 \documentclass[9pt]{extarticle}
 \usepackage{multicol}
+\raggedcolumns  % sütun boyu doldurulmaz: başlık ve paragraf aralarında büyük boşluk açılmaz
 \usepackage[top=0.5in, bottom=0.75in, right=0.75in, left=0.75in, headheight=0.25in, includehead]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{graphicx}
+% Denklem sütuna sığmazsa: önce 2, sonra 3 satıra bölünmüş biçimi; o da sığmazsa küçültülür
+\newsavebox{\sjuozeqbox}
+\newlength{\sjuozeqmax}
+\newcommand{\sjuozeqset}{\setlength{\sjuozeqmax}{\linewidth}\addtolength{\sjuozeqmax}{-2.5em}}
+\newcommand{\sjuozeqput}{\ifdim\wd\sjuozeqbox>\sjuozeqmax
+  \typeout{SJUOZ-EQ-SCALED: \theequation; \the\sjuozeqmax; \the\wd\sjuozeqbox}% kontrol raporu için
+  \resizebox{\sjuozeqmax}{!}{\usebox{\sjuozeqbox}}\else\usebox{\sjuozeqbox}\fi}
+\newcommand{\sjuozfit}[3]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}%
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #2$}\fi
+  \ifdim\wd\sjuozeqbox>\sjuozeqmax\sbox{\sjuozeqbox}{$\displaystyle #3$}\fi\sjuozeqput}
+\newcommand{\sjuozfitone}[1]{\sjuozeqset\sbox{\sjuozeqbox}{$\displaystyle #1$}\sjuozeqput}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{tabularx}
@@ -28,7 +40,7 @@
 
 \titleformat{\section}{\large\bfseries\centering}{\thesection.}{1.0em}{}
 \titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.5em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\itshape}{\thesubsubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\large\bfseries}{\thesubsubsection.}{0.5em}{}
 \titlespacing*{\section}{0pt}{8pt}{6pt}
 \titlespacing*{\subsection}{0pt}{8pt}{4pt}
 \titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
@@ -37,6 +49,7 @@
 \renewcommand{\normalsize}{\fontsize{9pt}{9pt}\selectfont}
 \renewcommand{\large}{\fontsize{10pt}{10pt}\selectfont}
 \renewcommand{\small}{\fontsize{8pt}{8pt}\selectfont}
+\DeclareCaptionLabelFormat{sjuozparen}{#1 (#2)}
 \captionsetup[table]{labelfont=bf, justification=raggedright, singlelinecheck=false}
 \captionsetup[figure]{labelfont=bf, justification=centering, singlelinecheck=false}
 \captionsetup[sub]{labelformat=parens, labelfont=bf, font=small, justification=centering}
@@ -135,7 +148,7 @@
 \large \textbf{ABSTRACT}\end{minipage} \\[-6pt]
 \rule{\textwidth}{1.5pt} \\
 \begin{minipage}[t]{0.175\textwidth}
-  \vspace{1cm} Received \\ 12 May 2026 \\[0.5cm] Accepted \\ 1 Aug 2026 \\[0.5cm] Published \\ 15 Oct 2026 \\[0.25cm]
+  \vspace{1cm} Received \\ xxx \\[0.5cm] Accepted \\ xxx \\[0.5cm] Published \\ xxx \\[0.25cm]
 \end{minipage} \colorbox{colorabs}{\begin{minipage}[t]{0.81\textwidth}
   \large{Mouth detection is an important issue in visual speech recognition. The de facto algorithm used to achieve this is the Viola-Jones algorithm. Nevertheless, time enhancement for the auto-detection of this algorithm is required. Therefore, the goal of this research is to propose a modified approach based on the Viola-Jones algorithm to enhance the detection time. The main contribution of the proposed algorithm is limiting the auto-valuing for the threshold of the Viola-Jones algorithm and enhancing the time by configuring the maximum step for the adaptive threshold value. The UOTletters database was used in the experiments of this research with 30 speakers pronouncing English letters with overall frames of 28164. The experiment results have shown that the average detection time for the proposed method was 0.585 sec, compared with the baseline method's 2.097 sec. As a result, the proposed approach enhanced the mouth detection time with respect to the baseline algorithm (358.46\%). Consequently, the proposed algorithm is a good solution for real-time visual speech recognition regarding the detection time enhancement.
   \\[2pt]
@@ -179,7 +192,7 @@ VJA has many features, like dealing with different skin colors, the ability to d
 
 \hypertarget{eq:1}{}
 \begin{equation}
-  V = \sum P_{(\mathit{white}\ \mathit{region})} - \sum P_{(\mathit{black}\ \mathit{region})}
+  \sjuozfit{V = \sum P_{(\mathit{white}\ \mathit{region})} - \sum P_{(\mathit{black}\ \mathit{region})}}{\begin{aligned}V &= \sum P_{(\mathit{white}\ \mathit{region})} \\ &\quad - \sum P_{(\mathit{black}\ \mathit{region})}\end{aligned}}{\begin{aligned}V &= \sum P_{(\mathit{white}\ \mathit{region})} \\ &\quad - \sum P_{(\mathit{black}\ \mathit{region})}\end{aligned}}
 \end{equation}
 Where: P is the value of the pixel, and V is the feature value.
 
@@ -194,7 +207,7 @@ To minimize the complexity of the mathematical operations, the Viola-Jones algor
 
 \hypertarget{eq:2}{}
 \begin{equation}
-  \mathit{In}_{\left( i,j \right)}=\sum\limits_{\bar{i}=1,\bar{j}=1}^{i-1,j-1} \mathit{Image}(\bar{i},\bar{j})
+  \sjuozfitone{\mathit{In}_{\left( i,j \right)}=\sum\limits_{\bar{i}=1,\bar{j}=1}^{i-1,j-1} \mathit{Image}(\bar{i},\bar{j})}
 \end{equation}
 Where: In is the integral image, Image is the input image, and (i,j) is the spatial pixel at the x and y coordinates, respectively.
 
@@ -211,15 +224,15 @@ The two cases are the region with an edge surrounding it and the region with an 
 
 \hypertarget{eq:3}{}
 \begin{equation}
-  v_{1}=B-A
+  \sjuozfit{v_{1}=B-A}{\begin{aligned}v_{1} &=B \\ &\quad -A\end{aligned}}{\begin{aligned}v_{1} &=B \\ &\quad -A\end{aligned}}
 \end{equation}
 The Area with unwanted Areas surrounding it, illustrated in Area 2 of \hyperlink{fig:2}{Figure 2}, can be calculated as given below:
 
 \hypertarget{eq:4}{}
 \begin{equation}
-  v_{2}=D-\left( B+C \right)+A
+  \sjuozfit{v_{2}=D-\left( B+C \right)+A}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right)+A\end{aligned}}{\begin{aligned}v_{2} &=D \\ &\quad -\left( B+C \right) \\ &\quad +A\end{aligned}}
 \end{equation}
-It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in \hyperlink{fig:2}{Figure 2}, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of \hyperlink{eq:1}{Equation 1}.
+It is obvious that point A is added because it is subtracted twice from point D (point A is compact with points B and C in the undesired areas). In the same example in \hyperlink{fig:2}{Figure 2}, it could estimate the Haar-like feature value by subtracting v1 from v2 using the same principle of \hyperlink{eq:1}{Equation (1)}.
 
 VJA has another concept to reduce the massive number of features; eg., a 24*24 window gives 160,000 features. Viola and Jones proposed two techniques to overcome this problem: using a cascade filter and AdaBoost training, as shown in \hyperlink{fig:3}{Figure 3}. Some of the obtained features are not useful for face detection. Therefore, a cascade filter was utilized to crumble the detection operation of faces into substages like eyes, nose bridge, and mouth region. In addition, to build a strong classifier, the subsequent weak classifier corrected the error in the previous classifier by AdaBoost training (\hyperlink{ref:19}{Setu \& Rahman, 2016}).
 
@@ -246,9 +259,9 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 
 \hypertarget{eq:5}{}
 \begin{equation}
-  \mathit{TH}_{t}= \mathit{TH}_{t-1}-5
+  \sjuozfit{\mathit{TH}_{t}= \mathit{TH}_{t-1}-5}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}{\begin{aligned}\mathit{TH}_{t} &= \mathit{TH}_{t-1} \\ &\quad -5\end{aligned}}
 \end{equation}
-\hyperlink{eq:5}{Equation 5} is determined based on analytic and experimental results in Section 4.
+\hyperlink{eq:5}{Equation (5)} is determined based on analytic and experimental results in Section 4.
 
 \noindent\begin{minipage}{\linewidth}
 \centering\hypertarget{fig:5}{}
@@ -258,11 +271,11 @@ The proposed algorithm is inspired by the adaptive value of the algorithm propos
 \par\vspace{6pt}
 
 \section{EXPERIMENTAL RESULTS}
-\hyperlink{fig:6}{Figure 6} shows sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database. In this section, many experiments were done to ensure that the analytical results satisfy the practical results. Moreover, make an overall evaluation of the proposed algorithm with respect to the baseline algorithm for the thirty speakers pronouncing English letters, with overall frames 28164. \hyperlink{eq:5}{Equation 5} is determined from the curve fitting for the threshold based on the detection results, in addition to the distribution of the detection results. As we can see in \hyperlink{fig:7}{Figure 7}, the sample values of the threshold for the letter A for thirty speakers are most of the values located in the upper area for the proposed range (1 to 150). Consequently, we proposed starting at 150 and then decreasing the threshold value to adopt the optimal value instead of the increment approach in the baseline algorithm. Moreover, the selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation:
+\hyperlink{fig:6}{Figure 6} shows sample images of faces and the detected mouth using the proposed algorithm for the UOTletters database. In this section, many experiments were done to ensure that the analytical results satisfy the practical results. Moreover, make an overall evaluation of the proposed algorithm with respect to the baseline algorithm for the thirty speakers pronouncing English letters, with overall frames 28164. \hyperlink{eq:5}{Equation (5)} is determined from the curve fitting for the threshold based on the detection results, in addition to the distribution of the detection results. As we can see in \hyperlink{fig:7}{Figure 7}, the sample values of the threshold for the letter A for thirty speakers are most of the values located in the upper area for the proposed range (1 to 150). Consequently, we proposed starting at 150 and then decreasing the threshold value to adopt the optimal value instead of the increment approach in the baseline algorithm. Moreover, the selection of the search step was improved by analyzing the group of threshold values using polynomial curve fitting of the linear equation:
 
 \hypertarget{eq:6}{}
 \begin{equation}
-  \mathit{TH}_{t}= {a\ \mathit{TH}}_{t-1}+b
+  \sjuozfit{\mathit{TH}_{t}= {a\ \mathit{TH}}_{t-1}+b}{\begin{aligned}\mathit{TH}_{t} &= {a\ \mathit{TH}}_{t-1} \\ &\quad +b\end{aligned}}{\begin{aligned}\mathit{TH}_{t} &= {a\ \mathit{TH}}_{t-1} \\ &\quad +b\end{aligned}}
 \end{equation}
 Where THt is the predicted value of the threshold, and THt-1 is the previous value of it.
 
@@ -355,19 +368,19 @@ Overall & 28164 & 28008 & 99.567 & 114 & 2.097 & 0.585 \\
 \section{CONCLUSIONS}
 The mouth detection time is an important issue in visual speech recognition. In this paper, a modification of VJA using an adaptive threshold was proposed. The experimental results have shown that our algorithm enhanced the mouth detection time with the baseline algorithm reduced to more than 3.5 times approximately. Consequently, the proposed algorithm gives a good solution for real-time visual speech recognition regarding the detection time enhancement. The drawback of this paper is that the experimental results are limited to a maximum distance of 8 ft from the camera; therefore, the maximum limit (150) may change at greater distances depending on the application and real-time implementation. Moreover, the limitation of the present study is an important direction for future validation using more diverse datasets.
 
-\subsection*{ACKNOWLEDGEMENTS}
+\subsection*{Acknowledgements:}
 \textbf{“The authors sincerely thank the original investigators,} \textbf{Wisam H Ali, R. Saeed, and H. Al-Muifraje, for their foundational work and for making the dataset from their published study} (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}) \textbf{available for this retrospective analysis.”}
 
-\subsection*{Ethical Statement}
+\subsection*{Ethical Statement:}
 \textbf{"The original data collection was conducted by the primary investigators} (\hyperlink{ref:1}{Wisam H Ali \textit{et al.}, 2020}) \textbf{with the official approval of their institutional university authorities at that time. Informed consent was explicitly obtained from all human volunteers by the original research team. For the present study, a secondary analysis was performed using this existing dataset, which was provided in a fully anonymized and de-identified format to protect participant confidentiality."}
 
-\subsection*{Author Contributions}
+\subsection*{Author Contributions:}
 \noindent Study concept and design: M. E. Safi, E. I. Abbas, A. H. Ali; Analysis and interpretation of data: M. E. Safi, E. I. Abbas; Drafting of the manuscript: M. E. Safi, E. I. Abbas, A. H. Ali; Critical revision of the manuscript for important intellectual content: M. E. Safi, E. I. Abbas; Statistical analysis: M. E. Safi, E. I. Abbas, A. H. Ali; Administrative, technical, and material support: M. E. Safi, E. I. Abbas, A. H. Ali; Study supervision: M. E. Safi, E. I. Abbas, A. H. Ali.
 
-\subsection*{Conflict of Interest}
+\subsection*{Conflict of Interest:}
 “The authors declare that they have no conflicts of interest related to the publication or funding of this manuscript.”
 
-\subsection*{Funding}
+\subsection*{Funding:}
 “The authors declare that no financial support, grants, or funding were received from any public, commercial, or non-profit organizations for the research, authorship, or publication of this article.”
 
 \section*{REFERENCES}
@@ -377,45 +390,45 @@ The mouth detection time is an important issue in visual speech recognition. In 
     \setlength{\parsep}{0pt}
     \setlength{\itemsep}{6pt}
 }
-\item \hypertarget{ref:1}{}Ali, Wisam H, R. Saeed, T., \& H. Al-Muifraje, M. (2020). FPGA Implementation of Visual Speech Recognition System based on NVGRAM-WNN. \textit{2020 International Conference on Computer Science and Software Engineering (CSASE)}, 132–137. DOI:\href{https://doi.org/10.1109/CSASE48920.2020.9142095}{https://doi.org/10.1109/CSASE48920.2020.9142095}
+\item \hypertarget{ref:1}{}Ali, Wisam H, R. Saeed, T., \& H. Al-Muifraje, M. (2020). FPGA Implementation of Visual Speech Recognition System based on NVGRAM-WNN. \textit{2020 International Conference on Computer Science and Software Engineering (CSASE)}, 132–137. DOI:\href{https://doi.org/10.1109/CSASE48920.2020.9142095}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/CSASE48920.2020.9142095}}}
 
 \item \hypertarget{ref:2}{}Ali, Wissam Hassan. (2016). \textit{Pattern Recognition System for Human Utterance} (Issue June). University of Technology-Iraq.
 
-\item \hypertarget{ref:3}{}Balasubramanian, M., Palanivel, S., \& Ramalingam, V. (2009). Real time face and mouth recognition using radial basis function neural networks. \textit{Expert Systems with Applications}, \textit{36}(3, Part 2), 6879–6888. DOI:\href{https://doi.org/10.1016/j.eswa.2008.08.001}{https://doi.org/10.1016/j.eswa.2008.08.001}
+\item \hypertarget{ref:3}{}Balasubramanian, M., Palanivel, S., \& Ramalingam, V. (2009). Real time face and mouth recognition using radial basis function neural networks. \textit{Expert Systems with Applications}, \textit{36}(3, Part 2), 6879–6888. DOI:\href{https://doi.org/10.1016/j.eswa.2008.08.001}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1016/j.eswa.2008.08.001}}}
 
-\item \hypertarget{ref:4}{}Berbar, M. A., Kelash, H. M., \& Kandeel, A. A. (2006). Faces and Facial Features Detection in Color Images. \textit{Geometric Modeling and Imaging--New Trends (GMAI’06)}, 209–214. DOI:\href{https://doi.org/10.1109/GMAI.2006.18}{https://doi.org/10.1109/GMAI.2006.18}
+\item \hypertarget{ref:4}{}Berbar, M. A., Kelash, H. M., \& Kandeel, A. A. (2006). Faces and Facial Features Detection in Color Images. \textit{Geometric Modeling and Imaging--New Trends (GMAI’06)}, 209–214. DOI:\href{https://doi.org/10.1109/GMAI.2006.18}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/GMAI.2006.18}}}
 
-\item \hypertarget{ref:5}{}Ibrahim, M. Z., \& Mulvaney, D. J. (2015). Geometrical-based lip-reading using template probabilistic multi-dimension dynamic time warping. \textit{Journal of Visual Communication and Image Representation}, \textit{30}, 219–233. DOI:\href{https://doi.org/10.1016/j.jvcir.2015.04.013}{https://doi.org/10.1016/j.jvcir.2015.04.013}
+\item \hypertarget{ref:5}{}Ibrahim, M. Z., \& Mulvaney, D. J. (2015). Geometrical-based lip-reading using template probabilistic multi-dimension dynamic time warping. \textit{Journal of Visual Communication and Image Representation}, \textit{30}, 219–233. DOI:\href{https://doi.org/10.1016/j.jvcir.2015.04.013}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1016/j.jvcir.2015.04.013}}}
 
-\item \hypertarget{ref:6}{}Indrabayu, Hasanuddin, \& Nurtanio, I. (2019). An Approach in Auto Valuing for Optimal Threshold of Viola Jones. \textit{Symposium of Emerging Nuclear Technology and Engineering Novelty}. DOI:\href{https://doi.org/10.1088/1742-6596/1198/9/092003}{https://doi.org/10.1088/1742-6596/1198/9/092003}
+\item \hypertarget{ref:6}{}Indrabayu, Hasanuddin, \& Nurtanio, I. (2019). An Approach in Auto Valuing for Optimal Threshold of Viola Jones. \textit{Symposium of Emerging Nuclear Technology and Engineering Novelty}. DOI:\href{https://doi.org/10.1088/1742-6596/1198/9/092003}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1088/1742-6596/1198/9/092003}}}
 
-\item \hypertarget{ref:7}{}Joshi, A., Chavan, V., \& Kaveri, P. (2021). Semantic Gap Reduction From Mouth Feature Threshold Value Using Viola Jones Algorithm. \textit{ICCRDA 2020}. DOI:\href{https://doi.org/10.1088/1757-899X/1022/1/012065}{https://doi.org/10.1088/1757-899X/1022/1/012065}
+\item \hypertarget{ref:7}{}Joshi, A., Chavan, V., \& Kaveri, P. (2021). Semantic Gap Reduction From Mouth Feature Threshold Value Using Viola Jones Algorithm. \textit{ICCRDA 2020}. DOI:\href{https://doi.org/10.1088/1757-899X/1022/1/012065}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1088/1757-899X/1022/1/012065}}}
 
 \item \hypertarget{ref:8}{}Kaur, J., \& Sharma, A. (2017). Performance Analysis of Face Detection by using Viola-Jones algorithm. \textit{International Journal of Computational Intelligence Research}, \textit{13}(5), 707–717.
 
-\item \hypertarget{ref:9}{}Kherchaoui, S., \& Houacine, A. (2010). Face detection based on a model of the skin color with constraints and template matching. \textit{2010 International Conference on Machine and Web Intelligence}, 469–472. DOI:\href{https://doi.org/10.1109/ICMWI.2010.5648043}{https://doi.org/10.1109/ICMWI.2010.5648043}
+\item \hypertarget{ref:9}{}Kherchaoui, S., \& Houacine, A. (2010). Face detection based on a model of the skin color with constraints and template matching. \textit{2010 International Conference on Machine and Web Intelligence}, 469–472. DOI:\href{https://doi.org/10.1109/ICMWI.2010.5648043}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/ICMWI.2010.5648043}}}
 
-\item \hypertarget{ref:10}{}Maghraby, A. El, Abdalla, M., \& El, M. Y. (2014). Detect and Analyze Face Parts Information using Viola- Jones and Geometric Approaches. \textit{International Journal of Computer Applications}, \textit{101}(3), 23–28. DOI:\href{https://doi.org/10.5120/17667-8494}{https://doi.org/10.5120/17667-8494}
+\item \hypertarget{ref:10}{}Maghraby, A. El, Abdalla, M., \& El, M. Y. (2014). Detect and Analyze Face Parts Information using Viola- Jones and Geometric Approaches. \textit{International Journal of Computer Applications}, \textit{101}(3), 23–28. DOI:\href{https://doi.org/10.5120/17667-8494}{{\urlstyle{same}\nolinkurl{https://doi.org/10.5120/17667-8494}}}
 
 \item \hypertarget{ref:11}{}MathWorks. (n.d.). \textit{vision.CascadeObjectDetector (Detect objects using the Viola-Jones algorithm)}. Retrieved December 27, 2022, from \url{https://www.mathworks.com/help/vision/ref/vision.cascadeobjectdetector-system-object.html}
 
-\item \hypertarget{ref:12}{}Nguyen, D., Halupka, D., Member, S., Aarabi, P., Sheikholeslami, A., \& Member, S. (2006). Real-Time Face Detection and Lip Feature Extraction Using Field-Programmable Gate Arrays. \textit{IEEE Transactions on Systems, Man, and Cybernetics}, \textit{36}(4), 902–912. DOI:\href{https://doi.org/10.1109/TSMCB.2005.862728}{https://doi.org/10.1109/TSMCB.2005.862728}
+\item \hypertarget{ref:12}{}Nguyen, D., Halupka, D., Member, S., Aarabi, P., Sheikholeslami, A., \& Member, S. (2006). Real-Time Face Detection and Lip Feature Extraction Using Field-Programmable Gate Arrays. \textit{IEEE Transactions on Systems, Man, and Cybernetics}, \textit{36}(4), 902–912. DOI:\href{https://doi.org/10.1109/TSMCB.2005.862728}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/TSMCB.2005.862728}}}
 
-\item \hypertarget{ref:13}{}Papageorgiou, C. P., Oren, M., \& Poggio, T. (1998). A general framework for object detection. \textit{Sixth International Conference on Computer Vision (IEEE Cat. No.98CH36271)}, 555–562. DOI:\href{https://doi.org/10.1109/ICCV.1998.710772}{https://doi.org/10.1109/ICCV.1998.710772}
+\item \hypertarget{ref:13}{}Papageorgiou, C. P., Oren, M., \& Poggio, T. (1998). A general framework for object detection. \textit{Sixth International Conference on Computer Vision (IEEE Cat. No.98CH36271)}, 555–562. DOI:\href{https://doi.org/10.1109/ICCV.1998.710772}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/ICCV.1998.710772}}}
 
-\item \hypertarget{ref:14}{}Radhi, A. A., Akkar, H. A. R., \& Abdullah, H. N. (2022). Skewness and access kurtosis as denoised mixed features-based K-Medoids for cooperative spectrum sensing. \textit{Physical Communication}, \textit{54}, 101831. DOI:\href{https://doi.org/10.1016/j.phycom.2022.101831}{https://doi.org/10.1016/j.phycom.2022.101831}
+\item \hypertarget{ref:14}{}Radhi, A. A., Akkar, H. A. R., \& Abdullah, H. N. (2022). Skewness and access kurtosis as denoised mixed features-based K-Medoids for cooperative spectrum sensing. \textit{Physical Communication}, \textit{54}, 101831. DOI:\href{https://doi.org/10.1016/j.phycom.2022.101831}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1016/j.phycom.2022.101831}}}
 
-\item \hypertarget{ref:15}{}Ryu, Y.-S., \& Oh, S.-Y. (2001). Automatic extraction of eye and mouth fields from a face image using eigenfeatures and multilayer perceptrons. \textit{Pattern Recognition}, \textit{34}(12), 2459–2466. DOI:\href{https://doi.org/10.1016/S0031-3203(00)00173-4}{https://doi.org/10.1016/S0031-3203(00)00173-4}
+\item \hypertarget{ref:15}{}Ryu, Y.-S., \& Oh, S.-Y. (2001). Automatic extraction of eye and mouth fields from a face image using eigenfeatures and multilayer perceptrons. \textit{Pattern Recognition}, \textit{34}(12), 2459–2466. DOI:\href{https://doi.org/10.1016/S0031-3203(00)00173-4}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1016/S0031-3203(00)00173-4}}}
 
-\item \hypertarget{ref:16}{}Safi, Mohammed E., \& Abbas, E. I. (2016). Microcontroller - Controlled security door based on speech recognition. In \textit{Al-Sadiq International Conference on Multidisciplinary in IT and Communication Techniques Science and Applications, AIC-MITCSA 2016} (pp. 48–53). DOI:\href{https://doi.org/10.1109/AIC-MITCSA.2016.7759909}{https://doi.org/10.1109/AIC-MITCSA.2016.7759909}
+\item \hypertarget{ref:16}{}Safi, Mohammed E., \& Abbas, E. I. (2016). Microcontroller - Controlled security door based on speech recognition. In \textit{Al-Sadiq International Conference on Multidisciplinary in IT and Communication Techniques Science and Applications, AIC-MITCSA 2016} (pp. 48–53). DOI:\href{https://doi.org/10.1109/AIC-MITCSA.2016.7759909}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/AIC-MITCSA.2016.7759909}}}
 
-\item \hypertarget{ref:17}{}Safi, Mohammed Ehsan, \& Abbas, E. I. (2022). Isolated word recognition based on PNCC with different classifiers in a noisy environment. \textit{Applied Acoustics}, \textit{195}, 108848. DOI:\href{https://doi.org/10.1016/j.apacoust.2022.108848}{https://doi.org/10.1016/j.apacoust.2022.108848}
+\item \hypertarget{ref:17}{}Safi, Mohammed Ehsan, \& Abbas, E. I. (2022). Isolated word recognition based on PNCC with different classifiers in a noisy environment. \textit{Applied Acoustics}, \textit{195}, 108848. DOI:\href{https://doi.org/10.1016/j.apacoust.2022.108848}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1016/j.apacoust.2022.108848}}}
 
-\item \hypertarget{ref:18}{}Safi, Mohammed Ehsan, \& Abbas, E. I. (2023). Lip Segmentation for Visual Speech Recognition Based on the Convolution Process. \textit{2023 International Conference on Engineering Applied and Nano Sciences (ICEANS)}, 102–106. DOI:\href{https://doi.org/10.1109/ICEANS58413.2023.10630463}{https://doi.org/10.1109/ICEANS58413.2023.10630463}
+\item \hypertarget{ref:18}{}Safi, Mohammed Ehsan, \& Abbas, E. I. (2023). Lip Segmentation for Visual Speech Recognition Based on the Convolution Process. \textit{2023 International Conference on Engineering Applied and Nano Sciences (ICEANS)}, 102–106. DOI:\href{https://doi.org/10.1109/ICEANS58413.2023.10630463}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/ICEANS58413.2023.10630463}}}
 
 \item \hypertarget{ref:19}{}Setu, T. A., \& Rahman, M. (2016). Human Face Detection and Segmentation of Facial Feature Region. \textit{Global Journal of Computer Science and Technology: G Interdisciplinary}, \textit{16}(1).
 
-\item \hypertarget{ref:20}{}Viola, P., \& Jones, M. (2001). Rapid Object Detection using a Boosted Cascade of Simple Features. \textit{Proceedings of the 2001 IEEE Computer Society Conference on Computer Vision and Pattern Recognition}. DOI:\href{https://doi.org/10.1109/CVPR.2001.990517}{https://doi.org/10.1109/CVPR.2001.990517}
+\item \hypertarget{ref:20}{}Viola, P., \& Jones, M. (2001). Rapid Object Detection using a Boosted Cascade of Simple Features. \textit{Proceedings of the 2001 IEEE Computer Society Conference on Computer Vision and Pattern Recognition}. DOI:\href{https://doi.org/10.1109/CVPR.2001.990517}{{\urlstyle{same}\nolinkurl{https://doi.org/10.1109/CVPR.2001.990517}}}
 
 \item \hypertarget{ref:21}{}Zhang, C., \& Zhang, Z. (2010). A Survey of Recent Advances in Face Detection. \textit{Microsoft Research}, \textit{1}(MSR-TR-2010-66). \url{https://www.microsoft.com/en-us/research/publication/a-survey-of-recent-advances-in-face-detection/}
 

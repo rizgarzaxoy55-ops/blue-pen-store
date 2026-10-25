@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <doi_batch xmlns="http://www.crossref.org/schema/5.3.1" xmlns:jats="http://www.ncbi.nlm.nih.gov/JATS1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="5.3.1" xsi:schemaLocation="http://www.crossref.org/schema/5.3.1 https://www.crossref.org/schemas/crossref5.3.1.xsd">
   <head>
-    <doi_batch_id>sjuoz-14-4-1993-20261020023647</doi_batch_id>
-    <timestamp>20261020023647</timestamp>
+    <doi_batch_id>sjuoz-14-4-1993-20261025124648</doi_batch_id>
+    <timestamp>20261025124648</timestamp>
     <depositor>
       <depositor_name>Science Journal of University of Zakho</depositor_name>
-      <email_address>editor@uoz.edu.krd</email_address>
+      <email_address>editor@example.org</email_address>
     </depositor>
     <registrant>University of Zakho</registrant>
   </head>
@@ -68,7 +68,6 @@
         </jats:abstract>
         <publication_date media_type="online">
           <month>10</month>
-          <day>15</day>
           <year>2026</year>
         </publication_date>
         <pages>

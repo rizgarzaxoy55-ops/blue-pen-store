@@ -360,7 +360,9 @@ def build_report(ctx):
         missing = []
         if not (ctx["opts"].depositor_email or JOURNAL["depositor_email"]):
             missing.append("gönderen e-postası (--depositor-email)")
-        if not meta.get("last_page"):
+        if not meta.get("first_page"):
+            missing.append("sayfa aralığı (--first-page)")
+        elif not meta.get("last_page"):
             missing.append("son sayfa (PDF derlenmedi)")
         if not meta.get("published"):
             missing.append("yayın tarihi (--published)")

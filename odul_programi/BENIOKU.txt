@@ -11,6 +11,13 @@ KURULUM (bir kere)
    Varsayılan klasöre (C:\Program Files\Tesseract-OCR) kurun; program kendisi bulur.
    Sonra cmd'de bir kere:  pip install -r requirements.txt
    (Word .docx dilekçeler için Tesseract gerekmez.)
+   ARABIC'İ KURMAYI UNUTTUYSANIZ (program "Arabic dili kurulu değil" der):
+   - Tesseract kurulum dosyasını tekrar çalıştırın, "Additional language data (download)"
+     altından "Arabic"i işaretleyin.
+   - Ya da https://github.com/tesseract-ocr/tessdata/raw/main/ara.traineddata dosyasını indirip
+     C:\Program Files\Tesseract-OCR\tessdata\ klasörüne kopyalayın.
+   Kontrol için cmd'de:  "C:\Program Files\Tesseract-OCR\tesseract.exe" --list-langs
+   (listede "ara" görünmeli).
 
 KULLANIM
 - Yazarların gönderdiği dilekçe Word dosyasını (.docx) "calistir.bat" dosyasının

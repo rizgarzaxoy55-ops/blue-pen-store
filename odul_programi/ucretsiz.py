@@ -217,6 +217,30 @@ def _is_latin_line(s):
     return letters and sum(1 for c in letters if LATIN.match(c)) / len(letters) > 0.8
 
 
+def _wordlike(s):
+    """Satırın gerçek İngilizce kelimelerden oluşma oranı (OCR çöpünü elemek için)."""
+    toks = re.findall(r"[^\s]+", s)
+    if not toks:
+        return 0.0
+    good = sum(1 for t in toks
+               if re.fullmatch(r"[(\[“\"']?(?:[A-Z]?[a-z]+|[A-Z]{2,}|[A-Z][a-z]*-[A-Za-z]+|\d+[A-Za-z]*|[A-Z][a-z]*[₀-₉\d]*[A-Za-z]*)[)\]”\"'.,:;’s]*", t)
+               and re.search(r"[aeiouyAEIOUY]|\d", t))
+    return good / len(toks)
+
+
+def _trim_garbage(s):
+    """OCR çöpünü başlığın başından/sonundan at: rakam, kesme işareti, ortada büyük harf, çok kısa parçalar."""
+    toks = s.split()
+    bad = lambda t: (re.search(r"\d|['’‘`]", t) or re.search(r"[a-z][A-Z]", t)
+                     or len(t.strip("()[],.:;")) <= 2 and t.lower() not in ("a", "an", "of", "to", "in", "on", "by")
+                     or not re.search(r"[A-Za-z]", t))
+    while toks and (bad(toks[0]) or len(toks[0]) <= 3 and toks[0] not in ("A", "An", "The", "On")):
+        toks.pop(0)
+    while toks and (bad(toks[-1]) or len(toks[-1]) <= 3 and toks[-1].islower()):
+        toks.pop()
+    return " ".join(toks)
+
+
 def _split_names(cell):
     cell = cell.strip().strip(",،;").strip()
     if not cell:
@@ -339,13 +363,24 @@ def parse_letter(text):
                     break
     if not title:
         cands = []
-        for l in lines:
+        for i, l in enumerate(lines):
             s = l.strip().strip("()\"'“”«» ").strip()
-            if not _is_latin_line(s) or len(s.split()) < 4 or "|" in s:
+            if not _is_latin_line(s) or len(s.split()) < 4 or "|" in s or _wordlike(s) < 0.75:
                 continue
             if any(w in s.lower() for w in STOP_WORDS) or key(s) == key(journal) or LABEL_LINE.search(s):
                 continue
-            cands.append(s)
+            # yarım kalan başlık: alt satırla birleştir ("... Molecular Targets to" + "Lifestyle Medicine")
+            for nxt in lines[i + 1:i + 3]:
+                n = nxt.strip().strip("()\"'“”«» ").strip()
+                if (n and not re.search(r"[.?!]$", s) and _is_latin_line(n) and _wordlike(n) >= 0.75
+                        and len(n.split()) <= 14 and not LABEL_LINE.search(n)
+                        and not any(w in n.lower() for w in STOP_WORDS)):
+                    s = s + " " + n
+                else:
+                    break
+            s = _trim_garbage(s)
+            if len(s.split()) >= 4:
+                cands.append(s)
         title = max(cands, key=len) if cands else ""
 
     authors = parse_authors(lines)

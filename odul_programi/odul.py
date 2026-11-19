@@ -263,6 +263,9 @@ TESSERACT_PATHS = [r"C:\Program Files\Tesseract-OCR\tesseract.exe",
                    os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe")]
 
 
+OCR_NOTES = []
+
+
 def ocr_images(images):
     try:
         import pytesseract
@@ -279,7 +282,15 @@ def ocr_images(images):
         raise RuntimeError("Dilekçe taranmış (resim). Okumak için ücretsiz Tesseract OCR programını kurun: "
                            "https://github.com/UB-Mannheim/tesseract/wiki  (kurarken 'Arabic' dilini de seçin). "
                            "Ya da dilekçenin Word (.docx) halini kullanın.")
-    lang = "eng+ara" if "ara" in langs else "eng"
+    if "ara" in langs:
+        lang = "eng+ara"
+    else:
+        lang = "eng"
+        msg = ("Tesseract'ta Arabic dili kurulu değil: Kürtçe kısımlar (bölüm, Kürtçe adlar, başlık etiketi) "
+               "okunamaz. Tesseract kurulum dosyasını tekrar çalıştırıp 'Additional language data' altından "
+               "'Arabic'i işaretleyin.")
+        print("      ! " + msg)
+        OCR_NOTES.append(msg)
     return "\n".join(pytesseract.image_to_string(im, lang=lang, config="--psm 4") for im in images)
 
 
@@ -662,6 +673,7 @@ def process_file(client, path, use_web=True):
         L = ucretsiz.parse_letter(text)
         L["source"] = source
         if source == "ocr":
+            L["unclear"] += OCR_NOTES[-1:]
             L["unclear"].append("Dilekçe taranmış (resim); OCR ile okundu. Başlık, dergi ve adları Word'de dikkatle kontrol edin.")
     else:
         L = read_letter(client, path)

@@ -1,0 +1,5 @@
+cikti/
+ayarlar.json
+.venv/
+__pycache__/
+girdi/

@@ -1,0 +1,42 @@
+{
+ "letter": {
+  "authors": [
+   {"name_ku": "بيوار محمد أحمد", "name_en": "Bewar M. Ahmad"},
+   {"name_ku": "جيلان ادريس شريف", "name_en": "Jilan I. Sharif"},
+   {"name_ku": "نادار شفيق رمضان", "name_en": "Adar Sh. Ramadhan"}
+  ],
+  "title": "Theoretical Exploration of Tetragonal KGeCl₂I: Mixed-Halide Semiconductor with a Narrow Direct Bandgap and Anisotropic Optical Responses",
+  "journal": "Chemical Papers",
+  "stated_impact_factor": 2.7,
+  "stated_index": "Impact Factor: 2.7",
+  "stated_scopus_quartile": null,
+  "department_ku": "فيزيك",
+  "college_key": "Science",
+  "college_name": "College of Science",
+  "handwritten_amount": 840000,
+  "letter_date": "2026/11/14",
+  "unclear": []
+ },
+ "verify": {
+  "published": true,
+  "doi": "10.1007/s11696-026-05966-0",
+  "article_url": "https://link.springer.com/article/10.1007/s11696-026-05966-0",
+  "published_date": "2026-11",
+  "authors_on_paper": [],
+  "authors_match": null,
+  "uoz_affiliation": null,
+  "clarivate_listed": true,
+  "impact_factor": 2.7,
+  "impact_factor_year": "2025",
+  "impact_factor_source": "chempap.org",
+  "scopus_listed": null,
+  "scopus_quartile": null,
+  "doaj_listed": null,
+  "staff_portal": [
+   {"author": "Bewar Mohammad Ahmad", "url": "https://staffportal.uoz.edu.krd/en/bewarahmed", "paper_listed": null},
+   {"author": "Jilan Idrees Sharif", "url": null, "paper_listed": null},
+   {"author": "Adar Shafiq Ramadhan", "url": null, "paper_listed": null}
+  ],
+  "notes": ["Makale sayfasındaki yazar listesi doğrulanamadı."]
+ }
+}

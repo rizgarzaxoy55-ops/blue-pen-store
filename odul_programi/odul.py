@@ -44,6 +44,7 @@ TEMPLATE = os.path.join(HERE, "sablon.docx")
 OUT_ROOT = os.path.join(HERE, "cikti")
 SETTINGS = os.path.join(HERE, "ayarlar.json")
 MODEL = "claude-opus-5-5"
+VERSION = "2026-11-19e"
 
 # ─────────────────────────── Ödül kuralları ───────────────────────────
 # Fermana wezarî (1692) 23/01/2025 - "onlara gore para belirleme.pdf"
@@ -286,6 +287,7 @@ def ocr_images(images):
         (l.replace("\\", "/") for l in sorted(langs) if l.replace("\\", "/").lower().endswith("arabic")), None)
     if arabic:
         lang = "eng+" + arabic
+        print(f"      OCR dilleri: {lang}")
     else:
         lang = "eng"
         msg = ("Tesseract'ta Arabic dili kurulu değil: Kürtçe kısımlar (bölüm, Kürtçe adlar, başlık etiketi) "
@@ -707,6 +709,7 @@ def process_file(client, path, use_web=True):
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+    print(f"Program sürümü: {VERSION}")
     ap = argparse.ArgumentParser(description="Zakho Üniversitesi yayın ödülü yazısı hazırlayıcı")
     ap.add_argument("files", nargs="*", help="dilekçe resmi / PDF / docx")
     ap.add_argument("--json", help="veri.json'dan Word'ü yeniden üret (API kullanmaz)")

@@ -178,9 +178,9 @@ STOP_WORDS = ("kurdistan", "ministry", "university", "college", "department", "p
               "scopus", "clarivate", "doaj", "issn", "web of science")
 SIGN_WORDS = ("داخاز", "دگەل", "دگه‌ل", "ڕێزگرتن", "ريزگرتن", "رێزگرتن", "سەروکێ", "سەرۆکێ", "سه‌رۆكێ", "سەرۆكێ",
               "هەڤپێچ", "مع التقدير", "رئيس", "signature")
-DEPT_EN_KU = {"physics": "فيزيك", "mathematics": "ماتماتیک", "chemistry": "کیمیا", "biology": "بایۆلۆجی",
+DEPT_EN_KU = {"physics": "فیزیک", "mathematics": "ماتماتیک", "chemistry": "کیمیا", "biology": "بایۆلۆجی",
               "computer": "کۆمپیوتەر", "environmental": "زانستێن ژینگەهێ", "biomedical": "بایۆمێدیکال"}
-DEPT_AR_KU = {"الفيزياء": "فيزيك", "الرياضيات": "ماتماتیک", "الریاضیات": "ماتماتیک", "الكيمياء": "کیمیا",
+DEPT_AR_KU = {"الفيزياء": "فیزیک", "الرياضيات": "ماتماتیک", "الریاضیات": "ماتماتیک", "الكيمياء": "کیمیا",
               "علوم الحياة": "بایۆلۆجی", "الحاسوب": "کۆمپیوتەر", "البيئة": "زانستێن ژینگەهێ"}
 JOURNAL_LABEL = re.compile(r"(?:ل\s*)?[گك][ۆو][ڤف]ار[اەه]?\s*[:：]|مجلة\s*[:：]|journal\s*(?:name|title)?\s*[:：]", re.I)
 TITLE_LABEL = re.compile(r"ن[اإ]?[فڤةه]?\s*(?:و|9)\s*ن[يیئ]ش")          # ناڤ و نیشان (OCR toleranslı)
@@ -210,6 +210,32 @@ def parse_listed_authors(lines):
     for a in out:
         a["uoz"] = bool(re.search(r"زاخ|zakho", a["aff"], re.I))
     return out
+
+
+KNOWN_DEPTS = ["ماتماتیک", "فیزیک", "کیمیا", "بایۆلۆجی", "زانستێن کۆمپیوتەری", "زانستێن ژینگەهێ",
+               "جیۆلۆجی", "ئامار", "زانستێن ئاژەلان", "زانستێن ڕووەکان", "بایۆمێدیکال"]
+
+
+def _dskel(s):
+    s = s.translate(str.maketrans({"ك": "ک", "ي": "ی", "ى": "ی", "ة": "ە", "ۆ": "و", "ێ": "ی", "ڕ": "ر", "ڤ": "ف"}))
+    return re.sub(r"[\s\u200c\u064b-\u065f]", "", s)
+
+
+def canonical_dept(raw):
+    """OCR/yazım farklarını temizle: 'ماتماتيك ا' / 'ماتماتیک زوربەرێز' -> 'ماتماتیک'."""
+    w = [x for x in re.split(r"[\s/،,|:]+", raw.strip()) if x]
+    if not w:
+        return ""
+    cands = [w[0]] + ([w[0] + " " + w[1]] if len(w) > 1 else [])
+    best, score = None, 0.0
+    for c in cands:
+        for k in KNOWN_DEPTS:
+            r = difflib.SequenceMatcher(None, _dskel(c), _dskel(k)).ratio()
+            if r > score:
+                best, score = k, r
+    if score >= 0.8:
+        return best
+    return w[0].translate(str.maketrans({"ك": "ک", "ي": "ی"}))
 
 
 def _is_latin_line(s):
@@ -403,7 +429,7 @@ def parse_letter(text):
     dept = ""
     md = re.search(r"[پ][شس][کك]ا[ ‌]*[:/]?[ ‌]*([؀-ۿ‌]+(?:[ ]+[؀-ۿ‌]+)?)", full)
     if md:
-        dept = re.split(r"\s+(?:زۆر|زور|ل)\b", md.group(1).strip())[0]
+        dept = canonical_dept(md.group(1))
     else:
         for ar, ku in DEPT_AR_KU.items():
             if re.search(r"قسم\s*" + ar, full):

@@ -44,7 +44,7 @@ TEMPLATE = os.path.join(HERE, "sablon.docx")
 OUT_ROOT = os.path.join(HERE, "cikti")
 SETTINGS = os.path.join(HERE, "ayarlar.json")
 MODEL = "claude-opus-5-5"
-VERSION = "2026-11-19f"
+VERSION = "2026-11-19g"
 
 # ─────────────────────────── Ödül kuralları ───────────────────────────
 # Fermana wezarî (1692) 23/01/2025 - "onlara gore para belirleme.pdf"

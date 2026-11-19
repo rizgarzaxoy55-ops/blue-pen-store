@@ -123,6 +123,14 @@ def safe_name(s):
     return re.sub(r'[\\/:*?"<>|\n\r\t]+', " ", s).strip()[:150]
 
 
+def api_key():
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not key and os.path.exists(SETTINGS):
+        with open(SETTINGS, encoding="utf-8") as f:
+            key = (json.load(f).get("anthropic_api_key") or "").strip()
+    return key
+
+
 def api_client():
     import anthropic
     key = os.environ.get("ANTHROPIC_API_KEY")
@@ -443,14 +451,37 @@ def checks(d):
         if not V.get("published"):
             warn.append("Paper internette yayınlanmış olarak BULUNAMADI.")
         if V.get("authors_match") is False:
-            warn.append("Makaledeki yazarlar dilekçedekilerle eşleşmiyor: " + ", ".join(V.get("authors_on_paper", [])))
+            warn.append("Makaledeki yazarlar dilekçedekilerle EŞLEŞMİYOR. Makaledeki yazarlar: "
+                        + ", ".join(V.get("authors_on_paper", [])))
         if V.get("uoz_affiliation") is False:
             warn.append("Makalede University of Zakho adresi görünmüyor (kural 3).")
         for s in V.get("staff_portal", []):
-            if not s.get("url"):
+            if s.get("candidates"):
+                warn.append(f"{s['author']}: staff portalda birden fazla benzer kişi var, doğru olanı seçin.")
+            elif not s.get("url"):
                 warn.append(f"{s['author']}: staff portal sayfası bulunamadı.")
             elif s.get("paper_listed") is False:
-                warn.append(f"{s['author']}: paper staff portalda kayıtlı görünmüyor.")
+                warn.append(f"{s['author']}: paper staff portalda kayıtlı DEĞİL (kural 5-b).")
+        if V.get("mode") == "ucretsiz":
+            reg = V.get("registry")
+            if reg is None and "UoZ kayıt listesi indirilemedi" not in " ".join(V.get("notes", [])):
+                warn.append("Paper UoZ yayın kayıt listesinde (Google Sheet) BULUNAMADI (kural 5-a).")
+            elif reg and reg.get("impact_factor") and sif:
+                try:
+                    if abs(float(reg["impact_factor"]) - float(sif)) > 0.05:
+                        warn.append(f"Kayıt listesinde IF={reg['impact_factor']}, dilekçede IF={sif}.")
+                except ValueError:
+                    pass
+            if A["kind"] != "Clarivate" and reg and reg.get("impact_factor"):
+                warn.append(f"Dilekçede IF yok ama UoZ kayıt listesinde bu paper için IF={reg['impact_factor']} "
+                            f"({reg.get('indexing')}) yazıyor. Dergi Clarivate'te ise ödül IF tablosuna göre "
+                            "hesaplanmalı; kontrol edip veri.json'a stated_impact_factor yazın.")
+            if A["kind"] == "Clarivate":
+                warn.append(f"IF ({sif}) dilekçeden alındı; ücretsiz modda resmi doğrulama yok. "
+                            "Clarivate MJL/JCR'den kontrol edin (link raporda).")
+            sjr = (V.get("sjr") or {}).get("quartile")
+            if A["kind"] == "Scopus" and sjr and L.get("stated_scopus_quartile") and sjr != L["stated_scopus_quartile"]:
+                warn.append(f"Dilekçede Scopus Q{L['stated_scopus_quartile']}, SCImago'da Q{sjr}. Scopus'tan kontrol edin.")
         warn += V.get("notes", [])
     else:
         warn.append("İnternette doğrulama yapılmadı.")
@@ -477,7 +508,10 @@ def write_report(d, path, warnings):
         "DOI            : " + (f"https://doi.org/{V['doi']}" if V.get("doi") else "-"),
     ]
     for s in V.get("staff_portal", []):
-        lines.append(f"Staff portal   : {s['author']}: {s.get('url') or 'bulunamadı'}")
+        listed = {True: "  [paper KAYITLI]", False: "  [paper KAYITLI DEĞİL]"}.get(s.get("paper_listed"), "")
+        lines.append(f"Staff portal   : {s['author']}: {s.get('url') or 'bulunamadı'}{listed}")
+        for c in s.get("candidates", []):
+            lines.append(f"                 olası: {c}")
     lines += ["", "── DOĞRULAMA ──",
               f"Yayınlanmış     : {V.get('published')}",
               f"Yayın tarihi    : {V.get('published_date')}",
@@ -487,8 +521,24 @@ def write_report(d, path, warnings):
               f"Clarivate       : {V.get('clarivate_listed')}  IF={V.get('impact_factor')} "
               f"({V.get('impact_factor_year') or ''}) kaynak: {V.get('impact_factor_source') or '-'}",
               f"Scopus          : {V.get('scopus_listed')}  Q{V.get('scopus_quartile') or '-'}",
-              f"DOAJ            : {V.get('doaj_listed')}",
-              "", "── UYARILAR (elle kontrol edin) ──"]
+              f"DOAJ            : {V.get('doaj_listed')}"]
+    if V.get("issn"):
+        lines.append(f"ISSN            : {', '.join(V['issn'])}")
+    if V.get("openalex_affiliations"):
+        lines.append("Adresler        : " + " | ".join(V["openalex_affiliations"]))
+    if V.get("sjr"):
+        sj = V["sjr"]
+        lines.append(f"SCImago         : Q{sj.get('quartile') or '-'} ({sj.get('file')})")
+    if V.get("mode") == "ucretsiz":
+        reg = V.get("registry")
+        lines.append("UoZ kayıt list. : " + (f"KAYITLI ({reg['timestamp']}) index={reg['indexing']} IF={reg['impact_factor']}"
+                                             if reg else "bulunamadı"))
+        if V.get("registry_journal_ifs"):
+            lines.append("  aynı dergi için listede yazılan IF'ler: "
+                         + ", ".join(f"{i} ({dt})" for dt, i in V["registry_journal_ifs"]))
+    if V.get("links"):
+        lines += ["", "── ELLE KONTROL LİNKLERİ ──"] + [f"{k}: {u}" for k, u in V["links"].items()]
+    lines += ["", "── UYARILAR (elle kontrol edin) ──"]
     lines += [f"! {w}" for w in warnings] or ["(yok)"]
     if V.get("raw_report"):
         lines += ["", "── ARAŞTIRMA NOTLARI ──", V["raw_report"]]
@@ -516,16 +566,28 @@ def build_outputs(d, src_file=None, today=None):
 
 
 def process_file(client, path, use_web=True):
+    """client=None ise ücretsiz mod (yapay zekâsız)."""
     print(f"\n=== {os.path.basename(path)}")
     print("  1/3 dilekçe okunuyor...")
-    L = read_letter(client, path)
+    if client is None:
+        import ucretsiz
+        if not path.lower().endswith(".docx"):
+            raise RuntimeError("Ücretsiz mod sadece Word (.docx) dilekçeleri okur.")
+        L = ucretsiz.parse_letter(docx_text(path))
+    else:
+        L = read_letter(client, path)
     print("      yazarlar:", ", ".join(a["name_ku"] for a in L["authors"]))
     print("      paper   :", L["title"])
     d = {"letter": L, "verify": None}
     if use_web:
-        print("  2/3 paper internette aranıyor (1-3 dakika sürebilir)...")
+        print("  2/3 paper internette aranıyor...")
         try:
-            d["verify"] = structure_research(client, L, research(client, L))
+            if client is None:
+                d["verify"] = ucretsiz.verify(L)
+                d["verify"]["mode"] = "ucretsiz"
+            else:
+                d["verify"] = structure_research(client, L, research(client, L))
+                d["verify"]["mode"] = "ai"
         except Exception as e:  # arama başarısız olsa da Word yine üretilsin
             print("      ! arama başarısız:", e)
     print("  3/3 Word hazırlanıyor...")
@@ -539,6 +601,8 @@ def main():
     ap.add_argument("files", nargs="*", help="dilekçe resmi / PDF / docx")
     ap.add_argument("--json", help="veri.json'dan Word'ü yeniden üret (API kullanmaz)")
     ap.add_argument("--no-web", action="store_true", help="internette doğrulama yapma")
+    ap.add_argument("--ucretsiz", action="store_true", help="API anahtarı olsa bile ücretsiz modu kullan")
+    ap.add_argument("--ai", action="store_true", help="yapay zekâ modunu zorla (API anahtarı gerekir)")
     a = ap.parse_args()
 
     results = []
@@ -553,9 +617,11 @@ def main():
             files = [os.path.join(in_dir, x) for x in sorted(os.listdir(in_dir))
                      if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".pdf", ".docx", ".doc")) and not x.startswith("~$")]
             if not files:
-                print("Dosya verilmedi. Dilekçe resimlerini 'girdi' klasörüne koyun ya da run.bat üzerine sürükleyin.")
+                print("Dosya verilmedi. Dilekçe Word dosyalarını 'girdi' klasörüne koyun ya da calistir.bat üzerine sürükleyin.")
                 return 1
-        client = api_client()
+        use_ai = a.ai or (bool(api_key()) and not a.ucretsiz)
+        client = api_client() if use_ai else None
+        print("Mod:", "YAPAY ZEKÂ (API anahtarı ile)" if use_ai else "ÜCRETSİZ (API anahtarı yok)")
         for p in files:
             try:
                 results.append(process_file(client, p, use_web=not a.no_web))

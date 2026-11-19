@@ -3,50 +3,67 @@ YAYIN ÖDÜLÜ YAZISI PROGRAMI (University of Zakho)
 
 KURULUM (bir kere)
 1) Python 3.10 veya üstünü kurun (python.org). Kurarken "Add python.exe to PATH" işaretleyin.
-2) Anthropic API anahtarı alın: https://platform.claude.com  (API Keys bölümü)
-3) "ayarlar.ornek.json" dosyasını kopyalayıp adını "ayarlar.json" yapın,
-   içine anahtarı yazın:  {"anthropic_api_key": "sk-ant-..."}
-   (Bu dosyayı kimseyle paylaşmayın.)
+2) API anahtarı GEREKMEZ. Program ücretsiz çalışır.
+   (İsterseniz yapay zekâ modu için anahtar ekleyebilirsiniz, en alta bakın.)
 
 KULLANIM
 - Yazarların gönderdiği dilekçe Word dosyasını (.docx) "calistir.bat" dosyasının
   ÜZERİNE SÜRÜKLEYİP BIRAKIN. Birden fazla dosya da olur.
-  (Eski .doc dosyası ise Word'de açıp "Farklı Kaydet > .docx" yapın.
-   Gerekirse PDF veya resim de kabul edilir.)
 - Ya da dosyaları "girdi" klasörüne koyup "calistir.bat"a çift tıklayın.
-- İlk çalıştırmada paketler kurulur (birkaç dakika).
-- Her dilekçe için 1-3 dakika sürer (internette arama yapıyor).
+- cmd'den:  python odul.py "C:\...\dilekce.docx"
+- Eski .doc dosyası ise Word'de açıp "Farklı Kaydet > .docx" yapın.
 
 SONUÇ:  cikti\(yazar1) و (yazar2)\
    ... - خەلاتکرن.docx   -> hazır ödül yazısı (sablon.docx düzeninde)
-   rapor.txt              -> dergideki link, DOI, staff portal linkleri, IF/Scopus kontrolü, UYARILAR
-   veri.json              -> okunan bilgiler
+   rapor.txt              -> linkler, kontrol sonuçları, UYARILAR
+   veri.json              -> okunan/bulunan bilgiler
    dilekce.docx           -> yazarların gönderdiği dilekçenin kopyası
 
-PROGRAM NE YAPAR
-1. Dilekçe Word'ünü okur (tablolar, üst bilgi, metin kutuları dahil): yazar adları
-   (Kürtçe + İngilizce), başlık, dergi, IF, bölüm, fakülte.
-2. Paperi internette arar: yayınlanmış mı, DOI, makale linki, yazarlar, Clarivate IF,
-   Scopus Q, DOAJ, her yazarın staff portal sayfası.
-3. Parayı kurallara göre kendisi hesaplar (Fermana wezarî 1692, 23/01/2025):
-     Clarivate IF: 0.1-1 = 500,000 ; her +0.1 = +20,000 ; 6 ve üstü = 1,500,000   -> خالا (1)
-     Scopus (IF yok): Q1 500,000 ; Q2 400,000 ; Q3/Q4 300,000 ; Q yok 250,000    -> خالا (2)
-     Üniversite dergileri: Kürdistan onaylı 250,000 ; Irak 200,000               -> خالا (3)
-4. Word'ü doldurur ve yazarların adıyla klasöre koyar.
+PROGRAM NE KONTROL EDER (ücretsiz kaynaklar)
+1. Dilekçe Word'ünü okur: yazarlar (İngilizce + Kürtçe), başlık, dergi (parantez içinde),
+   Impact Factor / Scopus Q, bölüm (پشکا ...), fakülte.
+2. Crossref + OpenAlex: paper yayınlanmış mı, DOI, dergideki makale linki,
+   makaledeki yazarlar dilekçedekilerle aynı mı, adreste University of Zakho var mı.
+3. UoZ yayın kayıt listesi (üniversitenin Google Sheet'i): paper kaydedilmiş mi (kural 5-a),
+   orada yazılan index ve IF, aynı dergi için başkalarının yazdığı IF'ler.
+4. UoZ staff portal: her yazarın sayfası ve paper o sayfada kayıtlı mı (kural 5-b).
+5. DOAJ: dergi DOAJ'da mı.
+6. Yazar sayısı kuralı (fen: en fazla 4, insani bilimler: en fazla 3).
 
-MUTLAKA ELLE KONTROL EDİN
-- rapor.txt içindeki "UYARILAR" bölümünü okuyun.
-- Yazar adlarının yazımını (program dilekçede ne yazıyorsa onu kopyalar).
-- Impact Factor'ü Clarivate JCR'den (bazı siteler farklı sayı veriyor).
+PARA HESABI (Fermana wezarî 1692, 23/01/2025)
+   Clarivate IF: 0.1-1 = 500,000 ; her +0.1 = +20,000 ; 6 ve üstü = 1,500,000   -> خالا (1)
+   Scopus (IF yok): Q1 500,000 ; Q2 400,000 ; Q3/Q4 300,000 ; Q yok 250,000    -> خالا (2)
+   Üniversite dergileri: Kürdistan onaylı 250,000 ; Irak 200,000               -> خالا (3)
+
+ÜCRETSİZ MODUN YAPAMADIĞI (elle kontrol edin, linkler rapor.txt'de)
+- Clarivate Impact Factor'ün resmi değeri: ücretsiz kaynağı yok. Program dilekçedeki IF'i
+  kullanır, kayıt listesindeki IF ile karşılaştırır. Clarivate MJL/JCR'den bakın.
+- Scopus quartile: SCImago dosyasını kendiniz indirirseniz program onu da kullanır:
+     https://www.scimagojr.com/journalrank.php  ->  "Download data"
+     inen dosyayı (scimagojr 2025.csv gibi) "veriler" klasörüne koyun.
+
+MUTLAKA OKUYUN: rapor.txt içindeki "UYARILAR" bölümü.
 
 DÜZELTME GEREKİRSE
 - veri.json'u Not Defteri ile açıp düzeltin (ör. isim, IF), sonra:
      python odul.py --json "cikti\...\veri.json"
-  Word yeniden üretilir (API kullanmaz, para da yeniden hesaplanır).
+  Word yeniden üretilir, para da yeniden hesaplanır.
+
+DİLEKÇE NASIL YAZILMALI (programın en iyi okuduğu düzen)
+- Dergi adı parantez içinde:   ... ل گوڤارا (Chemical Papers) ...
+- Başlık ayrı bir satırda, İngilizce.
+- "Impact Factor: 2.7" ya da "Scopus Q3" satırı.
+- "Authors:" satırı, altında her yazar bir satırda: İngilizce ad   [tab / tablo]   Kürtçe ad
+- Üst bilgide ya da metinde bölüm:  کۆلێژا زانست/ پشکا فیزیک
 
 NOTLAR
-- sablon.docx Fen Fakültesi (College of Science) şablonudur; dekan adı ve başlık oradan gelir.
-  Dekan değişirse sablon.docx içinde elle değiştirin (diğer yazılara dokunmayın).
-- Başka fakülte için o fakültenin örnek Word'ü gerekir.
+- sablon.docx Fen Fakültesi şablonudur; dekan adı ve başlık oradan gelir.
+  Dekan değişirse sablon.docx içinde elle değiştirin.
 - İnternetsiz deneme:  python odul.py --no-web dilekce.docx
-- Maliyet: her dilekçe yaklaşık 0.2-0.6 USD (dilekçe okuma + web arama), Anthropic hesabından düşülür.
+
+İSTEĞE BAĞLI: YAPAY ZEKÂ MODU (ücretli)
+- Dilekçe düzeni çok farklıysa veya resim/PDF ise daha iyi okur; IF'i internette arar.
+- platform.claude.com'dan API anahtarı alın, "ayarlar.ornek.json"u "ayarlar.json" yapıp
+  anahtarı yazın. Anahtar varsa program otomatik bu modu kullanır.
+  Anahtar olsa bile ücretsiz mod için:  python odul.py --ucretsiz dilekce.docx
+- Maliyet: dilekçe başına yaklaşık 0.2-0.6 USD.

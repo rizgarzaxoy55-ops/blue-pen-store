@@ -3,3 +3,5 @@ ayarlar.json
 .venv/
 __pycache__/
 girdi/
+veriler/*
+!veriler/.gitkeep

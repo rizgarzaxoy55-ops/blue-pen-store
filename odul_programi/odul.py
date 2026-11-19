@@ -44,7 +44,7 @@ TEMPLATE = os.path.join(HERE, "sablon.docx")
 OUT_ROOT = os.path.join(HERE, "cikti")
 SETTINGS = os.path.join(HERE, "ayarlar.json")
 MODEL = "claude-opus-5-5"
-VERSION = "2026-11-19e"
+VERSION = "2026-11-19f"
 
 # ─────────────────────────── Ödül kuralları ───────────────────────────
 # Fermana wezarî (1692) 23/01/2025 - "onlara gore para belirleme.pdf"
@@ -267,6 +267,16 @@ TESSERACT_PATHS = [r"C:\Program Files\Tesseract-OCR\tesseract.exe",
 OCR_NOTES = []
 
 
+def tesseract_langs(cmd):
+    """'tesseract --list-langs' çıktısını kendimiz okuyoruz: pytesseract 'script\\Arabic' gibi adları atıyor."""
+    import subprocess
+    out = subprocess.run([cmd, "--list-langs"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if out.returncode not in (0, 1):
+        raise RuntimeError("tesseract çalışmadı")
+    lines = out.stdout.decode("utf-8", errors="replace").splitlines()
+    return {l.strip() for l in lines[1:] if l.strip() and " " not in l.strip()}
+
+
 def ocr_images(images):
     try:
         import pytesseract
@@ -278,7 +288,7 @@ def ocr_images(images):
                 pytesseract.pytesseract.tesseract_cmd = p
                 break
     try:
-        langs = set(pytesseract.get_languages(config=""))
+        langs = tesseract_langs(pytesseract.pytesseract.tesseract_cmd)
     except Exception:
         raise RuntimeError("Dilekçe taranmış (resim). Okumak için ücretsiz Tesseract OCR programını kurun: "
                            "https://github.com/UB-Mannheim/tesseract/wiki  (kurarken 'Arabic' dilini de seçin). "
@@ -309,7 +319,10 @@ def free_text(path):
         import pypdfium2 as pdfium
         pdf = pdfium.PdfDocument(path)
         pages = [pdf[i] for i in range(min(len(pdf), 3))]
-        text = "\n".join(p.get_textpage().get_text_range() for p in pages)
+        def page_text(pg):
+            tp = pg.get_textpage()
+            return tp.get_text_bounded() if hasattr(tp, "get_text_bounded") else tp.get_text_range()
+        text = "\n".join(page_text(p) for p in pages)
         if len(re.sub(r"\s+", "", text)) > 80:
             return text, "pdf"
         print("      PDF taranmış, OCR ile okunuyor (biraz sürebilir)...")

@@ -741,10 +741,14 @@ def main():
         client = api_client() if use_ai else None
         print("Mod:", "YAPAY ZEKÂ (API anahtarı ile)" if use_ai else "ÜCRETSİZ (API anahtarı yok)")
         for p in files:
+            if not os.path.isfile(p):
+                print(f"\n=== {os.path.basename(p)}\n  HATA: dosya bulunamadı: {p}\n"
+                      "  (İpucu: komutu yazıp dosyayı cmd penceresine sürükleyin, yol kendiliğinden yazılır.)")
+                continue
             try:
                 results.append(process_file(client, p, use_web=not a.no_web))
             except Exception as e:
-                print(f"  HATA ({os.path.basename(p)}): {e}")
+                print(f"  HATA ({os.path.basename(p)}): {e.__class__.__name__}: {e}")
 
     for folder, docx_path, warnings in results:
         print("\n✔", docx_path)

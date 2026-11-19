@@ -282,8 +282,10 @@ def ocr_images(images):
         raise RuntimeError("Dilekçe taranmış (resim). Okumak için ücretsiz Tesseract OCR programını kurun: "
                            "https://github.com/UB-Mannheim/tesseract/wiki  (kurarken 'Arabic' dilini de seçin). "
                            "Ya da dilekçenin Word (.docx) halini kullanın.")
-    if "ara" in langs:
-        lang = "eng+ara"
+    arabic = "ara" if "ara" in langs else next(
+        (l.replace("\\", "/") for l in sorted(langs) if l.replace("\\", "/").lower().endswith("arabic")), None)
+    if arabic:
+        lang = "eng+" + arabic
     else:
         lang = "eng"
         msg = ("Tesseract'ta Arabic dili kurulu değil: Kürtçe kısımlar (bölüm, Kürtçe adlar, başlık etiketi) "

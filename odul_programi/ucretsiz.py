@@ -184,7 +184,7 @@ DEPT_AR_KU = {"الفيزياء": "فيزيك", "الرياضيات": "ماتم�
               "علوم الحياة": "بایۆلۆجی", "الحاسوب": "کۆمپیوتەر", "البيئة": "زانستێن ژینگەهێ"}
 JOURNAL_LABEL = re.compile(r"(?:ل\s*)?[گك][ۆو][ڤف]ار[اەه]?\s*[:：]|مجلة\s*[:：]|journal\s*(?:name|title)?\s*[:：]", re.I)
 TITLE_LABEL = re.compile(r"ن[اإ]?[فڤةه]?\s*(?:و|9)\s*ن[يیئ]ش")          # ناڤ و نیشان (OCR toleranslı)
-AUTHORS_LABEL = re.compile(r"ن[اإ][فڤ][يێئی]?ن\b.{0,14}?[كک][ۆو]?ل[ه]")       # ناڤێن ڤەکولەرا
+AUTHORS_LABEL = re.compile(r"ن[اإ][فڤ][يێئی]?ن\b.{0,14}?[كک][ۆو]?ل[ه]|[كک][ۆو]?ل[هە]\s*را")       # ناڤێن ڤەکولەرا
 LABEL_LINE = re.compile(r"^\s*(journal\s*(index|title|name)|publication\s*date|issn|doi)\b", re.I)
 
 

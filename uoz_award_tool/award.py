@@ -52,7 +52,7 @@ OUT_ROOT = os.path.join(HERE, "output")
 IN_DIR = os.path.join(HERE, "input")
 SETTINGS_FILES = [os.path.join(HERE, "settings.json"), os.path.join(HERE, "ayarlar.json")]
 MODEL = "claude-opus-5-5"
-VERSION = "2026-11-19-en1"
+VERSION = "2026-11-19-en2"
 
 # ─────────────────────────── Award rules ───────────────────────────
 # Ministerial order no. 1692 (23/01/2025)
@@ -547,7 +547,7 @@ def checks(d):
         warn.append(f"The IF in the letter ({sif}) differs from the IF found online ({vif}). "
                     f"The amount was calculated with {vif}. Check in Clarivate JCR.")
     if V:
-        if not V.get("published"):
+        if not V.get("published") and not V.get("lookup_failed"):
             warn.append("The paper was NOT FOUND online as published.")
         if V.get("authors_match") is False:
             warn.append("The authors on the paper do NOT MATCH the letter. Authors on the paper: "

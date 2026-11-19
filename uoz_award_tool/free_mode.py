@@ -55,9 +55,21 @@ def http_get(url, params=None, timeout=40, raw=False):
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = r.read()
-    return data if raw else data.decode("utf-8", errors="replace")
+    for attempt in range(2):          # one retry after a short wait on a temporary error
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = r.read()
+            return data if raw else data.decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            if attempt == 0 and (e.code == 429 or e.code >= 500):
+                time.sleep(3)
+                continue
+            raise
+        except urllib.error.URLError:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            raise
 
 
 def get_json(url, params=None, timeout=40):
@@ -698,9 +710,12 @@ def verify(L, log=print):
             for a in oa_auth:
                 n = a["name"].split()
                 pa.append({"given": " ".join(n[:-1]), "family": n[-1] if n else ""})
+    v["lookup_failed"] = any(n.startswith(("Could not reach Crossref", "Could not reach OpenAlex")) for n in v["notes"])
     if not v["published"]:
-        ll = L.get("stated_links", [])[:2] + [f"https://doi.org/{d}" for d in L.get("stated_dois", [])[:1]]
-        v["notes"].append("The paper was not found in Crossref/OpenAlex (the journal may not register DOIs). "
+        ll = list(dict.fromkeys(L.get("stated_links", [])[:2] + [f"https://doi.org/{d}" for d in L.get("stated_dois", [])[:1]]))
+        v["notes"].append(("Crossref/OpenAlex could not be reached, so the paper was not checked online; run it again later. "
+                           if v["lookup_failed"] else
+                           "The paper was not found in Crossref/OpenAlex (the journal may not register DOIs). ")
                           + ("Check it by hand with the link in the letter: " + ", ".join(ll) if ll
                              else "The letter has no link/DOI; search with the Google Scholar link in the report."))
     v["authors_on_paper"] = [f"{a['given']} {a['family']}".strip() for a in pa]

@@ -182,7 +182,34 @@ DEPT_EN_KU = {"physics": "فيزيك", "mathematics": "ماتماتیک", "chemi
               "computer": "کۆمپیوتەر", "environmental": "زانستێن ژینگەهێ", "biomedical": "بایۆمێدیکال"}
 DEPT_AR_KU = {"الفيزياء": "فيزيك", "الرياضيات": "ماتماتیک", "الریاضیات": "ماتماتیک", "الكيمياء": "کیمیا",
               "علوم الحياة": "بایۆلۆجی", "الحاسوب": "کۆمپیوتەر", "البيئة": "زانستێن ژینگەهێ"}
-JOURNAL_LABEL = re.compile(r"(?:ل\s*)?گ[ۆو]ڤار[اەه]?\s*[:：]|مجلة\s*[:：]|journal\s*(?:name)?\s*[:：]", re.I)
+JOURNAL_LABEL = re.compile(r"(?:ل\s*)?[گك][ۆو][ڤف]ار[اەه]?\s*[:：]|مجلة\s*[:：]|journal\s*(?:name|title)?\s*[:：]", re.I)
+TITLE_LABEL = re.compile(r"ن[اإ]?[فڤةه]?\s*(?:و|9)\s*ن[يیئ]ش")          # ناڤ و نیشان (OCR toleranslı)
+AUTHORS_LABEL = re.compile(r"ن[اإ][فڤ][يێئی]?ن\b.{0,14}?[كک][ۆو]?ل[ه]")       # ناڤێن ڤەکولەرا
+LABEL_LINE = re.compile(r"^\s*(journal\s*(index|title|name)|publication\s*date|issn|doi)\b", re.I)
+
+
+def parse_listed_authors(lines):
+    """Biyoloji düzeni: '1- محمد ياسر نعيم (University of Padua)' satırları -> Kürtçe ad + kurum."""
+    start = next((i for i, l in enumerate(lines) if AUTHORS_LABEL.search(l)), None)
+    if start is None:
+        return []
+    out = []
+    for l in lines[start + 1:start + 14]:
+        if any(w in l for w in SIGN_WORDS) or re.search(r"دگه?ل|[پب]\.ه", l):
+            break
+        m = re.match(r"\s*(\d)\s*[-.]?\s*([\u0600-\u06FF\u200c ]{3,}?)\s*([()（）].*)?$", l)
+        if m:
+            name = re.sub(r"\s+", " ", m.group(2)).strip()
+            if len(name.split()) >= 2:
+                out.append({"name_ku": name, "aff": (m.group(3) or "").strip()})
+                continue
+        if out and not out[-1]["aff"] and re.match(r"\s*[(（]", l):
+            out[-1]["aff"] = l.strip()
+        elif out and not re.match(r"\s*\d", l):
+            break
+    for a in out:
+        a["uoz"] = bool(re.search(r"زاخ|zakho", a["aff"], re.I))
+    return out
 
 
 def _is_latin_line(s):
@@ -240,17 +267,27 @@ def _clean_journal(s):
     return s.strip(" .,;:-–")
 
 
+def _ocr_fix(text):
+    text = re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", text)
+    text = re.sub(r"(doi\.org/)\s*1\s?0\s?\.\s?", r"\g<1>10.", text, flags=re.I)
+    text = re.sub(r"\b1\s0\.(\d{4,9})", r"10.\1", text)
+    text = re.sub(r"(10\.\d{4,9})\s*/\s*", r"\1/", text)
+    return text
+
+
 def parse_letter(text):
+    text = _ocr_fix(text)
     lines = [l for l in text.split("\n") if l.strip() and not re.fullmatch(r"\[[^\]]+\]", l.strip())]
     full = "\n".join(lines)
     unclear = []
 
     m = re.search(r"(?:Impact\s*Factor|\bI\.?F\.?\b)\s*(?:\(\s*IF\s*\))?\s*[:=\-–]?\s*\(?\s*(\d+(?:[.,]\d+)?)", full, re.I)
     impact = float(m.group(1).replace(",", ".")) if m else None
-    mq = re.search(r"Scopus[^\n]{0,40}?\bQ\s*([1-4])\b|\bQ\s*([1-4])\b[^\n]{0,20}Scopus", full, re.I)
-    q = int(mq.group(1) or mq.group(2)) if mq else None
+    mq = re.search(r"Scopus[^\n]{0,40}?\bQ\s*([1-4])\b|\bQ\s*([1-4])\b[^\n]{0,20}Scopus"
+                   r"|Journal\s*Index\s*[:：]\s*Scopus\s*Q?\s*([1-4])\b", full, re.I)
+    q = int(next(g for g in mq.groups() if g)) if mq else None
     idx_line = next((l.strip() for l in lines if re.search(r"impact factor|\bIF\s*=|scopus|clarivate|doaj|thomson", l, re.I)), "")
-    doaj = bool(re.search(r"\bDOAJ\b", full))
+    doaj = bool(re.search(r"\bDOAJ\b", full, re.I))
 
     dois = []
     for d in DOI_RE.findall(full):
@@ -287,19 +324,34 @@ def parse_letter(text):
     title = ""
     mt = re.search(r"[“\"«]([^”\"»]{15,})[”\"»]", full)
     if mt and LATIN.search(mt.group(1)):
-        title = mt.group(1).strip()
-    else:
+        title = re.sub(r"\s+", " ", mt.group(1)).strip()
+    if not title:   # "ناڤ و نیشان...:" satırının altındaki İngilizce satır(lar)
+        for i, l in enumerate(lines):
+            if TITLE_LABEL.search(l) and not _is_latin_line(l):
+                parts = []
+                for nxt in lines[i + 1:i + 5]:
+                    if _is_latin_line(nxt) and not LABEL_LINE.search(nxt):
+                        parts.append(nxt.strip())
+                    elif parts:
+                        break
+                if parts:
+                    title = re.sub(r"\s+", " ", " ".join(parts)).strip(" .")
+                    break
+    if not title:
         cands = []
         for l in lines:
             s = l.strip().strip("()\"'“”«» ").strip()
             if not _is_latin_line(s) or len(s.split()) < 4 or "|" in s:
                 continue
-            if any(w in s.lower() for w in STOP_WORDS) or key(s) == key(journal):
+            if any(w in s.lower() for w in STOP_WORDS) or key(s) == key(journal) or LABEL_LINE.search(s):
                 continue
             cands.append(s)
         title = max(cands, key=len) if cands else ""
 
     authors = parse_authors(lines)
+    listed = parse_listed_authors(lines)
+    if listed:
+        authors = []
 
     applicant = ""
     for i, l in enumerate(lines):
@@ -314,7 +366,7 @@ def parse_letter(text):
             break
 
     dept = ""
-    md = re.search(r"پ[شس][کك]ا[ ‌]*[:/]?[ ‌]*([؀-ۿ‌]+(?:[ ]+[؀-ۿ‌]+)?)", full)
+    md = re.search(r"[پ][شس][کك]ا[ ‌]*[:/]?[ ‌]*([؀-ۿ‌]+(?:[ ]+[؀-ۿ‌]+)?)", full)
     if md:
         dept = re.split(r"\s+(?:زۆر|زور|ل)\b", md.group(1).strip())[0]
     else:
@@ -338,7 +390,7 @@ def parse_letter(text):
     science = re.search(r"college\s+of\s+science|faculty\s+of\s+science|كلية\s*العلوم|ك[ۆو]ل[يیێ]ژا\s*زانست|کۆلێژا\s*زانست",
                         full, re.I)
     return {
-        "authors": authors, "applicant_ku": applicant, "title": title, "journal": journal,
+        "authors": authors, "listed_authors": listed, "applicant_ku": applicant, "title": title, "journal": journal,
         "stated_impact_factor": impact, "stated_index": idx_line, "stated_scopus_quartile": q,
         "stated_doaj": doaj, "stated_dois": dois, "stated_links": links,
         "department_ku": dept, "college_key": "Science" if science else "Other",
@@ -517,7 +569,9 @@ def verify(L, log=print):
             if it:
                 break
         if not it and L.get("stated_dois"):
-            v["notes"].append("Dilekçedeki DOI Crossref'te kayıtlı değil: " + ", ".join(L["stated_dois"]))
+            v["notes"].append(("OCR ile okunan DOI Crossref'te bulunamadı (okuma hatası olabilir): "
+                               if L.get("source") == "ocr" else "Dilekçedeki DOI Crossref'te kayıtlı değil: ")
+                              + ", ".join(L["stated_dois"]))
         if not it and L["title"]:
             it, score = crossref_find(L["title"], L["journal"])
             if it and L.get("stated_dois") and clean_doi(it.get("DOI")) not in L["stated_dois"]:
@@ -533,9 +587,14 @@ def verify(L, log=print):
         dp = ((it.get("published") or it.get("issued") or {}).get("date-parts") or [[None]])[0]
         v["published_date"] = "-".join(str(x) for x in dp if x)
         v["issn"] = it.get("ISSN", [])
-        v["journal"] = (it.get("container-title") or [None])[0]
+        v["journal"] = html.unescape((it.get("container-title") or [""])[0]) or None
         pa = [{"given": a.get("given", ""), "family": a.get("family", "")} for a in it.get("author", [])]
-        if L["title"] and title_sim(L["title"], (it.get("title") or [""])[0]) < 0.85:
+        real_title = html.unescape((it.get("title") or [""])[0])
+        if L.get("source") == "ocr" and real_title:
+            L["title"] = real_title          # OCR'daki başlık yerine makalenin temiz başlığı
+            if v["journal"]:
+                L["journal"] = v["journal"]
+        elif L["title"] and title_sim(L["title"], real_title) < 0.85:
             v["notes"].append("Dilekçedeki başlık ile makalenin başlığı farklı: " + (it.get("title") or [""])[0])
 
     # ── OpenAlex: yazarların üniversiteleri (+ Crossref'te yoksa paperin kendisi)
@@ -571,10 +630,14 @@ def verify(L, log=print):
                 n = a["name"].split()
                 pa.append({"given": " ".join(n[:-1]), "family": n[-1] if n else ""})
     if not v["published"]:
-        v["notes"].append("Paper Crossref/OpenAlex'te bulunamadı. Dilekçedeki linkten elle kontrol edin: "
-                          + ", ".join(L.get("stated_links", [])[:2] + [f"https://doi.org/{d}" for d in L.get("stated_dois", [])[:1]]))
+        ll = L.get("stated_links", [])[:2] + [f"https://doi.org/{d}" for d in L.get("stated_dois", [])[:1]]
+        v["notes"].append("Paper Crossref/OpenAlex'te bulunamadı (dergi DOI kaydı yapmıyor olabilir). "
+                          + ("Dilekçedeki linkten elle kontrol edin: " + ", ".join(ll) if ll
+                             else "Dilekçede link/DOI yok; rapordaki Google Scholar linkiyle arayın."))
     v["authors_on_paper"] = [f"{a['given']} {a['family']}".strip() for a in pa]
 
+    if L.get("journal"):
+        L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Dergi adı")]
     # ── dergi: dilekçede yoksa ya da kısaltmaysa (SJUOZ) makaledeki tam adı kullan
     if v["journal"] and L["journal"] and len(L["journal"].split()) == 1 and title_sim(v["journal"], L["journal"]) < 0.8:
         L["journal"] = v["journal"]
@@ -605,15 +668,22 @@ def verify(L, log=print):
     elif pa:           # dilekçede yazar yok: makaledeki Zakho'lu yazarlar
         log("      Zakho'lu yazarlar belirleniyor...")
         names = load_names()
+        listed = L.get("listed_authors") or []
         chosen = []
         for i, a in enumerate(pa):
             full = f"{a['given']} {a['family']}".strip()
+            lm = max(listed, key=lambda x: name_sim(x["name_ku"], full), default=None)
+            if lm and name_sim(lm["name_ku"], full) < 0.6:
+                lm = None
             if oa_auth and i < len(oa_auth):
                 is_uoz = oa_auth[i]["uoz"]
+            elif lm and lm.get("aff"):
+                is_uoz = lm["uoz"]
             else:
                 is_uoz = bool(staff_lookup(full))
             if is_uoz:
-                chosen.append({"name_en": full, "name_ku": lookup_name(full, names) or ""})
+                ku = (lm["name_ku"] if lm else None) or lookup_name(full, names) or ""
+                chosen.append({"name_en": full, "name_ku": ku})
         if not chosen:
             v["notes"].append("Makaledeki yazarlardan hiçbiri University of Zakho'lu görünmüyor! "
                               "Yazarlar: " + ", ".join(v["authors_on_paper"]))
@@ -635,7 +705,11 @@ def verify(L, log=print):
         L["authors"] = chosen
         L["authors_from_paper"] = True
         v["authors_match"] = True
-    v["uoz_authors"] = [a["name_en"] for a in L["authors"]]
+    elif L.get("listed_authors"):   # makale bulunamadı: dilekçedeki Zakho'lu yazarlar
+        L["authors"] = [{"name_ku": a["name_ku"], "name_en": ""} for a in L["listed_authors"] if a["uoz"]] \
+            or [{"name_ku": a["name_ku"], "name_en": ""} for a in L["listed_authors"]]
+        L["authors_from_letter_list"] = True
+    v["uoz_authors"] = [a["name_en"] or a["name_ku"] for a in L["authors"]]
 
     if v["issn"]:
         log("      DOAJ...")
@@ -652,7 +726,11 @@ def verify(L, log=print):
     for a in L["authors"]:
         name = a["name_en"]
         entry = {"author": name or a["name_ku"], "url": None, "paper_listed": None}
-        hits = staff_lookup(name) if name else []
+        if not name:
+            entry["no_english_name"] = True
+            v["staff_portal"].append(entry)
+            continue
+        hits = staff_lookup(name)
         if hits and len(hits) == 1:
             u = hits[0]["username"]
             entry["url"] = f"{STAFF}/en/{u}"
@@ -677,6 +755,7 @@ def verify(L, log=print):
         else f"https://mjl.clarivate.com/search-results?search={q(jr)}",
         "Scopus kaynak araması": f"https://www.scopus.com/sources?query={q(jr)}",
         "SCImago": f"https://www.scimagojr.com/journalsearch.php?q={q(issn or jr)}",
+        "Google Scholar (paper araması)": "https://scholar.google.com/scholar?q=" + q('"' + (L["title"] or "") + '"'),
         "UoZ yayın kayıt listesi": UOZ_SHEET_VIEW,
         "Staff portal ana sayfa (isimle arama)": STAFF + "/en",
     }

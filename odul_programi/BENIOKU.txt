@@ -5,6 +5,12 @@ KURULUM (bir kere)
 1) Python 3.10 veya üstünü kurun (python.org). Kurarken "Add python.exe to PATH" işaretleyin.
 2) API anahtarı GEREKMEZ. Program ücretsiz çalışır.
    (İsterseniz yapay zekâ modu için anahtar ekleyebilirsiniz, en alta bakın.)
+3) Taranmış (scan) PDF ya da resim dilekçeler için ücretsiz Tesseract OCR'ı kurun:
+     https://github.com/UB-Mannheim/tesseract/wiki  -> "tesseract-ocr-w64-setup-....exe"
+   Kurarken "Additional language data" altından "Arabic" dilini işaretleyin.
+   Varsayılan klasöre (C:\Program Files\Tesseract-OCR) kurun; program kendisi bulur.
+   Sonra cmd'de bir kere:  pip install -r requirements.txt
+   (Word .docx dilekçeler için Tesseract gerekmez.)
 
 KULLANIM
 - Yazarların gönderdiği dilekçe Word dosyasını (.docx) "calistir.bat" dosyasının
@@ -12,6 +18,8 @@ KULLANIM
 - Ya da dosyaları "girdi" klasörüne koyup "calistir.bat"a çift tıklayın.
 - cmd'den:  python odul.py "C:\...\dilekce.docx"
 - Eski .doc dosyası ise Word'de açıp "Farklı Kaydet > .docx" yapın.
+- Taranmış PDF / resim de olur (Tesseract gerekir). Program önce DOI'yi, yoksa başlığı okur;
+  bilgileri makaleden tamamlar. OCR Kürtçe yazıyı kusurlu okuyabilir, Word'ü kontrol edin.
 
 SONUÇ:  cikti\(yazar1) و (yazar2)\
    ... - خەلاتکرن.docx   -> hazır ödül yazısı (sablon.docx düzeninde)
@@ -65,6 +73,9 @@ DİLEKÇE DÜZENİ (Zakho Fen Fakültesi dilekçeleri bu düzende, program bunu 
 - "(Web of Science (clarivate) IF=2) (Scopus Q1)" ya da "(DOAJ)"
 - "داخازکەر" altında başvuranın adı
 Yazar listesi gerekmez; program yazarları makaleden alır.
+Biyoloji düzeni de okunur: "Journal Index: Scopus Q2", "Journal title: ...", "ناڤ و نیشان" altında
+başlık, "ناڤێن ڤەکولەرا" altında numaralı Kürtçe adlar + (زانکۆیا زاخۆ) gibi kurum.
+Kurumu Zakho olan yazarlar Word'e Kürtçe adlarıyla yazılır.
 
 NOTLAR
 - sablon.docx Fen Fakültesi şablonudur; dekan adı ve başlık oradan gelir.

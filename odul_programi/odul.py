@@ -258,6 +258,54 @@ def docx_text(path) -> str:
     return "\n\n".join(out)
 
 
+TESSERACT_PATHS = [r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                   r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                   os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe")]
+
+
+def ocr_images(images):
+    try:
+        import pytesseract
+    except ImportError:
+        raise RuntimeError("OCR için 'pip install pytesseract' gerekli.")
+    if not shutil.which("tesseract"):
+        for p in TESSERACT_PATHS:
+            if os.path.exists(p):
+                pytesseract.pytesseract.tesseract_cmd = p
+                break
+    try:
+        langs = set(pytesseract.get_languages(config=""))
+    except Exception:
+        raise RuntimeError("Dilekçe taranmış (resim). Okumak için ücretsiz Tesseract OCR programını kurun: "
+                           "https://github.com/UB-Mannheim/tesseract/wiki  (kurarken 'Arabic' dilini de seçin). "
+                           "Ya da dilekçenin Word (.docx) halini kullanın.")
+    lang = "eng+ara" if "ara" in langs else "eng"
+    return "\n".join(pytesseract.image_to_string(im, lang=lang, config="--psm 4") for im in images)
+
+
+def free_text(path):
+    """Ücretsiz mod: (metin, kaynak). Word -> doğrudan; metinli PDF -> doğrudan; taranmış PDF/resim -> OCR."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".docx":
+        return docx_text(path), "docx"
+    if ext == ".doc":
+        raise RuntimeError("Eski .doc biçimi desteklenmiyor. Word'de açıp 'Farklı Kaydet > .docx' yapın.")
+    if ext == ".pdf":
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(path)
+        pages = [pdf[i] for i in range(min(len(pdf), 3))]
+        text = "\n".join(p.get_textpage().get_text_range() for p in pages)
+        if len(re.sub(r"\s+", "", text)) > 80:
+            return text, "pdf"
+        print("      PDF taranmış, OCR ile okunuyor (biraz sürebilir)...")
+        return ocr_images([p.render(scale=300 / 72).to_pil() for p in pages]), "ocr"
+    if ext in (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".bmp"):
+        from PIL import Image, ImageOps
+        print("      resim OCR ile okunuyor...")
+        return ocr_images([ImageOps.exif_transpose(Image.open(path)).convert("RGB")]), "ocr"
+    raise RuntimeError(f"Desteklenmeyen dosya türü: {ext}")
+
+
 def read_letter(client, path) -> dict:
     resp = client.messages.parse(
         model=MODEL, max_tokens=16000,
@@ -464,6 +512,8 @@ def checks(d):
             if s.get("candidates"):
                 warn.append(f"{s['author']}: staff portalda kesin eşleşme yok, benzer kişi(ler) var; "
                             "rapordaki linklerden doğru olanı kontrol edin.")
+            elif s.get("no_english_name"):
+                warn.append(f"{s['author']}: İngilizce adı bilinmediği için staff portalda aranamadı; elle bakın.")
             elif not s.get("url"):
                 warn.append(f"{s['author']}: staff portal sayfası bulunamadı.")
             elif s.get("paper_listed") is False:
@@ -478,7 +528,8 @@ def checks(d):
                         warn.append(f"Kayıt listesinde IF={reg['impact_factor']}, dilekçede IF={sif}.")
                 except ValueError:
                     pass
-            if A["kind"] != "Clarivate" and reg and reg.get("impact_factor"):
+            if (A["kind"] != "Clarivate" and reg and reg.get("impact_factor")
+                    and re.search(r"thomson|clarivate|web of science|wos|isi", reg.get("indexing", ""), re.I)):
                 warn.append(f"Dilekçede IF yok ama UoZ kayıt listesinde bu paper için IF={reg['impact_factor']} "
                             f"({reg.get('indexing')}) yazıyor. Dergi Clarivate'te ise ödül IF tablosuna göre "
                             "hesaplanmalı; kontrol edip veri.json'a stated_impact_factor yazın.")
@@ -607,9 +658,11 @@ def process_file(client, path, use_web=True):
     print("  1/3 dilekçe okunuyor...")
     if client is None:
         import ucretsiz
-        if not path.lower().endswith(".docx"):
-            raise RuntimeError("Ücretsiz mod sadece Word (.docx) dilekçeleri okur.")
-        L = ucretsiz.parse_letter(docx_text(path))
+        text, source = free_text(path)
+        L = ucretsiz.parse_letter(text)
+        L["source"] = source
+        if source == "ocr":
+            L["unclear"].append("Dilekçe taranmış (resim); OCR ile okundu. Başlık, dergi ve adları Word'de dikkatle kontrol edin.")
     else:
         L = read_letter(client, path)
     print("      yazarlar:", ", ".join(a["name_ku"] for a in L["authors"])
@@ -668,7 +721,7 @@ def main():
             in_dir = os.path.join(HERE, "girdi")
             os.makedirs(in_dir, exist_ok=True)
             files = [os.path.join(in_dir, x) for x in sorted(os.listdir(in_dir))
-                     if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".pdf", ".docx", ".doc")) and not x.startswith("~$")]
+                     if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".pdf", ".docx", ".doc")) and not x.startswith("~$")]
             if not files:
                 print("Dosya verilmedi. Dilekçe Word dosyalarını 'girdi' klasörüne koyun ya da calistir.bat üzerine sürükleyin.")
                 return 1

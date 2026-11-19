@@ -375,7 +375,7 @@ def _esc(s):
 
 def fill_word(d, out_path, today):
     L, A = d["letter"], d["award"]
-    names = [a["name_ku"] for a in L["authors"]]
+    names = [a["name_ku"] or a["name_en"] for a in L["authors"]] or ["....."]
     if len(names) > 1:
         names_txt = "بەرێزان " + " و ".join(f"({n})" for n in names)
     else:
@@ -550,8 +550,8 @@ def write_report(d, path, warnings):
 def build_outputs(d, src_file=None, today=None):
     today = today or datetime.date.today()
     d["award"] = decide_award(d)
-    names = [a["name_ku"] for a in d["letter"]["authors"]]
-    folder_name = safe_name(" و ".join(f"({n})" for n in names))
+    names = [a["name_ku"] or a["name_en"] for a in d["letter"]["authors"]]
+    folder_name = safe_name(" و ".join(f"({n})" for n in names)) or safe_name(d["letter"]["title"])[:60] or "isimsiz"
     folder = os.path.join(OUT_ROOT, folder_name)
     os.makedirs(folder, exist_ok=True)
     docx_path = os.path.join(folder, f"{folder_name} - خەلاتکرن.docx")
@@ -590,6 +590,12 @@ def process_file(client, path, use_web=True):
                 d["verify"]["mode"] = "ai"
         except Exception as e:  # arama başarısız olsa da Word yine üretilsin
             print("      ! arama başarısız:", e)
+    V = d.get("verify") or {}
+    if not L["authors"] and V.get("authors_on_paper"):
+        L["authors"] = [{"name_ku": n, "name_en": n} for n in V["authors_on_paper"]]
+        L.setdefault("unclear", []).append(
+            "Dilekçede yazar adları okunamadı; yazarlar makaleden (Crossref) alındı ve Word'e İngilizce yazıldı. "
+            "Kürtçe adları veri.json'a yazıp --json ile yeniden üretin.")
     print("  3/3 Word hazırlanıyor...")
     return build_outputs(d, path)
 

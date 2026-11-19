@@ -20,15 +20,24 @@ SONUÇ:  cikti\(yazar1) و (yazar2)\
    dilekce.docx           -> yazarların gönderdiği dilekçenin kopyası
 
 PROGRAM NE KONTROL EDER (ücretsiz kaynaklar)
-1. Dilekçe Word'ünü okur: yazarlar (İngilizce + Kürtçe), başlık, dergi (parantez içinde),
-   Impact Factor / Scopus Q, bölüm (پشکا ...), fakülte.
-2. Crossref + OpenAlex: paper yayınlanmış mı, DOI, dergideki makale linki,
-   makaledeki yazarlar dilekçedekilerle aynı mı, adreste University of Zakho var mı.
-3. UoZ yayın kayıt listesi (üniversitenin Google Sheet'i): paper kaydedilmiş mi (kural 5-a),
+1. Dilekçe Word'ünü okur: başlık (“...” içinde), dergi ("ل گوڤارا:" altındaki satır),
+   DOI ve linkler, IF / Scopus Q / DOAJ, bölüm (پشکا ...), başvuran (داخازکەر).
+2. Crossref + OpenAlex: önce dilekçedeki DOI ile, olmazsa başlıkla arar.
+   Paper yayınlanmış mı, gerçek DOI (dilekçedeki DOI yanlışsa uyarır), makale linki, yazarlar
+   ve her yazarın üniversitesi.
+3. Word'e yazılan yazarlar: makaledeki yazarlardan SADECE University of Zakho'lu olanlar
+   (Zakho dışındakiler raporda ayrıca yazılır).
+4. UoZ yayın kayıt listesi (üniversitenin Google Sheet'i): paper kaydedilmiş mi (kural 5-a),
    orada yazılan index ve IF, aynı dergi için başkalarının yazdığı IF'ler.
-4. UoZ staff portal: her yazarın sayfası ve paper o sayfada kayıtlı mı (kural 5-b).
-5. DOAJ: dergi DOAJ'da mı.
-6. Yazar sayısı kuralı (fen: en fazla 4, insani bilimler: en fazla 3).
+5. UoZ staff portal: her yazarın sayfası ve paper o sayfada kayıtlı mı (kural 5-b).
+6. DOAJ, Kürdistan onaylı dergi listesi (journals_krg.json), yazar sayısı kuralı.
+
+KÜRTÇE ADLAR (isimler.json)
+- Başvuranın Kürtçe adı dilekçeden alınır ve makaledeki doğru yazarla eşleştirilir.
+- Diğer yazarların Kürtçe adını program bilmiyorsa Word'e İngilizce yazar ve uyarır.
+  O zaman veri.json'u açıp ilgili yazarın "name_ku" değerini Kürtçe yazın, sonra:
+     python odul.py --json "cikti\...\veri.json"
+  Program bu adları isimler.json'a kaydeder; o kişi bir dahaki dilekçede otomatik Kürtçe yazılır.
 
 PARA HESABI (Fermana wezarî 1692, 23/01/2025)
    Clarivate IF: 0.1-1 = 500,000 ; her +0.1 = +20,000 ; 6 ve üstü = 1,500,000   -> خالا (1)
@@ -49,17 +58,22 @@ DÜZELTME GEREKİRSE
      python odul.py --json "cikti\...\veri.json"
   Word yeniden üretilir, para da yeniden hesaplanır.
 
-DİLEKÇE NASIL YAZILMALI (programın en iyi okuduğu düzen)
-- Dergi adı parantez içinde:   ... ل گوڤارا (Chemical Papers) ...
-- Başlık ayrı bir satırda, İngilizce.
-- "Impact Factor: 2.7" ya da "Scopus Q3" satırı.
-- "Authors:" satırı, altında her yazar bir satırda: İngilizce ad   [tab / tablo]   Kürtçe ad
-- Üst bilgide ya da metinde bölüm:  کۆلێژا زانست/ پشکا فیزیک
+DİLEKÇE DÜZENİ (Zakho Fen Fakültesi dilekçeleri bu düzende, program bunu okur)
+- Başlık tırnak içinde:   “An improved three-term conjugate gradient approach ...”
+- "ل گوڤارا:" satırının altında dergi adı
+- "لينکێ ڤەكولينێ:" altında DOI linki (https://doi.org/...)
+- "(Web of Science (clarivate) IF=2) (Scopus Q1)" ya da "(DOAJ)"
+- "داخازکەر" altında başvuranın adı
+Yazar listesi gerekmez; program yazarları makaleden alır.
 
 NOTLAR
 - sablon.docx Fen Fakültesi şablonudur; dekan adı ve başlık oradan gelir.
   Dekan değişirse sablon.docx içinde elle değiştirin.
 - İnternetsiz deneme:  python odul.py --no-web dilekce.docx
+- OpenAlex günde belli sayıda ücretsiz sorguya izin verir. "günlük ücretsiz limit doldu" uyarısı
+  görürseniz https://openalex.org adresinden ücretsiz anahtar alıp ayarlar.json'a
+  "openalex_api_key" olarak yazabilirsiniz (zorunlu değil).
+- Aynı yazarların iki farklı paperi varsa klasörler "(2)", "(3)" diye ayrılır.
 
 İSTEĞE BAĞLI: YAPAY ZEKÂ MODU (ücretli)
 - Dilekçe düzeni çok farklıysa veya resim/PDF ise daha iyi okur; IF'i internette arar.

@@ -5,3 +5,4 @@ __pycache__/
 girdi/
 veriler/*
 !veriler/.gitkeep
+isimler.json

@@ -85,12 +85,13 @@ def decide_award(d: dict) -> dict:
         q = int(q) if q else None
         return {"kind": "Scopus", "point": 2, "amount": SCOPUS_AMOUNT[q],
                 "index_text": f"Scopus Q{q}" if q else "Scopus"}
-    krg = find_in_krg_list(L.get("journal", ""))
+    doaj = L.get("stated_doaj") or v.get("doaj_listed")
+    krg = find_in_krg_list(L.get("journal", "")) or find_in_krg_list(v.get("journal") or "")
     if krg:
-        return {"kind": "KRG", "point": 3, "amount": UNI_KRG_AMOUNT,
-                "index_text": f"گۆڤارێن زانکۆیێن هەرێمێ ({krg['u']})"}
+        return {"kind": "KRG", "point": 3, "amount": UNI_KRG_AMOUNT, "krg_university": krg["u"],
+                "index_text": "DOAJ" if doaj else f"گۆڤارێن زانکۆیێن هەرێمێ ({krg['u']})"}
     return {"kind": "Iraq", "point": 3, "amount": UNI_IRAQ_AMOUNT,
-            "index_text": "گۆڤارێن زانکۆیێن عیراقێ"}
+            "index_text": "DOAJ" if doaj else "گۆڤارێن زانکۆیێن عیراقێ"}
 
 
 # ─────────────────────────── Yardımcılar ───────────────────────────
@@ -377,9 +378,9 @@ def fill_word(d, out_path, today):
     L, A = d["letter"], d["award"]
     names = [a["name_ku"] or a["name_en"] for a in L["authors"]] or ["....."]
     if len(names) > 1:
-        names_txt = "بەرێزان " + " و ".join(f"({n})" for n in names)
+        names_txt = "بەرێزان " + " و ".join(f"\u200f({n})\u200f" for n in names)
     else:
-        names_txt = f"بەرێز ({names[0]})"
+        names_txt = f"بەرێز \u200f({names[0]})\u200f"
     col = COLLEGES.get(L.get("college_key"), COLLEGES["Science"])
     dept = L["department_ku"]
     body = (f"هيڤيدارين رازيبن لسەر خەلاتكرنا دەستگێريا ڤەكۆلينا هاتيیە بەلافكرن ژ لايێ {names_txt}"
@@ -441,6 +442,10 @@ def checks(d):
     if len(L["authors"]) > MAX_AUTHORS[kind]:
         warn.append(f"Yazar sayısı {len(L['authors'])}; kurala göre en fazla {MAX_AUTHORS[kind]} yazara ödül verilir.")
     hw = L.get("handwritten_amount")
+    if A["kind"] == "Iraq":
+        warn.append("Dergide IF/Scopus yok ve Kürdistan onaylı dergi listesinde bulunamadı. 200,000 sadece Irak devlet "
+                    "üniversiteleri ya da yurt dışı üniversite dergileri için geçerli; derginin hangi kuruma ait "
+                    "olduğunu kontrol edin.")
     if hw and hw != A["amount"]:
         warn.append(f"Elle yazılan para ({hw:,}) hesaplanan paradan ({A['amount']:,}) farklı!")
     sif, vif = L.get("stated_impact_factor"), V.get("impact_factor")
@@ -457,7 +462,8 @@ def checks(d):
             warn.append("Makalede University of Zakho adresi görünmüyor (kural 3).")
         for s in V.get("staff_portal", []):
             if s.get("candidates"):
-                warn.append(f"{s['author']}: staff portalda birden fazla benzer kişi var, doğru olanı seçin.")
+                warn.append(f"{s['author']}: staff portalda kesin eşleşme yok, benzer kişi(ler) var; "
+                            "rapordaki linklerden doğru olanı kontrol edin.")
             elif not s.get("url"):
                 warn.append(f"{s['author']}: staff portal sayfası bulunamadı.")
             elif s.get("paper_listed") is False:
@@ -485,8 +491,13 @@ def checks(d):
         warn += V.get("notes", [])
     else:
         warn.append("İnternette doğrulama yapılmadı.")
+    no_ku = [a["name_en"] or a["name_ku"] for a in L["authors"] if not re.search(r"[\u0600-\u06FF]", a.get("name_ku", ""))]
+    if no_ku:
+        warn.append("Kürtçe adı bilinmeyen yazar(lar) Word'e İngilizce yazıldı: " + ", ".join(no_ku)
+                    + ". veri.json'da name_ku'yu Kürtçe yazıp --json ile yeniden üretin (program bu adları öğrenir).")
     for u in L.get("unclear", []):
-        warn.append("Okuma şüphesi: " + u)
+        if not u.startswith(("Kürtçe adı bilinmeyen", "Bazı yazarların Kürtçe adı yok")):
+            warn.append("Okuma şüphesi: " + u)
     return warn
 
 
@@ -498,6 +509,9 @@ def write_report(d, path, warnings):
         "Yazarlar: " + " ; ".join(f"{a['name_ku']} ({a['name_en']})" for a in L["authors"]),
         "Paper   : " + L["title"],
         "Dergi   : " + L["journal"],
+        "Başvuran: " + (L.get("applicant_ku") or "-")
+        + ("   (yazarlar makaleden alındı: sadece Zakho'lu olanlar)" if L.get("authors_from_paper") else ""),
+        "Dilekçedeki DOI: " + (", ".join(L.get("stated_dois") or []) or "-"),
         f"Bölüm   : {L['department_ku']} / {L.get('college_name', '')}", "",
         f"Kategori: {A['kind']}  -> {A['index_text']}",
         f"Madde   : برگا (1) خالا ({A['point']})",
@@ -547,12 +561,34 @@ def write_report(d, path, warnings):
 
 
 # ─────────────────────────── Ana akış ───────────────────────────
+def unique_folder(folder_name, title):
+    """Aynı yazarların başka bir paperi varsa üzerine yazma: '(2)', '(3)' ekle."""
+    n = 1
+    while True:
+        cand = os.path.join(OUT_ROOT, folder_name + (f" ({n})" if n > 1 else ""))
+        vj = os.path.join(cand, "veri.json")
+        if not os.path.exists(vj):
+            return cand
+        try:
+            with open(vj, encoding="utf-8") as f:
+                if json.load(f)["letter"]["title"] == title:
+                    return cand          # aynı paper: güncelle
+        except Exception:
+            pass
+        n += 1
+
+
 def build_outputs(d, src_file=None, today=None):
     today = today or datetime.date.today()
     d["award"] = decide_award(d)
+    try:
+        import ucretsiz
+        ucretsiz.learn_names(d["letter"]["authors"])
+    except Exception:
+        pass
     names = [a["name_ku"] or a["name_en"] for a in d["letter"]["authors"]]
     folder_name = safe_name(" و ".join(f"({n})" for n in names)) or safe_name(d["letter"]["title"])[:60] or "isimsiz"
-    folder = os.path.join(OUT_ROOT, folder_name)
+    folder = unique_folder(folder_name, d["letter"]["title"])
     os.makedirs(folder, exist_ok=True)
     docx_path = os.path.join(folder, f"{folder_name} - خەلاتکرن.docx")
     fill_word(d, docx_path, today)
@@ -576,7 +612,8 @@ def process_file(client, path, use_web=True):
         L = ucretsiz.parse_letter(docx_text(path))
     else:
         L = read_letter(client, path)
-    print("      yazarlar:", ", ".join(a["name_ku"] for a in L["authors"]))
+    print("      yazarlar:", ", ".join(a["name_ku"] for a in L["authors"])
+          or "(dilekçede yazar listesi yok; makaleden Zakho'lu yazarlar alınacak)")
     print("      paper   :", L["title"])
     d = {"letter": L, "verify": None}
     if use_web:
@@ -614,7 +651,17 @@ def main():
     results = []
     if a.json:
         with open(a.json, encoding="utf-8") as f:
-            results.append(build_outputs(json.load(f)))
+            res = build_outputs(json.load(f))
+        results.append(res)
+        old = os.path.dirname(os.path.abspath(a.json))
+        new = os.path.abspath(res[0])
+        # isimler değiştiyse klasör adı da değişir: dilekçeyi taşı, eski klasörü sil
+        if old != new and os.path.dirname(old) == os.path.abspath(OUT_ROOT):
+            for fn in os.listdir(old):
+                if fn.startswith("dilekce") and not os.path.exists(os.path.join(new, fn)):
+                    shutil.move(os.path.join(old, fn), os.path.join(new, fn))
+            shutil.rmtree(old, ignore_errors=True)
+            print("Eski klasör yeni ada taşındı:", os.path.basename(new))
     else:
         files = a.files
         if not files:

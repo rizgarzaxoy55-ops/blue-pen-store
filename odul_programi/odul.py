@@ -153,7 +153,7 @@ class Letter(BaseModel):
     unclear: List[str] = Field(default_factory=list, description="Okunması zor/şüpheli kısımlar")
 
 
-READ_PROMPT = """Bu, University of Zakho'da bir hocanın yayınlanmış makalesi için ödül (خەلاتکرن) \
+READ_PROMPT = """Bu (Word dosyası, PDF ya da resim), University of Zakho'da bir hocanın yayınlanmış makalesi için ödül (خەلاتکرن) \
 istediği dilekçedir (Badini Kürtçesi / Arapça / İngilizce). İçindeki bilgileri çıkar.
 - Yazar adlarını dilekçede yazıldığı gibi, harfi harfine kopyala; düzeltme yapma.
 - Bölüm adını Kürtçe ver (örn. فيزيك). Fakülte Fen (Science / زانست / العلوم) ise college_key = "Science".
@@ -169,10 +169,9 @@ def file_blocks(path):
         return [{"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
                                                  "data": base64.standard_b64encode(data).decode()}}]
     if ext == ".docx":
-        from docx import Document
-        doc = Document(path)
-        txt = "\n".join(p.text for p in doc.paragraphs)
-        return [{"type": "text", "text": "Dilekçe metni:\n" + txt}]
+        return [{"type": "text", "text": "Dilekçe (Word dosyası) metni:\n" + docx_text(path)}]
+    if ext == ".doc":
+        raise RuntimeError("Eski .doc biçimi desteklenmiyor. Word'de açıp 'Farklı Kaydet > .docx' yapın.")
     # resim: gerekirse küçült (API sınırı ~5MB)
     from PIL import Image, ImageOps
     img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
@@ -181,6 +180,73 @@ def file_blocks(path):
     img.save(buf, "JPEG", quality=90)
     return [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                          "data": base64.standard_b64encode(buf.getvalue()).decode()}}]
+
+
+W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+MC_FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"
+
+
+def _para_text(p):
+    out = []
+    for el in p.iter():
+        if el.tag == W + "t":
+            out.append(el.text or "")
+        elif el.tag in (W + "tab", W + "ptab"):
+            out.append("\t")
+        elif el.tag in (W + "br", W + "cr"):
+            out.append("\n")
+    return "".join(out)
+
+
+def _block_lines(elem, lines):
+    """Paragrafları ve tabloları sırayla yaz; tablo satırlarını ' | ' ile birleştir.
+    Metin kutularını (textbox) da okur, Word'ün yedek kopyalarını (mc:Fallback) atlar."""
+    for child in elem:
+        if child.tag == MC_FALLBACK:
+            continue
+        if child.tag == W + "p":
+            own = _para_text_no_boxes(child)
+            if own.strip():
+                lines.append(own)
+            for box in child.iter(W + "txbxContent"):
+                if not any(a.tag == MC_FALLBACK for a in box.iterancestors()):
+                    _block_lines(box, lines)
+        elif child.tag == W + "tbl":
+            for tr in child.iter(W + "tr"):
+                cells = [" ".join(_para_text(p) for p in tc.iter(W + "p")).strip() for tc in tr.findall(W + "tc")]
+                if any(cells):
+                    lines.append(" | ".join(cells))
+        else:
+            _block_lines(child, lines)
+
+
+def _para_text_no_boxes(p):
+    import copy
+    q = copy.deepcopy(p)
+    for box in list(q.iter(W + "txbxContent")):
+        box.getparent().remove(box)
+    return _para_text(q)
+
+
+def docx_text(path) -> str:
+    """Word dosyasındaki tüm metni (başlık/alt bilgi, tablolar, metin kutuları dahil) çıkar."""
+    from lxml import etree
+    z = zipfile.ZipFile(path)
+    names = z.namelist()
+    parts = ([n for n in names if re.fullmatch(r"word/header\d*\.xml", n)]
+             + ["word/document.xml"]
+             + [n for n in names if re.fullmatch(r"word/footer\d*\.xml", n)])
+    out = []
+    for n in parts:
+        if n not in names:
+            continue
+        root = etree.fromstring(z.read(n))
+        lines = []
+        _block_lines(root, lines)
+        if lines:
+            label = "ÜST BİLGİ" if "header" in n else ("ALT BİLGİ" if "footer" in n else "METİN")
+            out.append(f"[{label}]\n" + "\n".join(lines))
+    return "\n\n".join(out)
 
 
 def read_letter(client, path) -> dict:
@@ -485,7 +551,7 @@ def main():
             in_dir = os.path.join(HERE, "girdi")
             os.makedirs(in_dir, exist_ok=True)
             files = [os.path.join(in_dir, x) for x in sorted(os.listdir(in_dir))
-                     if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".pdf", ".docx"))]
+                     if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".pdf", ".docx", ".doc")) and not x.startswith("~$")]
             if not files:
                 print("Dosya verilmedi. Dilekçe resimlerini 'girdi' klasörüne koyun ya da run.bat üzerine sürükleyin.")
                 return 1

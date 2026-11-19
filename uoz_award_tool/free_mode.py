@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Ücretsiz mod: API anahtarı ve yapay zekâ olmadan çalışır.
-  - Dilekçe Word'ünü kurallarla okur (başlık “...” içinde, "ل گوڤارا:" altındaki dergi, DOI, IF/Scopus, داخازکەر).
-  - Crossref + OpenAlex: paper yayınlanmış mı, DOI, makale linki, yazarlar ve her yazarın üniversitesi.
-  - Word'e sadece University of Zakho'lu yazarlar yazılır (OpenAlex adresi ya da staff portal kaydı).
-  - UoZ yayın kayıt listesi (Google Sheet): paper üniversite listesine kaydedilmiş mi (kural 5-a).
-  - UoZ staff portal: yazarın sayfası ve paper orada kayıtlı mı (kural 5-b).
-  - DOAJ API: dergi DOAJ'da mı.  SCImago (isteğe bağlı CSV): quartile.
-  - isimler.json: İngilizce ad -> Kürtçe ad sözlüğü; siz düzelttikçe program öğrenir.
-Clarivate Impact Factor'ün ücretsiz resmi kaynağı yok; dilekçedeki değer kullanılır ve uyarı verilir.
+Free mode: works without an API key and without AI.
+  - Reads the request letter with rules (title in “...”, journal under "ل گوڤارا:", DOI, IF/Scopus, داخازکەر).
+  - Crossref + OpenAlex: is the paper published, DOI, article link, authors and each author's institution.
+  - Only University of Zakho authors are written into the Word letter (OpenAlex affiliation or staff portal record).
+  - UoZ publication registry (Google Sheet): is the paper registered with the university (rule 5-a).
+  - UoZ staff portal: the author's page, and whether the paper is listed there (rule 5-b).
+  - DOAJ API: is the journal in DOAJ.  SCImago (optional CSV in data/): quartile.
+  - names.json: English name -> Kurdish name dictionary; the program learns as you correct names.
+There is no free official source for the Clarivate Impact Factor: the value in the letter is used, with a warning.
 """
 import csv
 import difflib
@@ -23,10 +23,11 @@ import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(HERE, "veriler")
-NAMES_FILE = os.path.join(HERE, "isimler.json")
-SETTINGS = os.path.join(HERE, "ayarlar.json")
-UA = "UoZ-odul-programi/1.1 (yayin odulu kontrolu)"
+DATA_DIR = os.path.join(HERE, "data")
+NAMES_FILE = os.path.join(HERE, "names.json")
+OLD_NAMES_FILE = os.path.join(HERE, "isimler.json")
+SETTINGS_FILES = [os.path.join(HERE, "settings.json"), os.path.join(HERE, "ayarlar.json")]
+UA = "UoZ-award-tool/1.2 (publication award verification)"
 UOZ_SHEET_CSV = ("https://docs.google.com/spreadsheets/d/"
                  "1q6_uje4RCXU9pn9JqIbDKxaJ2-doxgW095rMS2SqM4k/gviz/tq?tqx=out:csv")
 UOZ_SHEET_VIEW = "https://docs.google.com/spreadsheets/d/1q6_uje4RCXU9pn9JqIbDKxaJ2-doxgW095rMS2SqM4k"
@@ -37,13 +38,17 @@ LATIN = re.compile(r"[A-Za-z]")
 DOI_RE = re.compile(r"10\.\d{4,9}/[^\s\"<>“”'’]+")
 
 
-# ─────────────────────────── yardımcılar ───────────────────────────
+# ─────────────────────────── helpers ───────────────────────────
 def _setting(name):
-    try:
-        with open(SETTINGS, encoding="utf-8") as f:
-            return (json.load(f).get(name) or "").strip()
-    except (FileNotFoundError, ValueError):
-        return ""
+    for path in SETTINGS_FILES:
+        try:
+            with open(path, encoding="utf-8") as f:
+                val = (json.load(f).get(name) or "").strip()
+            if val:
+                return val
+        except (FileNotFoundError, ValueError):
+            pass
+    return ""
 
 
 def http_get(url, params=None, timeout=40, raw=False):
@@ -68,7 +73,7 @@ def openalex(path, params=None):
 
 
 def key(s):
-    """Karşılaştırma için: KGeCl₂I -> kgecl2i, noktalama/boşluk yok."""
+    """For comparisons: KGeCl₂I -> kgecl2i, no punctuation/spaces."""
     s = unicodedata.normalize("NFKC", s or "").lower()
     return re.sub(r"[^0-9a-z؀-ۿ]+", "", s)
 
@@ -91,7 +96,7 @@ def clean_doi(d):
     return re.sub(r"^https?://(dx\.)?doi\.org/", "", d, flags=re.I).lower() or None
 
 
-# ── Arap harfli ad <-> Latin ad benzerliği (ünsüz iskeleti) ──
+# ── Arabic-script name <-> Latin name similarity (consonant skeleton) ──
 _AR = {"ب": "b", "پ": "b", "ت": "t", "ث": "s", "ج": "j", "چ": "j", "ح": "", "خ": "k", "د": "d", "ذ": "z",
        "ر": "r", "ڕ": "r", "ز": "z", "ژ": "j", "س": "s", "ش": "s", "ص": "s", "ض": "d", "ط": "t", "ظ": "z",
        "غ": "g", "ف": "f", "ڤ": "f", "ق": "k", "ك": "k", "ک": "k", "گ": "g", "ل": "l", "ڵ": "l", "م": "m",
@@ -132,22 +137,25 @@ def name_sim(ar_name, lat_name):
     return 0.5 * first + 0.5 * rest
 
 
-# ── isimler.json (İngilizce -> Kürtçe) ──
+# ── names.json (English -> Kurdish) ──
 def _nkey(name_en):
     w = [x for x in words(name_en) if len(x) > 1]
     return " ".join(w)
 
 
 def load_names():
-    try:
-        with open(NAMES_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    except (FileNotFoundError, ValueError):
-        return {}
+    names = {}
+    for path in (OLD_NAMES_FILE, NAMES_FILE):      # names.json wins over the old isimler.json
+        try:
+            with open(path, encoding="utf-8") as f:
+                names.update(json.load(f))
+        except (FileNotFoundError, ValueError):
+            pass
+    return names
 
 
 def learn_names(authors):
-    """Kürtçe adı bilinen yazarları isimler.json'a kaydet."""
+    """Save the authors whose Kurdish name is known into names.json."""
     names = load_names()
     changed = False
     for a in authors:
@@ -172,7 +180,7 @@ def lookup_name(name_en, names):
     return None
 
 
-# ─────────────────────────── 1) dilekçeyi kurallarla okuma ───────────────────────────
+# ─────────────────────────── 1) reading the letter with rules ───────────────────────────
 STOP_WORDS = ("kurdistan", "ministry", "university", "college", "department", "presidency",
               "impact factor", "authors", "author(s)", "road", "p.o.box", "@", "http", "regional government",
               "scopus", "clarivate", "doaj", "issn", "web of science")
@@ -183,13 +191,13 @@ DEPT_EN_KU = {"physics": "فیزیک", "mathematics": "ماتماتیک", "chemi
 DEPT_AR_KU = {"الفيزياء": "فیزیک", "الرياضيات": "ماتماتیک", "الریاضیات": "ماتماتیک", "الكيمياء": "کیمیا",
               "علوم الحياة": "بایۆلۆجی", "الحاسوب": "کۆمپیوتەر", "البيئة": "زانستێن ژینگەهێ"}
 JOURNAL_LABEL = re.compile(r"(?:ل\s*)?[گك][ۆو][ڤف]ار[اەه]?\s*[:：]|مجلة\s*[:：]|journal\s*(?:name|title)?\s*[:：]", re.I)
-TITLE_LABEL = re.compile(r"ن[اإ]?[فڤةه]?\s*(?:و|9)\s*ن[يیئ]ش")          # ناڤ و نیشان (OCR toleranslı)
+TITLE_LABEL = re.compile(r"ن[اإ]?[فڤةه]?\s*(?:و|9)\s*ن[يیئ]ش")          # ناڤ و نیشان (tolerates OCR errors)
 AUTHORS_LABEL = re.compile(r"ن[اإ][فڤ][يێئی]?ن\b.{0,14}?[كک][ۆو]?ل[ه]|[كک][ۆو]?ل[هە]\s*را")       # ناڤێن ڤەکولەرا
 LABEL_LINE = re.compile(r"^\s*(journal\s*(index|title|name)|publication\s*date|issn|doi)\b", re.I)
 
 
 def parse_listed_authors(lines):
-    """Biyoloji düzeni: '1- محمد ياسر نعيم (University of Padua)' satırları -> Kürtçe ad + kurum."""
+    """Biology layout: lines like '1- محمد ياسر نعيم (University of Padua)' -> Kurdish name + institution."""
     start = next((i for i, l in enumerate(lines) if AUTHORS_LABEL.search(l)), None)
     if start is None:
         return []
@@ -197,7 +205,7 @@ def parse_listed_authors(lines):
     for l in lines[start + 1:start + 14]:
         if any(w in l for w in SIGN_WORDS) or re.search(r"دگه?ل|[پب]\.ه", l):
             break
-        m = re.match(r"\s*(\d)\s*[-.]?\s*([\u0600-\u06FF\u200c ]{3,}?)\s*([()（）].*)?$", l)
+        m = re.match(r"\s*(\d)\s*[-.]?\s*([؀-ۿ‌ ]{3,}?)\s*([()（）].*)?$", l)
         if m:
             name = re.sub(r"\s+", " ", m.group(2)).strip()
             if len(name.split()) >= 2:
@@ -218,11 +226,11 @@ KNOWN_DEPTS = ["ماتماتیک", "فیزیک", "کیمیا", "بایۆلۆجی
 
 def _dskel(s):
     s = s.translate(str.maketrans({"ك": "ک", "ي": "ی", "ى": "ی", "ة": "ە", "ۆ": "و", "ێ": "ی", "ڕ": "ر", "ڤ": "ف"}))
-    return re.sub(r"[\s\u200c\u064b-\u065f]", "", s)
+    return re.sub(r"[\s‌ً-ٟ]", "", s)
 
 
 def canonical_dept(raw):
-    """OCR/yazım farklarını temizle: 'ماتماتيك ا' / 'ماتماتیک زوربەرێز' -> 'ماتماتیک'."""
+    """Clean OCR/spelling differences: 'ماتماتيك ا' / 'ماتماتیک زوربەرێز' -> 'ماتماتیک'."""
     w = [x for x in re.split(r"[\s/،,|:]+", raw.strip()) if x]
     if not w:
         return ""
@@ -244,7 +252,7 @@ def _is_latin_line(s):
 
 
 def _wordlike(s):
-    """Satırın gerçek İngilizce kelimelerden oluşma oranı (OCR çöpünü elemek için)."""
+    """Share of the line made of real English-looking words (to filter OCR noise)."""
     toks = re.findall(r"[^\s]+", s)
     if not toks:
         return 0.0
@@ -255,7 +263,7 @@ def _wordlike(s):
 
 
 def _trim_garbage(s):
-    """OCR çöpünü başlığın başından/sonundan at: rakam, kesme işareti, ortada büyük harf, çok kısa parçalar."""
+    """Remove OCR noise from the start/end of a title: digits, apostrophes, mid-word capitals, very short bits."""
     toks = s.split()
     bad = lambda t: (re.search(r"\d|['’‘`]", t) or re.search(r"[a-z][A-Z]", t)
                      or len(t.strip("()[],.:;")) <= 2 and t.lower() not in ("a", "an", "of", "to", "in", "on", "by")
@@ -281,7 +289,7 @@ def _looks_like_name(s):
 
 
 def parse_authors(lines):
-    """'Authors:' satırından sonra gelen satırlar (tablo '|' ya da tab ile iki sütun)."""
+    """Lines after an 'Authors:' line (two columns via table '|' or tabs)."""
     start = None
     for i, l in enumerate(lines):
         if re.search(r"\bauthors?\b|author\(s\)|ناڤێن ڤەکۆلەر|ناڤێن ڤەكۆلەر|الباحثين|اسماء الباحث", l, re.I):
@@ -318,7 +326,7 @@ def _clean_journal(s):
 
 
 def _ocr_fix(text):
-    text = re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", text)
+    text = re.sub(r"[‎‏‪-‮⁦-⁩]", "", text)
     text = re.sub(r"(doi\.org/)\s*1\s?0\s?\.\s?", r"\g<1>10.", text, flags=re.I)
     text = re.sub(r"\b1\s0\.(\d{4,9})", r"10.\1", text)
     text = re.sub(r"(10\.\d{4,9})\s*/\s*", r"\1/", text)
@@ -347,7 +355,7 @@ def parse_letter(text):
     links = [u.rstrip(".,;)") for u in re.findall(r"https?://\S+", full)
              if "doi.org" not in u and "uoz.edu.krd" not in u.lower() or "sjuoz" in u.lower()]
 
-    # dergi: "(Chemical Papers)" ya da "ل گوڤارا:" satırının devamı / altındaki satır
+    # journal: "(Chemical Papers)" or the rest of / the line below "ل گوڤارا:"
     journal = ""
     for i, l in enumerate(lines):
         mj = JOURNAL_LABEL.search(l)
@@ -370,12 +378,12 @@ def parse_letter(text):
                     journal = _clean_journal(mj[0])
                     break
 
-    # başlık: “...” içinde olan satır; yoksa en uzun İngilizce satır
+    # title: text inside “...”; else the English line(s) under "ناڤ و نیشان"; else the longest English line
     title = ""
     mt = re.search(r"[“\"«]([^”\"»]{15,})[”\"»]", full)
     if mt and LATIN.search(mt.group(1)):
         title = re.sub(r"\s+", " ", mt.group(1)).strip()
-    if not title:   # "ناڤ و نیشان...:" satırının altındaki İngilizce satır(lar)
+    if not title:
         for i, l in enumerate(lines):
             if TITLE_LABEL.search(l) and not _is_latin_line(l):
                 parts = []
@@ -395,7 +403,7 @@ def parse_letter(text):
                 continue
             if any(w in s.lower() for w in STOP_WORDS) or key(s) == key(journal) or LABEL_LINE.search(s):
                 continue
-            # yarım kalan başlık: alt satırla birleştir ("... Molecular Targets to" + "Lifestyle Medicine")
+            # a title broken over two lines: join with the next line ("... Molecular Targets to" + "Lifestyle Medicine")
             for nxt in lines[i + 1:i + 3]:
                 n = nxt.strip().strip("()\"'“”«» ").strip()
                 if (n and not re.search(r"[.?!]$", s) and _is_latin_line(n) and _wordlike(n) >= 0.75
@@ -440,13 +448,13 @@ def parse_letter(text):
             if me and me.group(1).lower() in DEPT_EN_KU:
                 dept = DEPT_EN_KU[me.group(1).lower()]
         if dept:
-            unclear.append(f"Bölüm adı Kürtçeye çevrildi ({dept}); yazımını kontrol edin")
+            unclear.append(f"Department name was translated into Kurdish ({dept}); check the spelling")
     if not dept:
-        unclear.append("Bölüm adı bulunamadı")
+        unclear.append("Department name not found")
     if not title:
-        unclear.append("Paper başlığı bulunamadı")
+        unclear.append("Paper title not found")
     if not journal:
-        unclear.append("Dergi adı dilekçede bulunamadı")
+        unclear.append("Journal name not found in the letter")
 
     science = re.search(r"college\s+of\s+science|faculty\s+of\s+science|كلية\s*العلوم|ك[ۆو]ل[يیێ]ژا\s*زانست|کۆلێژا\s*زانست",
                         full, re.I)
@@ -460,7 +468,7 @@ def parse_letter(text):
     }
 
 
-# ─────────────────────────── 2) internetten doğrulama ───────────────────────────
+# ─────────────────────────── 2) online verification ───────────────────────────
 def _author_match(letter_en, paper_authors):
     lw = words(letter_en)
     if not lw:
@@ -523,9 +531,9 @@ def doaj_listed(issns):
 
 
 def uoz_registry_rows():
-    """UoZ yayın kayıt listesini indir (6 saat önbellek)."""
+    """Download the UoZ publication registry (cached for 6 hours)."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    path = os.path.join(DATA_DIR, "uoz_kayit_listesi.csv")
+    path = os.path.join(DATA_DIR, "uoz_registry.csv")
     if not os.path.exists(path) or time.time() - os.path.getmtime(path) > 6 * 3600:
         try:
             data = http_get(UOZ_SHEET_CSV, timeout=90, raw=True)
@@ -564,7 +572,7 @@ def uoz_registry(title, journal, doi):
 
 
 def staff_search(name_en, loose=False):
-    """Kesin eşleşenler; loose=True ise (kesin, olası) döner."""
+    """Exact matches; with loose=True returns (exact, possible)."""
     w = re.sub(r"[^A-Za-z\s'-]", " ", name_en).split()
     if not w:
         return ([], []) if loose else []
@@ -609,7 +617,7 @@ def scimago_quartile(issns):
 
 def _err(e):
     if isinstance(e, urllib.error.HTTPError) and e.code == 429:
-        return "çok fazla istek (günlük ücretsiz limit doldu)"
+        return "too many requests (free daily limit reached)"
     return e.__class__.__name__
 
 
@@ -621,7 +629,7 @@ def verify(L, log=print):
          "doaj_listed": None, "staff_portal": [], "notes": [], "registry": None,
          "registry_journal_ifs": [], "sjr": None, "issn": [], "links": {}}
 
-    # ── Crossref: önce dilekçedeki DOI, sonra başlık
+    # ── Crossref: first the DOI from the letter, then the title
     log("      Crossref...")
     it = None
     try:
@@ -630,16 +638,16 @@ def verify(L, log=print):
             if it:
                 break
         if not it and L.get("stated_dois"):
-            v["notes"].append(("OCR ile okunan DOI Crossref'te bulunamadı (okuma hatası olabilir): "
-                               if L.get("source") == "ocr" else "Dilekçedeki DOI Crossref'te kayıtlı değil: ")
+            v["notes"].append(("The DOI read by OCR was not found in Crossref (it may be an OCR error): "
+                               if L.get("source") == "ocr" else "The DOI in the letter is not registered in Crossref: ")
                               + ", ".join(L["stated_dois"]))
         if not it and L["title"]:
             it, score = crossref_find(L["title"], L["journal"])
             if it and L.get("stated_dois") and clean_doi(it.get("DOI")) not in L["stated_dois"]:
-                v["notes"].append(f"Makalenin gerçek DOI'si {it.get('DOI')}; dilekçede farklı yazılmış "
+                v["notes"].append(f"The paper's real DOI is {it.get('DOI')}; the letter has a different one "
                                   f"({', '.join(L['stated_dois'])}).")
     except Exception as e:
-        v["notes"].append(f"Crossref'e ulaşılamadı ({_err(e)}).")
+        v["notes"].append(f"Could not reach Crossref ({_err(e)}).")
     pa = []
     if it:
         v["published"] = True
@@ -652,13 +660,13 @@ def verify(L, log=print):
         pa = [{"given": a.get("given", ""), "family": a.get("family", "")} for a in it.get("author", [])]
         real_title = html.unescape((it.get("title") or [""])[0])
         if L.get("source") == "ocr" and real_title:
-            L["title"] = real_title          # OCR'daki başlık yerine makalenin temiz başlığı
+            L["title"] = real_title          # use the paper's clean title instead of the OCR one
             if v["journal"]:
                 L["journal"] = v["journal"]
         elif L["title"] and title_sim(L["title"], real_title) < 0.85:
-            v["notes"].append("Dilekçedeki başlık ile makalenin başlığı farklı: " + (it.get("title") or [""])[0])
+            v["notes"].append("The title in the letter differs from the paper's title: " + (it.get("title") or [""])[0])
 
-    # ── OpenAlex: yazarların üniversiteleri (+ Crossref'te yoksa paperin kendisi)
+    # ── OpenAlex: the authors' institutions (+ the paper itself if Crossref did not have it)
     log("      OpenAlex...")
     w = None
     try:
@@ -667,7 +675,7 @@ def verify(L, log=print):
         if not w and not it and L["title"]:
             w = openalex_by_title(L["title"])
     except Exception as e:
-        v["notes"].append(f"OpenAlex'e ulaşılamadı ({_err(e)}); yazarların üniversitesi staff portaldan tahmin edildi.")
+        v["notes"].append(f"Could not reach OpenAlex ({_err(e)}); the authors' university was estimated from the staff portal.")
     oa_auth = []
     if w:
         for a in w.get("authorships", []):
@@ -692,25 +700,25 @@ def verify(L, log=print):
                 pa.append({"given": " ".join(n[:-1]), "family": n[-1] if n else ""})
     if not v["published"]:
         ll = L.get("stated_links", [])[:2] + [f"https://doi.org/{d}" for d in L.get("stated_dois", [])[:1]]
-        v["notes"].append("Paper Crossref/OpenAlex'te bulunamadı (dergi DOI kaydı yapmıyor olabilir). "
-                          + ("Dilekçedeki linkten elle kontrol edin: " + ", ".join(ll) if ll
-                             else "Dilekçede link/DOI yok; rapordaki Google Scholar linkiyle arayın."))
+        v["notes"].append("The paper was not found in Crossref/OpenAlex (the journal may not register DOIs). "
+                          + ("Check it by hand with the link in the letter: " + ", ".join(ll) if ll
+                             else "The letter has no link/DOI; search with the Google Scholar link in the report."))
     v["authors_on_paper"] = [f"{a['given']} {a['family']}".strip() for a in pa]
     if not v["article_url"] and L.get("stated_links"):
         v["letter_link"] = L["stated_links"][0]
 
     if L.get("journal"):
-        L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Dergi adı")]
-    # ── dergi: dilekçede yoksa ya da kısaltmaysa (SJUOZ) makaledeki tam adı kullan
+        L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Journal name")]
+    # ── journal: use the paper's full name if the letter has none or an abbreviation (SJUOZ)
     if v["journal"] and L["journal"] and len(L["journal"].split()) == 1 and title_sim(v["journal"], L["journal"]) < 0.8:
         L["journal"] = v["journal"]
     elif v["journal"] and not L["journal"]:
         L["journal"] = v["journal"]
-        L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Dergi adı")]
+        L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Journal name")]
     elif v["journal"] and L["journal"] and title_sim(v["journal"], L["journal"]) < 0.8:
-        v["notes"].append(f"Makalenin dergisi '{v['journal']}', dilekçede '{L['journal']}' yazıyor.")
+        v["notes"].append(f"The paper's journal is '{v['journal']}', the letter says '{L['journal']}'.")
 
-    # ── yazarlar
+    # ── authors
     staff_hits = {}
 
     def staff_lookup(name, maybe=False):
@@ -719,17 +727,17 @@ def verify(L, log=print):
                 staff_hits[name] = staff_search(name, loose=True)
             except Exception as e:
                 staff_hits[name] = ([], [])
-                v["notes"].append(f"Staff portal araması ({name}): {_err(e)}")
+                v["notes"].append(f"Staff portal search ({name}): {_err(e)}")
         return staff_hits[name][1] if maybe else staff_hits[name][0]
 
-    if L["authors"]:   # dilekçede yazar listesi varsa: makaleyle karşılaştır
+    if L["authors"]:   # the letter has an author list: compare it with the paper
         if pa and all(a["name_en"] for a in L["authors"]):
             miss = [a["name_en"] for a in L["authors"] if not _author_match(a["name_en"], pa)]
             v["authors_match"] = not miss
             if miss:
-                v["notes"].append("Makalede bulunamayan yazar(lar): " + ", ".join(miss))
-    elif pa:           # dilekçede yazar yok: makaledeki Zakho'lu yazarlar
-        log("      Zakho'lu yazarlar belirleniyor...")
+                v["notes"].append("Author(s) not found on the paper: " + ", ".join(miss))
+    elif pa:           # no authors in the letter: the University of Zakho authors of the paper
+        log("      finding the University of Zakho authors...")
         names = load_names()
         listed = L.get("listed_authors") or []
         chosen = []
@@ -748,27 +756,27 @@ def verify(L, log=print):
                 ku = (lm["name_ku"] if lm else None) or lookup_name(full, names) or ""
                 chosen.append({"name_en": full, "name_ku": ku})
         if not chosen:
-            v["notes"].append("Makaledeki yazarlardan hiçbiri University of Zakho'lu görünmüyor! "
-                              "Yazarlar: " + ", ".join(v["authors_on_paper"]))
+            v["notes"].append("None of the paper's authors appears to be from the University of Zakho! "
+                              "Authors: " + ", ".join(v["authors_on_paper"]))
             chosen = [{"name_en": n, "name_ku": lookup_name(n, names) or ""} for n in v["authors_on_paper"]]
         others = [n for n in v["authors_on_paper"] if n not in [c["name_en"] for c in chosen]]
         if others:
-            v["notes"].append("Zakho dışından olduğu için Word'e yazılmayan yazar(lar): " + ", ".join(others)
-                              + ". Yanlışsa veri.json'a ekleyin.")
+            v["notes"].append("Not written into the Word letter because they are not from Zakho: " + ", ".join(others)
+                              + ". If that is wrong, add them to data.json.")
         app = L.get("applicant_ku")
         if app:
             best = max(chosen, key=lambda c: name_sim(app, c["name_en"]))
             if name_sim(app, best["name_en"]) >= 0.6:
                 best["name_ku"] = app
             else:
-                v["notes"].append(f"Başvuran ({app}) makalenin Zakho'lu yazarlarıyla eşleştirilemedi.")
+                v["notes"].append(f"The applicant ({app}) could not be matched to the paper's Zakho authors.")
         for c in chosen:
             if not c["name_ku"]:
                 c["name_ku"] = c["name_en"]
         L["authors"] = chosen
         L["authors_from_paper"] = True
         v["authors_match"] = True
-    elif L.get("listed_authors"):   # makale bulunamadı: dilekçedeki Zakho'lu yazarlar
+    elif L.get("listed_authors"):   # paper not found: the Zakho authors listed in the letter
         L["authors"] = [{"name_ku": a["name_ku"], "name_en": ""} for a in L["listed_authors"] if a["uoz"]] \
             or [{"name_ku": a["name_ku"], "name_en": ""} for a in L["listed_authors"]]
         L["authors_from_letter_list"] = True
@@ -779,25 +787,24 @@ def verify(L, log=print):
         v["doaj_listed"] = doaj_listed(v["issn"])
         v["sjr"] = scimago_quartile(v["issn"])
 
-    log("      UoZ yayın kayıt listesi...")
+    log("      UoZ publication registry...")
     try:
         v["registry"], v["registry_journal_ifs"] = uoz_registry(L["title"], L["journal"], v["doi"])
     except Exception as e:
-        v["notes"].append(f"UoZ kayıt listesi indirilemedi ({_err(e)}).")
+        v["notes"].append(f"UoZ registry could not be downloaded ({_err(e)}).")
 
-    # ── makale bulunamadı ve dilekçede yazar yok: yazarları UoZ kayıt listesinden al
+    # ── paper not found and no authors in the letter: take the authors from the UoZ registry
     reg = v.get("registry")
     if not L["authors"] and reg and reg.get("authors"):
-        log("      Yazarlar UoZ kayıt listesinden alınıyor...")
+        log("      taking the authors from the UoZ registry...")
         names = load_names()
         raw = [re.sub(r"[*†‡¹²³⁴⁵\d]+", "", n).strip(" .")
                for n in re.split(r"\s*(?:,|،|;|\band\b|&)\s*", reg["authors"])]
-        raw = [n for n in raw if n]
-        raw = [n for n in raw if len(n.split()) >= 2]
+        raw = [n for n in raw if n and len(n.split()) >= 2]
         chosen = [{"name_en": n, "name_ku": lookup_name(n, names) or ""} for n in raw if staff_lookup(n)]
         if not chosen:
             chosen = [{"name_en": n, "name_ku": lookup_name(n, names) or ""} for n in raw]
-            v["notes"].append("Kayıt listesindeki yazarlardan hiçbiri staff portalda bulunamadı; hepsi yazıldı, kontrol edin.")
+            v["notes"].append("None of the registry's authors was found on the staff portal; all were written, check them.")
         app = L.get("applicant_ku")
         if app and chosen:
             best = max(chosen, key=lambda c: name_sim(app, c["name_en"]))
@@ -807,11 +814,11 @@ def verify(L, log=print):
             c["name_ku"] = c["name_ku"] or c["name_en"]
         L["authors"] = chosen
         L["authors_from_registry"] = True
-        v["notes"].append("Paper internette bulunamadığı için yazarlar UoZ kayıt listesinden alındı "
-                          f"(listede: {reg['authors']}). Staff portalda bulunanlar Word'e yazıldı.")
+        v["notes"].append("The paper was not found online, so the authors were taken from the UoZ registry "
+                          f"(registry: {reg['authors']}). Those found on the staff portal were written into the Word letter.")
         v["uoz_authors"] = [c["name_en"] for c in chosen]
 
-    log("      Staff portal...")
+    log("      UoZ staff portal...")
     for a in L["authors"]:
         name = a["name_en"]
         entry = {"author": name or a["name_ku"], "url": None, "paper_listed": None}
@@ -829,10 +836,11 @@ def verify(L, log=print):
                 if L["title"]:
                     entry["paper_listed"] = staff_has_paper(u, L["title"])
                     if entry["paper_listed"]:
+                        # text fragment link: Chrome/Edge scroll to and highlight the title
                         entry["paper_url"] = entry["journals_url"] + "#:~:text=" + urllib.parse.quote(
                             " ".join(L["title"].split()[:6]), safe="").replace("-", "%2D")
             except Exception as e:
-                v["notes"].append(f"Staff portal sayfası ({name}): {_err(e)}")
+                v["notes"].append(f"Staff portal page ({name}): {_err(e)}")
         elif hits:
             entry["candidates"] = [f"{h['fullname']}: {STAFF}/en/{h['username']}" for h in hits]
         elif name and staff_lookup(name, maybe=True):
@@ -844,14 +852,14 @@ def verify(L, log=print):
     q = urllib.parse.quote
     jr = L["journal"] or ""
     v["links"] = {
-        "Clarivate MJL (IF/Web of Science kontrolü)": f"https://mjl.clarivate.com/search-results?issn={q(issn)}" if issn
+        "Clarivate MJL (IF / Web of Science check)": f"https://mjl.clarivate.com/search-results?issn={q(issn)}" if issn
         else f"https://mjl.clarivate.com/search-results?search={q(jr)}",
-        "Scopus kaynak araması": f"https://www.scopus.com/sources?query={q(jr)}",
+        "Scopus source search": f"https://www.scopus.com/sources?query={q(jr)}",
         "SCImago": f"https://www.scimagojr.com/journalsearch.php?q={q(issn or jr)}",
-        "Google Scholar (paper araması)": "https://scholar.google.com/scholar?q=" + q('"' + (L["title"] or "") + '"'),
-        "UoZ yayın kayıt listesi": UOZ_SHEET_VIEW,
-        "Staff portal ana sayfa (isimle arama)": STAFF + "/en",
+        "Google Scholar (paper search)": "https://scholar.google.com/scholar?q=" + q('"' + (L["title"] or "") + '"'),
+        "UoZ publication registry": UOZ_SHEET_VIEW,
+        "Staff portal home (search by name)": STAFF + "/en",
     }
     for i, u in enumerate(L.get("stated_links", [])[:2]):
-        v["links"][f"Dilekçedeki link {i + 1}"] = u
+        v["links"][f"Link in the letter {i + 1}"] = u
     return v

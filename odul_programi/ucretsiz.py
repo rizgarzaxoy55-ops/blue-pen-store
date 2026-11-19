@@ -565,7 +565,7 @@ def uoz_registry(title, journal, doi):
 
 def staff_search(name_en, loose=False):
     """Kesin eşleşenler; loose=True ise (kesin, olası) döner."""
-    w = name_en.replace(".", " ").split()
+    w = re.sub(r"[^A-Za-z\s'-]", " ", name_en).split()
     if not w:
         return ([], []) if loose else []
     res = get_json(STAFF + "/api/searchstaff", {"lang": "en", "query": w[0]})
@@ -696,6 +696,8 @@ def verify(L, log=print):
                           + ("Dilekçedeki linkten elle kontrol edin: " + ", ".join(ll) if ll
                              else "Dilekçede link/DOI yok; rapordaki Google Scholar linkiyle arayın."))
     v["authors_on_paper"] = [f"{a['given']} {a['family']}".strip() for a in pa]
+    if not v["article_url"] and L.get("stated_links"):
+        v["letter_link"] = L["stated_links"][0]
 
     if L.get("journal"):
         L["unclear"] = [u for u in L.get("unclear", []) if not u.startswith("Dergi adı")]
@@ -783,6 +785,32 @@ def verify(L, log=print):
     except Exception as e:
         v["notes"].append(f"UoZ kayıt listesi indirilemedi ({_err(e)}).")
 
+    # ── makale bulunamadı ve dilekçede yazar yok: yazarları UoZ kayıt listesinden al
+    reg = v.get("registry")
+    if not L["authors"] and reg and reg.get("authors"):
+        log("      Yazarlar UoZ kayıt listesinden alınıyor...")
+        names = load_names()
+        raw = [re.sub(r"[*†‡¹²³⁴⁵\d]+", "", n).strip(" .")
+               for n in re.split(r"\s*(?:,|،|;|\band\b|&)\s*", reg["authors"])]
+        raw = [n for n in raw if n]
+        raw = [n for n in raw if len(n.split()) >= 2]
+        chosen = [{"name_en": n, "name_ku": lookup_name(n, names) or ""} for n in raw if staff_lookup(n)]
+        if not chosen:
+            chosen = [{"name_en": n, "name_ku": lookup_name(n, names) or ""} for n in raw]
+            v["notes"].append("Kayıt listesindeki yazarlardan hiçbiri staff portalda bulunamadı; hepsi yazıldı, kontrol edin.")
+        app = L.get("applicant_ku")
+        if app and chosen:
+            best = max(chosen, key=lambda c: name_sim(app, c["name_en"]))
+            if name_sim(app, best["name_en"]) >= 0.6:
+                best["name_ku"] = app
+        for c in chosen:
+            c["name_ku"] = c["name_ku"] or c["name_en"]
+        L["authors"] = chosen
+        L["authors_from_registry"] = True
+        v["notes"].append("Paper internette bulunamadığı için yazarlar UoZ kayıt listesinden alındı "
+                          f"(listede: {reg['authors']}). Staff portalda bulunanlar Word'e yazıldı.")
+        v["uoz_authors"] = [c["name_en"] for c in chosen]
+
     log("      Staff portal...")
     for a in L["authors"]:
         name = a["name_en"]
@@ -795,10 +823,14 @@ def verify(L, log=print):
         if hits and len(hits) == 1:
             u = hits[0]["username"]
             entry["url"] = f"{STAFF}/en/{u}"
+            entry["journals_url"] = f"{STAFF}/en/journals/{urllib.parse.quote(u)}"
             entry["fullname"] = hits[0]["fullname"]
             try:
                 if L["title"]:
                     entry["paper_listed"] = staff_has_paper(u, L["title"])
+                    if entry["paper_listed"]:
+                        entry["paper_url"] = entry["journals_url"] + "#:~:text=" + urllib.parse.quote(
+                            " ".join(L["title"].split()[:6]), safe="").replace("-", "%2D")
             except Exception as e:
                 v["notes"].append(f"Staff portal sayfası ({name}): {_err(e)}")
         elif hits:

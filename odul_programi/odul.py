@@ -44,7 +44,7 @@ TEMPLATE = os.path.join(HERE, "sablon.docx")
 OUT_ROOT = os.path.join(HERE, "cikti")
 SETTINGS = os.path.join(HERE, "ayarlar.json")
 MODEL = "claude-opus-5-5"
-VERSION = "2026-11-19g"
+VERSION = "2026-11-19i"
 
 # ─────────────────────────── Ödül kuralları ───────────────────────────
 # Fermana wezarî (1692) 23/01/2025 - "onlara gore para belirleme.pdf"
@@ -601,8 +601,13 @@ def write_report(d, path, warnings):
         "DOI            : " + (f"https://doi.org/{V['doi']}" if V.get("doi") else "-"),
     ]
     for s in V.get("staff_portal", []):
-        listed = {True: "  [paper KAYITLI]", False: "  [paper KAYITLI DEĞİL]"}.get(s.get("paper_listed"), "")
-        lines.append(f"Staff portal   : {s['author']}: {s.get('url') or 'bulunamadı'}{listed}")
+        if s.get("paper_listed"):
+            lines.append(f"Staff portal   : {s['author']}: paper KAYITLI -> {s.get('paper_url') or s.get('journals_url')}")
+        elif s.get("url"):
+            lines.append(f"Staff portal   : {s['author']}: paper KAYITLI DEĞİL -> yayın listesi: "
+                         f"{s.get('journals_url') or s['url']}")
+        else:
+            lines.append(f"Staff portal   : {s['author']}: sayfa bulunamadı")
         for c in s.get("candidates", []):
             lines.append(f"                 olası: {c}")
     lines += ["", "── DOĞRULAMA ──",
@@ -672,6 +677,7 @@ def build_outputs(d, src_file=None, today=None):
     docx_path = os.path.join(folder, f"{folder_name} - خەلاتکرن.docx")
     fill_word(d, docx_path, today)
     warnings = checks(d)
+    d["warnings"] = warnings
     write_report(d, os.path.join(folder, "rapor.txt"), warnings)
     with open(os.path.join(folder, "veri.json"), "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=1)
@@ -770,9 +776,86 @@ def main():
 
     for folder, docx_path, warnings in results:
         print("\n✔", docx_path)
+        print_links(folder)
         for w in warnings:
             print("   !", w)
+    if results:
+        out = write_summary()
+        print("\nÖzet sayfası (bütün makaleler, tıklanabilir linkler):", out)
     return 0
+
+
+def print_links(folder):
+    try:
+        with open(os.path.join(folder, "veri.json"), encoding="utf-8") as f:
+            d = json.load(f)
+    except Exception:
+        return
+    V = d.get("verify") or {}
+    print(f"   Dergi : {d['letter'].get('journal') or '-'}   |   Ödül: {d['award']['amount']:,} dinar")
+    print(f"   Makale: {V.get('article_url') or (V.get('letter_link', '') + '  (dilekçedeki link)' if V.get('letter_link') else '-')}")
+    if V.get("doi"):
+        print(f"   DOI   : https://doi.org/{V['doi']}")
+    for s in V.get("staff_portal", []):
+        u = s.get("paper_url") or s.get("journals_url") or s.get("url") or "bulunamadı"
+        st = {True: "kayıtlı", False: "KAYITLI DEĞİL"}.get(s.get("paper_listed"), "?")
+        print(f"   Staff : {s['author']} ({st}) {u}")
+        for c in s.get("candidates", []):
+            print(f"           olası: {c}")
+
+
+def write_summary():
+    """cikti/ozet.html: cikti'deki bütün makaleler tek tabloda, tıklanabilir linklerle."""
+    import html as H
+    rows = []
+    for name in sorted(os.listdir(OUT_ROOT)):
+        vj = os.path.join(OUT_ROOT, name, "veri.json")
+        if not os.path.isfile(vj):
+            continue
+        try:
+            with open(vj, encoding="utf-8") as f:
+                d = json.load(f)
+        except Exception:
+            continue
+        L, V, A = d["letter"], d.get("verify") or {}, d.get("award") or {}
+        a = lambda url, txt: f'<a href="{H.escape(url)}" target="_blank">{H.escape(txt)}</a>' if url else "-"
+        staff = []
+        for s in V.get("staff_portal", []):
+            st = {True: '<b class="ok">✓ kayıtlı</b>', False: '<b class="no">✗ kayıtlı değil</b>'}.get(
+                s.get("paper_listed"), '<b class="q">?</b>')
+            link = s.get("paper_url") or s.get("journals_url") or s.get("url")
+            cand = "".join(f'<div class="small">olası: {a(c.split(": ", 1)[-1], c.split(": ", 1)[0])}</div>'
+                           for c in s.get("candidates", []))
+            staff.append(f"{a(link, s['author']) if link else H.escape(s['author']) + ' (sayfa yok)'} {st}{cand}")
+        reg = V.get("registry")
+        regtxt = '<b class="ok">✓</b>' if reg else ('<b class="no">✗</b>' if V.get("mode") == "ucretsiz" else "-")
+        pub = '<b class="ok">✓</b>' if V.get("published") else '<b class="no">✗ bulunamadı</b>'
+        warns = d.get("warnings", [])
+        rows.append(f"""<tr>
+<td class="rtl">{"<br>".join(H.escape(x.get("name_ku") or x.get("name_en") or "") for x in L.get("authors", [])) or "-"}</td>
+<td>{H.escape(L.get("title", ""))}<div class="small">{H.escape(L.get("journal") or "")}</div></td>
+<td>{H.escape(A.get("index_text", ""))}<div class="money">{A.get("amount", 0):,}</div></td>
+<td>{pub}<br>{a(V.get("article_url"), "dergideki makale") if V.get("article_url") else a(V.get("letter_link"), "dilekçedeki link")}<br>{a("https://doi.org/" + V["doi"] if V.get("doi") else None, "DOI")}</td>
+<td>{"<br>".join(staff) or "-"}</td>
+<td>{regtxt}</td>
+<td><a href="{H.escape(name)}/rapor.txt">rapor</a> · <a href="{H.escape(name)}">klasör</a>
+<div class="small">{len(warns)} uyarı</div></td></tr>""")
+    page = f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Yayın Ödülleri – Özet</title>
+<style>body{{font-family:Segoe UI,Arial,sans-serif;margin:20px;color:#222}}
+table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #ccc;padding:6px 8px;vertical-align:top;font-size:14px}}
+th{{background:#f0f0f0;text-align:left}}.rtl{{direction:rtl;text-align:right;font-family:Tahoma,Arial}}
+.small{{color:#666;font-size:12px;margin-top:3px}}.money{{font-weight:bold;margin-top:4px}}
+.ok{{color:#11823b}}.no{{color:#c62828}}.q{{color:#999}}a{{color:#0b57d0}}</style></head><body>
+<h2>Yayın Ödülleri – Özet ({len(rows)} makale)</h2>
+<p class="small">Oluşturma: {datetime.datetime.now():%Y-%m-%d %H:%M} · Staff portal linkleri paperin olduğu yere gider
+(Chrome/Edge başlığı vurgular). ✗ olanları elle kontrol edin; ayrıntılar her satırdaki rapor'da.</p>
+<table><tr><th>Yazarlar (Word'deki)</th><th>Paper / Dergi</th><th>Index / Ödül (dinar)</th><th>Yayın</th>
+<th>Staff portal (kural 5-b)</th><th>UoZ kayıt listesi (5-a)</th><th>Rapor</th></tr>
+{"".join(rows)}</table></body></html>"""
+    out = os.path.join(OUT_ROOT, "ozet.html")
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(page)
+    return out
 
 
 if __name__ == "__main__":

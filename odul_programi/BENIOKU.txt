@@ -34,6 +34,12 @@ SONUÇ:  cikti\(yazar1) و (yazar2)\
    veri.json              -> okunan/bulunan bilgiler
    dilekce.docx           -> yazarların gönderdiği dilekçenin kopyası
 
+ÖZET SAYFASI:  cikti\ozet.html  (çift tıklayın, tarayıcıda açılır)
+   Bütün makaleler tek tabloda: dergi, ödül, dergideki makale linki, DOI, her yazarın staff portal
+   linki (✓ kayıtlı / ✗ kayıtlı değil) ve UoZ kayıt listesi durumu. Teyit için linklere tıklayın.
+   Staff portal linkleri Chrome/Edge'de doğrudan paperin başlığına gider ve onu vurgular.
+   Linkler her dilekçeden sonra ekranda da yazılır.
+
 PROGRAM NE KONTROL EDER (ücretsiz kaynaklar)
 1. Dilekçe Word'ünü okur: başlık (“...” içinde), dergi ("ل گوڤارا:" altındaki satır),
    DOI ve linkler, IF / Scopus Q / DOAJ, bölüm (پشکا ...), başvuran (داخازکەر).
